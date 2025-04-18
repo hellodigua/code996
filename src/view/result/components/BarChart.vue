@@ -1,10 +1,9 @@
 <template>
-  <svg class="bar-chart" ref="bar"></svg>
+  <BaseChart :data="data" chartType="Bar" :options="chartOptions" />
 </template>
 <script setup lang="ts">
-import { ref, onMounted, nextTick } from 'vue'
-import chartXkcd from 'chart.xkcd'
 import { ChartData } from '../../../typings'
+import BaseChart from './BaseChart.vue'
 
 const props = defineProps({
   data: {
@@ -13,30 +12,10 @@ const props = defineProps({
   },
 })
 
-const bar = ref(null)
-
-function init() {
-  new chartXkcd.Bar(bar.value, {
-    data: {
-      labels: props.data.map((item: ChartData) => item.time),
-      datasets: [
-        {
-          data: props.data.map((item: ChartData) => item.count),
-        },
-      ],
-    },
-    options: {
-      backgroundColor: '#212121',
-      strokeColor: '#fff',
-      unxkcdify: false,
-    },
-  })
+const chartOptions = {
+  backgroundColor: '#212121',
+  strokeColor: '#fff',
+  unxkcdify: false,
 }
-
-onMounted(() => {
-  nextTick(() => {
-    init()
-  })
-})
 </script>
 <style lang="scss" scoped></style>
