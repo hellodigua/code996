@@ -3,6 +3,7 @@ import { getHourResult } from './hour'
 import { getWeekResult } from './week'
 import { parseResult, parseWeekData } from './url-helper'
 import { getRandomText } from './utils'
+import { TimeCount, WorkTimeData, Result996 } from '../../../typings'
 
 /**
  * 获取路由元信息
@@ -61,7 +62,7 @@ export function getResult() {
 /**
  * 计算996指数
  */
-export function get996Index({ workHourPl, workWeekPl, hourData }: any) {
+export function get996Index({ workHourPl, workWeekPl, hourData }: WorkTimeData): Result996 {
   const y = workHourPl[0].count
   const x = workHourPl[1].count
   const m = workWeekPl[0].count
@@ -110,7 +111,7 @@ export function get996Index({ workHourPl, workWeekPl, hourData }: any) {
  * 思路：周末一定是不加班的，周一到周五的工作时间一定是少于9h的
  * 因此模拟出上够9h的commit，然后算比例即可
  */
-function getUn996Radio({ hourData, totalCount }: any) {
+function getUn996Radio({ hourData, totalCount }: { hourData: TimeCount[]; totalCount: number }): number {
   const averageCommit = totalCount / hourData.length
   const mockTotalCount = averageCommit * 9
   const radio = Math.ceil((totalCount / mockTotalCount) * 100) - 100
@@ -122,7 +123,12 @@ function getUn996Radio({ hourData, totalCount }: any) {
  * 校验数据
  * 1. 项目数据伪造
  */
-function checkDataIsRight(params: any) {
+function checkDataIsRight(params: {
+  workHourPl: Array<{ time: string; count: number }>
+  workWeekPl: Array<{ time: string; count: number }>
+  index996?: number
+  overTimeRadio?: number
+}): string {
   const { workHourPl, workWeekPl } = params
   let MSG_TYPE: string = ''
 

@@ -4,10 +4,11 @@
 <script setup lang="ts">
 import { ref, onMounted, nextTick } from 'vue'
 import chartXkcd from 'chart.xkcd'
+import { ChartData } from '../../../typings'
 
 const props = defineProps({
   data: {
-    type: Array,
+    type: Array as () => ChartData[],
     default: () => [],
   },
 })
@@ -17,10 +18,10 @@ const bar = ref(null)
 function init() {
   new chartXkcd.Pie(bar.value, {
     data: {
-      labels: props.data.map((item: any) => item.time),
+      labels: props.data.map((item: ChartData) => item.time),
       datasets: [
         {
-          data: props.data.map((item: any) => item.count),
+          data: props.data.map((item: ChartData) => item.count),
         },
       ],
     },
