@@ -117,4 +117,4 @@ const previewDemo = () => {
   })
 }
 </script>
-<style lang="scss" scoped></style>
+

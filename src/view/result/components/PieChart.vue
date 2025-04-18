@@ -17,4 +17,3 @@ const chartOptions = {
   strokeColor: '#fff',
 }
 </script>
-<style lang="scss" scoped></style>

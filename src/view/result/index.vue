@@ -132,4 +132,4 @@ onMounted(() => {
   init()
 })
 </script>
-<style lang="scss" scoped></style>
+
