@@ -20,7 +20,7 @@
     "analysis",
     "cli"
   ],
-  "author": "code996",
+  "author": "hellodigua",
   "license": "MIT",
   "devDependencies": {
     "@types/jest": "^29.5.12",

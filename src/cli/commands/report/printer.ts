@@ -50,7 +50,7 @@ export function printCoreResults(
       { content: indexColor(result.index996.toFixed(1)), colSpan: 1 },
     ],
     [
-      { content: chalk.bold('分析'), colSpan: 1 },
+      { content: chalk.bold('整体评价'), colSpan: 1 },
       { content: result.index996Str, colSpan: 1 },
     ],
     [
@@ -345,4 +345,3 @@ export function printLateNightAnalysis(parsedData: ParsedGitData): void {
     console.log()
   }
 }
-

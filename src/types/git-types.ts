@@ -3,6 +3,7 @@ export interface GitLogOptions {
   since?: string
   until?: string
   silent?: boolean // 静默模式，不打印日志
+  authorPattern?: string // 作者过滤正则
 }
 
 export interface GitLogData {

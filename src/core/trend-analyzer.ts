@@ -20,16 +20,17 @@ export class TrendAnalyzer {
    * @param path Git 仓库路径
    * @param since 开始日期 (YYYY-MM-DD)
    * @param until 结束日期 (YYYY-MM-DD)
+   * @param authorPattern 作者过滤正则（仅统计指定作者）
    * @returns 趋势分析结果
    */
-  static async analyzeTrend(path: string, since: string, until: string): Promise<TrendAnalysisResult> {
+  static async analyzeTrend(path: string, since: string, until: string, authorPattern?: string): Promise<TrendAnalysisResult> {
     const collector = new GitCollector()
 
     // 生成月份列表
     const months = this.generateMonthsList(since, until)
 
     // 并行分析每个月的数据
-    const monthlyDataPromises = months.map((month) => this.analyzeMonth(collector, path, month))
+    const monthlyDataPromises = months.map((month) => this.analyzeMonth(collector, path, month, authorPattern))
     const monthlyData = await Promise.all(monthlyDataPromises)
 
     // 过滤掉数据不足的月份（可选，这里保留所有月份）
@@ -47,18 +48,20 @@ export class TrendAnalyzer {
 
   /**
    * 分析单个月份的数据
+   * @param authorPattern 作者过滤正则
    */
   private static async analyzeMonth(
     collector: GitCollector,
     path: string,
-    month: string
+    month: string,
+    authorPattern?: string
   ): Promise<MonthlyTrendData | null> {
     try {
       // 计算该月的起止日期
       const { since, until } = this.getMonthRange(month)
 
       // 收集该月的 Git 数据（静默模式，不打印日志）
-      const gitLogData = await collector.collect({ path, since, until, silent: true })
+      const gitLogData = await collector.collect({ path, since, until, silent: true, authorPattern })
 
       // 如果该月没有提交，返回空数据
       if (gitLogData.totalCommits === 0) {
@@ -263,4 +266,3 @@ export class TrendAnalyzer {
     return diff > 0 ? 'increasing' : 'decreasing'
   }
 }
-

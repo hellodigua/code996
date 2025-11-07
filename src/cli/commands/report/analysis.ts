@@ -8,15 +8,22 @@ export function printDetailedAnalysis(result: Result996, parsedData: ParsedGitDa
 
   const analysis: string[] = []
 
-  // 1. 加班强度分析
-  if (result.overTimeRadio >= 30) {
-    analysis.push(`⚠️ 加班比例较高（${result.overTimeRadio}%），工作强度较大`)
-  } else if (result.overTimeRadio >= 15) {
-    analysis.push(`⚡ 加班比例适中（${result.overTimeRadio}%），存在一定加班情况`)
-  } else if (result.overTimeRadio >= 5) {
-    analysis.push(`✅ 加班比例较低（${result.overTimeRadio}%），工作节奏相对健康`)
+  // 1. 加班强度分析（与 calculator 的描述保持一致）
+  const index = result.index996
+  if (index <= 0) {
+    analysis.push(`🎉 ${result.index996Str}（加班比例 ${result.overTimeRadio.toFixed(1)}%）`)
+  } else if (index <= 21) {
+    analysis.push(`✅ ${result.index996Str}（加班比例 ${result.overTimeRadio.toFixed(1)}%）`)
+  } else if (index <= 48) {
+    analysis.push(`🤔 ${result.index996Str}（加班比例 ${result.overTimeRadio.toFixed(1)}%）`)
+  } else if (index <= 63) {
+    analysis.push(`⚠️ ${result.index996Str}（加班比例 ${result.overTimeRadio.toFixed(1)}%）`)
+  } else if (index <= 100) {
+    analysis.push(`🚨 ${result.index996Str}（加班比例 ${result.overTimeRadio.toFixed(1)}%）`)
+  } else if (index <= 130) {
+    analysis.push(`🔥 ${result.index996Str}（加班比例 ${result.overTimeRadio.toFixed(1)}%）`)
   } else {
-    analysis.push(`🎉 几乎无加班（${result.overTimeRadio}%），工作生活平衡良好`)
+    analysis.push(`💀 ${result.index996Str}（加班比例 ${result.overTimeRadio.toFixed(1)}%）`)
   }
 
   // 2. 工作日加班分析
@@ -73,8 +80,10 @@ export function printDetailedAnalysis(result: Result996, parsedData: ParsedGitDa
   })
 
   console.log()
+}
 
-  // 5. 综合建议
+/** 输出综合建议模块 */
+export function printRecommendation(result: Result996, parsedData: ParsedGitData): void {
   const recommendation = generateRecommendation(result, parsedData)
   console.log(chalk.bold('💬 综合建议:'))
   console.log()
@@ -95,10 +104,10 @@ export function generateRecommendation(
   let score = 0
 
   // 996指数权重最高
-  if (result.index996 > 150) score += 40
+  if (result.index996 > 130) score += 40
   else if (result.index996 > 100) score += 30
-  else if (result.index996 > 60) score += 20
-  else if (result.index996 > 30) score += 10
+  else if (result.index996 > 63) score += 20
+  else if (result.index996 > 48) score += 10
 
   // 周末加班
   if (parsedData.weekendOvertime) {
@@ -145,7 +154,7 @@ export function generateRecommendation(
     return {
       emoji: '🎉',
       action: '非常好！工作生活平衡良好',
-      reason: '几乎无加班，工作环境健康。这是难得的好团队，值得长期发展。',
+      reason: '加班很少，工作环境健康。这是难得的好团队，值得长期发展。',
     }
   }
 }

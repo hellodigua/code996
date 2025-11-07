@@ -1,0 +1,63 @@
+# TypeScript 源代码
+src/
+*.ts
+
+# TypeScript 声明文件 (排除所有 .d.ts，因为运行时不需要)
+*.d.ts
+
+# 只保留必要的 JavaScript 文件
+!dist/**/*.js
+
+# Source maps
+*.map
+
+# 构建配置
+tsconfig.json
+tsconfig.build.json
+jest.config.js
+.prettierrc.mjs
+
+# 测试文件
+**/*.test.ts
+**/*.spec.ts
+__tests__/
+tests/
+
+# 开发工具配置
+.eslintrc*
+.prettierrc*
+.stylelintrc*
+
+# 文档和说明
+.docs/
+*.md
+!README.md
+.cursor/
+.claude/
+
+# Git 相关
+.git
+.gitignore
+.gitattributes
+
+# IDE 配置
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# 操作系统文件
+.DS_Store
+.Thumbs.db
+desktop.ini
+
+# Node.js 相关
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# 其他构建产物
+dist/**/*.map
+dist/**/*.d.ts.map

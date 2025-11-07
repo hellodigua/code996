@@ -4,7 +4,7 @@ import { GitCollector } from '../../git/git-collector'
 import { GitParser } from '../../git/git-parser'
 import { AnalyzeOptions } from '../index'
 import { calculateTimeRange } from '../../utils/terminal'
-import { GitLogData, ParsedGitData, Result996 } from '../../types/git-types'
+import { GitLogData, GitLogOptions, ParsedGitData, Result996 } from '../../types/git-types'
 import {
   printCoreResults,
   printDetailedAnalysis,
@@ -13,9 +13,16 @@ import {
   printWeekdayOvertime,
   printWeekendOvertime,
   printLateNightAnalysis,
+  printRecommendation,
 } from './report'
+import { ensureCommitSamples } from '../common/commit-guard'
 
 type TimeRangeMode = 'all-time' | 'custom' | 'auto-last-commit' | 'fallback'
+
+interface AuthorFilterInfo {
+  pattern: string
+  displayLabel: string
+}
 
 /** 分析执行器，集中处理采集、解析与渲染流程 */
 export class AnalyzeExecutor {
@@ -52,16 +59,31 @@ export class AnalyzeExecutor {
       }
       console.log()
 
+      let authorFilter: AuthorFilterInfo | undefined
+      if (options.self) {
+        authorFilter = await resolveAuthorFilter(collector, path)
+        console.log(chalk.blue('🙋 作者过滤:'), authorFilter.displayLabel)
+        console.log()
+      }
+
+      // 构建统一的 Git 采集参数，保证所有步骤使用一致的过滤条件
+      const collectOptions: GitLogOptions = {
+        path,
+        since: effectiveSince,
+        until: effectiveUntil,
+        authorPattern: authorFilter?.pattern,
+      }
+
+      // 在正式分析前，先检查 commit 样本量是否达到最低要求
+      const hasEnoughCommits = await ensureCommitSamples(collector, collectOptions, 20, '分析')
+      if (!hasEnoughCommits) {
+        return
+      }
+
       // 创建进度指示器
       const spinner = ora('📦 开始分析').start()
 
       // 步骤1: 数据采集
-      const collectOptions = {
-        path,
-        since: effectiveSince,
-        until: effectiveUntil,
-      }
-
       const rawData = await collector.collect(collectOptions)
       spinner.text = '⚙️ 正在解析数据...'
       spinner.render()
@@ -183,6 +205,17 @@ async function resolveTimeRange({
   }
 }
 
+/**
+ * 当启用 --self 时解析当前 Git 用户的信息，生成作者过滤正则
+ */
+async function resolveAuthorFilter(collector: GitCollector, path: string): Promise<AuthorFilterInfo> {
+  const authorInfo = await collector.resolveSelfAuthor(path)
+  return {
+    pattern: authorInfo.pattern,
+    displayLabel: authorInfo.displayLabel,
+  }
+}
+
 /** 解析 --year 参数，支持单年和年份范围 */
 function parseYearOption(yearStr: string): { since: string; until: string; note?: string } | null {
   // 去除空格
@@ -259,4 +292,5 @@ function printResults(
   printWeekdayOvertime(parsedData)
   printWeekendOvertime(parsedData)
   printLateNightAnalysis(parsedData)
+  printRecommendation(result, parsedData)
 }

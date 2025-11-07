@@ -1,5 +1,5 @@
 // 分析和建议
-export { printDetailedAnalysis, generateRecommendation } from './analysis'
+export { printDetailedAnalysis, generateRecommendation, printRecommendation } from './analysis'
 
 // 报表打印
 export {
@@ -10,4 +10,3 @@ export {
   printWeekendOvertime,
   printLateNightAnalysis,
 } from './printer'
-

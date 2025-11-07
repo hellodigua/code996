@@ -5,6 +5,8 @@ import { TrendAnalyzer } from '../../core/trend-analyzer'
 import { printTrendReport } from './report/trend-printer'
 import { AnalyzeOptions } from '../index'
 import { calculateTimeRange } from '../../utils/terminal'
+import { GitLogOptions } from '../../types/git-types'
+import { ensureCommitSamples } from '../common/commit-guard'
 
 /**
  * 趋势分析命令执行器
@@ -25,11 +27,33 @@ export class TrendExecutor {
       console.log(chalk.blue('📅 时间范围:'), `${since} 至 ${until}`)
       console.log()
 
+      let authorPattern: string | undefined
+      if (options.self) {
+        const authorInfo = await collector.resolveSelfAuthor(path)
+        authorPattern = authorInfo.pattern
+        console.log(chalk.blue('🙋 作者过滤:'), authorInfo.displayLabel)
+        console.log()
+      }
+
+      // 构造采样参数，确保 commit 过滤条件与趋势统计一致
+      const collectOptions: GitLogOptions = {
+        path,
+        since,
+        until,
+        authorPattern,
+      }
+
+      // 趋势分析同样需要足够的样本量
+      const hasEnoughCommits = await ensureCommitSamples(collector, collectOptions, 20, '趋势分析')
+      if (!hasEnoughCommits) {
+        return
+      }
+
       // 创建进度指示器
       const spinner = ora('📦 开始月度趋势分析...').start()
 
       // 执行趋势分析
-      const trendResult = await TrendAnalyzer.analyzeTrend(path, since, until)
+      const trendResult = await TrendAnalyzer.analyzeTrend(path, since, until, authorPattern)
 
       spinner.succeed('趋势分析完成！')
 
@@ -157,4 +181,3 @@ export class TrendExecutor {
     process.exit(1)
   }
 }
-

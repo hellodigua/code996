@@ -74,17 +74,10 @@ export class GitCollector {
    * 按小时统计commit数据
    */
   private async getCommitsByHour(options: GitLogOptions): Promise<TimeCount[]> {
-    const { path, since, until } = options
+    const { path } = options
 
-    const args = ['log', '--format=%cd', `--date=format:%H`]
-
-    // 添加日期过滤器
-    if (since) {
-      args.push(`--since=${since}`)
-    }
-    if (until) {
-      args.push(`--until=${until}`)
-    }
+    const args = ['log', '--format=%cd', `--date=format-local:%H`]
+    this.applyCommonFilters(args, options)
 
     const output = await this.execGitCommand(args, path)
     return this.parseTimeData(output, 'hour')
@@ -94,17 +87,10 @@ export class GitCollector {
    * 按星期统计commit数据
    */
   private async getCommitsByDay(options: GitLogOptions): Promise<TimeCount[]> {
-    const { path, since, until } = options
+    const { path } = options
 
-    const args = ['log', '--format=%cd', `--date=format:%u`]
-
-    // 添加日期过滤器
-    if (since) {
-      args.push(`--since=${since}`)
-    }
-    if (until) {
-      args.push(`--until=${until}`)
-    }
+    const args = ['log', '--format=%cd', `--date=format-local:%u`]
+    this.applyCommonFilters(args, options)
 
     const output = await this.execGitCommand(args, path)
     return this.parseTimeData(output, 'day')
@@ -151,17 +137,11 @@ export class GitCollector {
    * 按星期几和小时统计commit数据
    */
   private async getCommitsByDayAndHour(options: GitLogOptions): Promise<DayHourCommit[]> {
-    const { path, since, until } = options
+    const { path } = options
 
     // 使用 --date=format 同时获取星期几和小时
-    const args = ['log', '--format=%cd', '--date=format:%u %H']
-
-    if (since) {
-      args.push(`--since=${since}`)
-    }
-    if (until) {
-      args.push(`--until=${until}`)
-    }
+    const args = ['log', '--format=%cd', '--date=format-local:%u %H']
+    this.applyCommonFilters(args, options)
 
     const output = await this.execGitCommand(args, path)
     const lines = output.split('\n').filter((line) => line.trim())
@@ -198,16 +178,10 @@ export class GitCollector {
    * 获取每日最晚的提交时间
    */
   private async getDailyLatestCommits(options: GitLogOptions): Promise<DailyLatestCommit[]> {
-    const { path, since, until } = options
+    const { path } = options
 
-    const args = ['log', '--format=%cd', '--date=iso-strict']
-
-    if (since) {
-      args.push(`--since=${since}`)
-    }
-    if (until) {
-      args.push(`--until=${until}`)
-    }
+    const args = ['log', '--format=%cd', '--date=format-local:%Y-%m-%dT%H:%M:%S']
+    this.applyCommonFilters(args, options)
 
     const output = await this.execGitCommand(args, path)
     const lines = output.split('\n').filter((line) => line.trim())
@@ -220,30 +194,24 @@ export class GitCollector {
         continue
       }
 
-      const commitDate = new Date(trimmed)
-      if (Number.isNaN(commitDate.getTime())) {
+      const parsed = this.parseLocalTimestamp(trimmed)
+      if (!parsed) {
         continue
       }
 
-      const dateKey = [
-        commitDate.getFullYear(),
-        (commitDate.getMonth() + 1).toString().padStart(2, '0'),
-        commitDate.getDate().toString().padStart(2, '0'),
-      ].join('-')
-
-      const hour = commitDate.getHours()
-      const current = dailyLatest.get(dateKey)
+      const minutesFromMidnight = parsed.hour * 60 + parsed.minute
+      const current = dailyLatest.get(parsed.dateKey)
 
       // 保存最晚的小时
-      if (current === undefined || hour > current) {
-        dailyLatest.set(dateKey, hour)
+      if (current === undefined || minutesFromMidnight > current) {
+        dailyLatest.set(parsed.dateKey, minutesFromMidnight)
       }
     }
 
     return Array.from(dailyLatest.entries())
-      .map(([date, hour]) => ({
+      .map(([date, minutes]) => ({
         date,
-        hour,
+        hour: Math.floor(minutes / 60),
       }))
       .sort((a, b) => a.date.localeCompare(b.date))
   }
@@ -252,16 +220,10 @@ export class GitCollector {
    * 获取每日所有提交的小时列表
    */
   private async getDailyCommitHours(options: GitLogOptions): Promise<DailyCommitHours[]> {
-    const { path, since, until } = options
+    const { path } = options
 
-    const args = ['log', '--format=%cd', '--date=iso-strict']
-
-    if (since) {
-      args.push(`--since=${since}`)
-    }
-    if (until) {
-      args.push(`--until=${until}`)
-    }
+    const args = ['log', '--format=%cd', '--date=format-local:%Y-%m-%dT%H:%M:%S']
+    this.applyCommonFilters(args, options)
 
     const output = await this.execGitCommand(args, path)
     const lines = output.split('\n').filter((line) => line.trim())
@@ -274,23 +236,15 @@ export class GitCollector {
         continue
       }
 
-      const commitDate = new Date(trimmed)
-      if (Number.isNaN(commitDate.getTime())) {
+      const parsed = this.parseLocalTimestamp(trimmed)
+      if (!parsed) {
         continue
       }
 
-      const dateKey = [
-        commitDate.getFullYear(),
-        (commitDate.getMonth() + 1).toString().padStart(2, '0'),
-        commitDate.getDate().toString().padStart(2, '0'),
-      ].join('-')
-
-      const hour = commitDate.getHours()
-
-      if (!dailyHours.has(dateKey)) {
-        dailyHours.set(dateKey, new Set())
+      if (!dailyHours.has(parsed.dateKey)) {
+        dailyHours.set(parsed.dateKey, new Set())
       }
-      dailyHours.get(dateKey)!.add(hour)
+      dailyHours.get(parsed.dateKey)!.add(parsed.hour)
     }
 
     return Array.from(dailyHours.entries())
@@ -305,16 +259,10 @@ export class GitCollector {
    * 获取每日最早的提交时间（分钟数表示）
    */
   private async getDailyFirstCommits(options: GitLogOptions): Promise<DailyFirstCommit[]> {
-    const { path, since, until } = options
+    const { path } = options
 
-    const args = ['log', '--format=%cd', '--date=iso-strict']
-
-    if (since) {
-      args.push(`--since=${since}`)
-    }
-    if (until) {
-      args.push(`--until=${until}`)
-    }
+    const args = ['log', '--format=%cd', '--date=format-local:%Y-%m-%dT%H:%M:%S']
+    this.applyCommonFilters(args, options)
 
     const output = await this.execGitCommand(args, path)
     const lines = output.split('\n').filter((line) => line.trim())
@@ -327,22 +275,16 @@ export class GitCollector {
         continue
       }
 
-      const commitDate = new Date(trimmed)
-      if (Number.isNaN(commitDate.getTime())) {
+      const parsed = this.parseLocalTimestamp(trimmed)
+      if (!parsed) {
         continue
       }
 
-      const dateKey = [
-        commitDate.getFullYear(),
-        (commitDate.getMonth() + 1).toString().padStart(2, '0'),
-        commitDate.getDate().toString().padStart(2, '0'),
-      ].join('-')
-
-      const minutesFromMidnight = commitDate.getHours() * 60 + commitDate.getMinutes()
-      const current = dailyEarliest.get(dateKey)
+      const minutesFromMidnight = parsed.hour * 60 + parsed.minute
+      const current = dailyEarliest.get(parsed.dateKey)
 
       if (current === undefined || minutesFromMidnight < current) {
-        dailyEarliest.set(dateKey, minutesFromMidnight)
+        dailyEarliest.set(parsed.dateKey, minutesFromMidnight)
       }
     }
 
@@ -393,20 +335,36 @@ export class GitCollector {
   }
 
   /**
-   * 获取总commit数
+   * 根据 CLI 选项解析作者身份，生成正则用于 git --author 过滤
    */
-  private async getTotalCommits(options: GitLogOptions): Promise<number> {
-    const { path, since, until } = options
+  public async resolveSelfAuthor(path: string): Promise<{ pattern: string; displayLabel: string }> {
+    const email = await this.getGitConfigValue('user.email', path)
+    const name = await this.getGitConfigValue('user.name', path)
+
+    if (!email && !name) {
+      throw new Error('启用 --self 需要先配置 git config user.name 或 user.email')
+    }
+
+    const hasEmail = Boolean(email)
+    const hasName = Boolean(name)
+
+    const displayLabel = hasEmail && hasName ? `${name} <${email}>` : email || name || '未知用户'
+
+    const pattern = hasEmail
+      ? this.escapeAuthorPattern(email!)
+      : this.escapeAuthorPattern(name!) // hasName must be true here，缺邮箱时退回姓名
+
+    return {
+      pattern,
+      displayLabel,
+    }
+  }
+  /** 统计符合过滤条件的 commit 数量 */
+  public async countCommits(options: GitLogOptions): Promise<number> {
+    const { path } = options
 
     const args = ['rev-list', '--count', 'HEAD']
-
-    // 添加日期过滤器
-    if (since) {
-      args.push(`--since=${since}`)
-    }
-    if (until) {
-      args.push(`--until=${until}`)
-    }
+    this.applyCommonFilters(args, options)
 
     const output = await this.execGitCommand(args, path)
     const count = parseInt(output.trim(), 10)
@@ -418,17 +376,10 @@ export class GitCollector {
    * 获取最早的commit时间
    */
   public async getFirstCommitDate(options: GitLogOptions): Promise<string> {
-    const { path, since, until } = options
+    const { path } = options
 
     const args = ['log', '--format=%cd', '--date=format:%Y-%m-%d', '--reverse', '--max-parents=0']
-
-    // 添加日期过滤器
-    if (since) {
-      args.push(`--since=${since}`)
-    }
-    if (until) {
-      args.push(`--until=${until}`)
-    }
+    this.applyCommonFilters(args, options)
 
     const output = await this.execGitCommand(args, path)
     const lines = output.split('\\n').filter((line) => line.trim())
@@ -439,17 +390,10 @@ export class GitCollector {
    * 获取最新的commit时间
    */
   public async getLastCommitDate(options: GitLogOptions): Promise<string> {
-    const { path, since, until } = options
+    const { path } = options
 
     const args = ['log', '--format=%cd', '--date=format:%Y-%m-%d', '-1']
-
-    // 添加日期过滤器
-    if (since) {
-      args.push(`--since=${since}`)
-    }
-    if (until) {
-      args.push(`--until=${until}`)
-    }
+    this.applyCommonFilters(args, options)
 
     const output = await this.execGitCommand(args, path)
     const lines = output.split('\\n').filter((line) => line.trim())
@@ -474,7 +418,7 @@ export class GitCollector {
         await Promise.all([
           this.getCommitsByHour(options),
           this.getCommitsByDay(options),
-          this.getTotalCommits(options),
+          this.countCommits(options),
           this.getDailyFirstCommits(options),
           this.getCommitsByDayAndHour(options),
           this.getDailyLatestCommits(options),
@@ -500,5 +444,66 @@ export class GitCollector {
       }
       throw error
     }
+  }
+
+  /**
+   * 为 git 命令附加通用过滤条件（时间范围与作者）
+   */
+  private applyCommonFilters(args: string[], options: GitLogOptions): void {
+    if (options.since) {
+      args.push(`--since=${options.since}`)
+    }
+    if (options.until) {
+      args.push(`--until=${options.until}`)
+    }
+    if (options.authorPattern) {
+      args.push('--regexp-ignore-case')
+      args.push('--extended-regexp')
+      args.push(`--author=${options.authorPattern}`)
+    }
+  }
+
+  /**
+   * 解析 format-local 输出的时间戳，提取日期和小时信息
+   */
+  private parseLocalTimestamp(timestamp: string): { dateKey: string; hour: number; minute: number } | null {
+    const match = timestamp.match(/^(\d{4})-(\d{2})-(\d{2})[T\s](\d{2}):(\d{2})/)
+    if (!match) {
+      return null
+    }
+
+    const [, year, month, day, hourStr, minuteStr] = match
+    const hour = parseInt(hourStr, 10)
+    const minute = parseInt(minuteStr, 10)
+
+    if (Number.isNaN(hour) || Number.isNaN(minute)) {
+      return null
+    }
+
+    return {
+      dateKey: `${year}-${month}-${day}`,
+      hour,
+      minute,
+    }
+  }
+
+  /**
+   * 读取 git config 配置项（不存在时返回 null）
+   */
+  private async getGitConfigValue(key: string, path: string): Promise<string | null> {
+    try {
+      const value = await this.execGitCommand(['config', '--get', key], path)
+      const trimmed = value.trim()
+      return trimmed.length > 0 ? trimmed : null
+    } catch {
+      return null
+    }
+  }
+
+  /**
+   * 转义正则特殊字符，构造安全的 --author 匹配模式
+   */
+  private escapeAuthorPattern(source: string): string {
+    return source.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
   }
 }

@@ -30,7 +30,7 @@ export function formatStartClock(detection: ParsedGitData['detectedWorkTime']): 
   const rangeStartClock = formatMinutesToClock(Math.round(rangeStart * 60))
   const rangeEndClock = formatMinutesToClock(Math.round(rangeEnd * 60))
 
-  return `${displayClock}（推测区间：${rangeStartClock}-${rangeEndClock}）`
+  return `${displayClock}（推测上班区间：${rangeStartClock}-${rangeEndClock}）`
 }
 
 /** 格式化下班时间展示，括号中显示推测区间 */
@@ -59,7 +59,7 @@ export function formatEndClock(detection: ParsedGitData['detectedWorkTime']): st
   const rangeStart = formatMinutesToClock(Math.round(range.startHour * 60))
   const rangeEnd = formatMinutesToClock(Math.round(range.endHour * 60))
 
-  return `${displayClock}（推测区间：${rangeStart}-${rangeEnd}）`
+  return `${displayClock}（推测下班区间：${rangeStart}-${rangeEnd}）`
 }
 
 /** 根据指数区间返回对应的颜色函数 */
@@ -70,4 +70,3 @@ export function getIndexColor(index: number): (text: string) => string {
   if (index <= 110) return chalk.red
   return chalk.magenta
 }
-

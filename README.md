@@ -1,4 +1,4 @@
-# code996-cli
+# code996
 
 [English](./README-en.md) | 简体中文
 
