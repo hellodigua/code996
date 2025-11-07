@@ -2,6 +2,7 @@ export interface GitLogOptions {
   path: string
   since?: string
   until?: string
+  silent?: boolean // 静默模式，不打印日志
 }
 
 export interface GitLogData {
@@ -138,4 +139,46 @@ export interface LateNightAnalysis {
   midnightRate: number // 深夜加班占比 (%)
   totalWeeks: number // 总周数
   totalMonths: number // 总月数
+}
+
+/**
+ * 每日工作跨度数据
+ */
+export interface DailyWorkSpan {
+  date: string // 日期 (YYYY-MM-DD)
+  firstCommitMinutes: number // 首次提交距离午夜的分钟数
+  lastCommitMinutes: number // 最后提交距离午夜的分钟数
+  spanHours: number // 工作跨度（小时）
+  commitCount: number // 当天提交数
+}
+
+/**
+ * 月度趋势数据
+ */
+export interface MonthlyTrendData {
+  month: string // 月份 (YYYY-MM)
+  index996: number // 996指数
+  avgWorkSpan: number // 平均工作跨度（小时）
+  workSpanStdDev: number // 工作跨度标准差（小时）
+  latestEndTime: string // 最晚下班时间 (HH:mm)
+  totalCommits: number // 总提交数
+  workDays: number // 工作天数
+  dataQuality: 'sufficient' | 'limited' | 'insufficient' // 数据质量标记
+}
+
+/**
+ * 趋势分析结果
+ */
+export interface TrendAnalysisResult {
+  monthlyData: MonthlyTrendData[]
+  timeRange: {
+    since: string
+    until: string
+  }
+  summary: {
+    totalMonths: number
+    avgIndex996: number
+    avgWorkSpan: number
+    trend: 'increasing' | 'decreasing' | 'stable' // 整体趋势
+  }
 }

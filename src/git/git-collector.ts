@@ -460,7 +460,9 @@ export class GitCollector {
    * 收集Git数据
    */
   async collect(options: GitLogOptions): Promise<GitLogData> {
-    console.log(chalk.blue(`正在分析仓库: ${options.path}`))
+    if (!options.silent) {
+      console.log(chalk.blue(`正在分析仓库: ${options.path}`))
+    }
 
     // 检查是否为有效的Git仓库
     if (!(await this.isValidGitRepo(options.path))) {
@@ -479,7 +481,9 @@ export class GitCollector {
           this.getDailyCommitHours(options),
         ])
 
-      console.log(chalk.green(`数据采集完成: ${totalCommits} 个commit`))
+      if (!options.silent) {
+        console.log(chalk.green(`数据采集完成: ${totalCommits} 个commit`))
+      }
 
       return {
         byHour,
@@ -491,7 +495,9 @@ export class GitCollector {
         dailyCommitHours: dailyCommitHours.length > 0 ? dailyCommitHours : undefined,
       }
     } catch (error) {
-      console.error(chalk.red(`数据采集失败: ${(error as Error).message}`))
+      if (!options.silent) {
+        console.error(chalk.red(`数据采集失败: ${(error as Error).message}`))
+      }
       throw error
     }
   }
