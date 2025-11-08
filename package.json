@@ -1,6 +1,6 @@
 {
   "name": "code996",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "description": "通过分析 Git commit 的时间分布，计算出项目的'996指数'",
   "main": "dist/index.js",
   "bin": {

@@ -1,36 +1,64 @@
 # code996
 
-[English](./README-en.md) | 简体中文
+code996 是一个分析工具，它可以统计 Git 项目的 commit 时间分布，进而推导出项目的编码工作强度。
 
-通过分析 Git commit 的时间分布，计算出项目的"996指数"。
+它可以帮助你了解新团队工作的时间模式，识别潜在的加班文化。
 
-## 📋 项目简介
+<!-- 简体中文 | [English](./README-en_US.md) -->
 
-`code996` 是一个基于 Node.js 的命令行工具，用于统计 Git 项目的 commit 时间分布，进而推导出项目的编码工作强度。它可以帮助你了解团队工作的时间模式，识别潜在的加班文化。
+> 该项目为 Node.js 新版本，功能更强大，旧版本已迁移至 [code996-web](https://github.com/hellodigua/code996-web)。
 
-### 为什么要写它
+## 它的用途
 
-我很介意加班，面试时我都会询问对方的加班情况，但是我发现总有面试官不说实话，但是代码的提交时间不会骗人，因此就有了这个工具。
+面试时我们会询问面试官加班情况，但得到的答案往往不太真实。
 
-### 它有什么用
+但是代码的提交时间不会骗人，因此就有了这个工具。
 
-当你入职了新公司，跑一下 `code996`，就可以判断出该公司的加班文化，然后决定是否跑路。
+当你入职新公司，跑一下 `npx code996`，就可以看到数据背后的真相，从而判断这家公司的真实加班文化。
+
+## 预览
+
+### 查看核心结果
+
+<img src="https://raw.githubusercontent.com/hellodigua/code996/main/public/images/demo1.png" alt="核心结果预览" style="width:600px; max-width:100%; height:auto;"/>
+
+### 查看提交时间分布
+
+<img src="https://raw.githubusercontent.com/hellodigua/code996/main/public/images/demo2.png" alt="提交时间分布图" style="width:400px; max-width:100%; height:auto;"/>
+
+### 加班情况分析
+
+<img src="https://raw.githubusercontent.com/hellodigua/code996/main/public/images/demo3.png" alt="加班情况分析图" style="width:600px; max-width:100%; height:auto;"/>
+
+### 综合建议
+
+<img src="https://raw.githubusercontent.com/hellodigua/code996/main/public/images/demo4.png" alt="综合建议图" style="width:600px; max-width:100%; height:auto;"/>
 
 ## 🚀 快速开始
 
-### 基本使用
+无需安装，快速使用：
 
 ```bash
 # 在当前仓库运行分析（默认查询以上次提交为终点开始365天的commit）
-code996
+npx code996
+```
 
-# 查看帮助
-code996 help
+你也可以选择安装后再使用，这样就不用每次都重新下载：
+
+```bash
+# 全局安装
+npm i -g code996
+
+# 使用
+code996
 ```
 
 ## 📖 详细使用说明
 
 ### 命令与选项
+
+- `trend`：查看月度996指数和工作时间的变化趋势
+- `help`：显示帮助信息
 
 - `-y, --year <year>`：指定年份或年份范围（推荐）
   - 单年格式：`2025` → 分析 2025-01-01 至 2025-12-31
@@ -38,7 +66,7 @@ code996 help
 - `-s, --since <date>`：自定义开始日期 (YYYY-MM-DD)
 - `-u, --until <date>`：自定义结束日期 (YYYY-MM-DD)
 - `--all-time`：覆盖整个仓库历史数据
-- `help`：显示帮助信息
+- `--self`：仅统计当前 Git 用户的提交记录
 
 ### 使用示例
 
@@ -52,27 +80,44 @@ code996 --since 2024-01-01 --until 2024-06-30
 
 # 查询整个仓库历史
 code996 --all-time
+
+# 仅分析当前用户的提交记录
+code996 --self
+code996 --self -y 2025         # 分析自己在2025年的提交
+code996 trend --self            # 查看自己的趋势分析
 ```
 
-默认时间范围说明：
+## 它怎样工作
 
-- 未显式指定 `since` / `until` 时，工具会读取仓库的 **最后一次提交日期**，并向前回溯 365 天构成分析窗口。
-- 若仓库在该区间内无提交，则自动回退到"当前日期往前一年"的区间保证有数据可分析。
+1. 使用 git-log 获取项目 commit 的相关数据
+2. 本地计算分析，并打印出展示结果
 
-### 核心算法
-
-#### 数据采集流程
+### 数据采集流程
 
 ```
 Git 仓库 → git log 采集 → 日级首提 + 小时分布 → 分位数推算上/下班 → 996 指数计算 → 结果输出
 ```
 
-#### 关键算法
+### 关键算法
 
 1. **时间分布分析**：按小时、按星期统计提交数量，绘制 24 小时热力条形图
 2. **工作时间识别**：使用最近样本的 10%-20% 分位估算上班时间区间，并结合晚间提交拐点推算下班时间
 3. **996 指数计算**：依据加班比例构建指数，并输出中文描述
 4. **数据验证**：检验统计数据是否与总提交数一致，避免缺失导致的偏差
+5. **算法优势**：新版本采用分位数与拐点估算，能更智能地排除深夜零星提交的干扰，精准定位真实的工作时间窗口
+
+## 使用提示
+
+- 隐私保护：所有对 Git 数据的分析均在本地进行，不会上传任何结果或日志。
+- 分析局限性：工具仅统计 git log 中的 commit 时间。然而，实际工作还还包括开会、学习、维护文档、调试自测等活动。因此，报告无法覆盖全部的实际工作时间，分析结果准确性有限，请谨慎参考。
+- 使用限制：本项目分析结果仅供个人参考，请勿用于 “作恶” 或不当用途。
+- 免责声明：code996 不对使用、传播本程序及附属产物造成的任何后果承担任何责任。
+
+## 关于 AI
+
+🤖 **AI 协作伙伴注意**：本项目采用标准化的 AI 协作流程，详情请查看 [.docs/README.md](.docs/README.md) 中的协作规范。
+
+特别鸣谢：本项目使用 KwaiKAT 的 [KAT-Coder-Pro V1](https://streamlake.com/product/kat-coder) 进行开发，感谢 KwaiKAT 提供的免费 token。
 
 ## 📄 许可证
 

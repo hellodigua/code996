@@ -34,6 +34,7 @@ tests/
 !README.md
 .cursor/
 .claude/
+public/
 
 # Git 相关
 .git

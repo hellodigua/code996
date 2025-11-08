@@ -69,6 +69,10 @@ export function printCoreResults(
 
   console.log(resultTable.toString())
   console.log()
+
+  // 在核心结果表格下方添加996指数说明
+  console.log(chalk.gray('* 996指数：为 0 则不加班，值越大代表加班越严重，996 工作制对应的值为 100。'))
+  console.log()
 }
 
 /** 打印 24 小时提交分布与星期分布图形 */

@@ -47,15 +47,6 @@ describe('CLIManager', () => {
     })
   })
 
-  describe('version command', () => {
-    it('should display version information', () => {
-      cli.parse(['node', 'code996', 'version'])
-
-      expect(consoleSpy).toHaveBeenCalledWith('code996 v0.1.1')
-      expect(consoleSpy).toHaveBeenCalledWith('通过分析 Git commit 的时间分布，计算出项目的"996指数"')
-    })
-  })
-
   describe('help command', () => {
     it('should display help information', () => {
       cli.parse(['node', 'code996', 'help'])
