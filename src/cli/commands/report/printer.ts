@@ -152,11 +152,11 @@ export function printWorkTimeSummary(parsedData: ParsedGitData): void {
 
   workTimeTable.push(
     [
-      { content: chalk.bold('上班时间推测'), colSpan: 1 },
+      { content: chalk.bold('上班时间'), colSpan: 1 },
       { content: startClock, colSpan: 1 },
     ],
     [
-      { content: chalk.bold('下班时间推测'), colSpan: 1 },
+      { content: chalk.bold('下班时间'), colSpan: 1 },
       { content: endClock, colSpan: 1 },
     ],
     [
