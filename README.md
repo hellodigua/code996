@@ -70,6 +70,7 @@ code996
 - `--self`：仅统计当前 Git 用户的提交记录（等价于自动推断对应的 `--author`）
 - `--author <name>`：仅统计指定作者的提交（支持名称或邮箱部分匹配，适用于所有命令）🆕
 - `--exclude-authors <names>`：排除指定作者（逗号分隔，支持名称或邮箱部分匹配，适用于所有命令，可用于排除 bot/CI）🆕
+- `--merge`：合并同名不同邮箱的作者统计（适用于 `ranking` 和 `trend` 命令）🆕
 
 ### 使用示例
 
@@ -98,7 +99,48 @@ code996 ranking --exclude-authors bot,CI  # 排除机器人账号
 # 🆕 过滤示例（同样适用于 trend / 基础分析）
 code996 --author alice         # 只看 alice 的整体分析
 code996 trend --exclude-authors bot,CI,dependabot  # 趋势分析中排除自动化账号
+
+# 🆕 合并同名作者（处理一人多邮箱的情况）
+code996 ranking --merge        # 自动合并同名不同邮箱的作者
+code996 ranking --merge --exclude-authors jenkins  # 合并作者并排除机器人
+code996 trend --merge -y 2025  # 查看合并后的月度趋势
 ```
+
+## 🔄 作者合并功能
+
+在实际项目中，同一个开发者可能使用不同的邮箱或名称提交代码（例如个人邮箱、公司邮箱、不同电脑的配置等）。`--merge` 选项可以智能识别并合并这些身份的统计数据。
+
+### 合并规则
+
+- **按名称分组**：工具会按照作者名称（不区分大小写）进行分组
+- **智能去重**：同一名称下的不同邮箱会被识别为同一作者
+- **主身份选择**：自动选择提交数最多的邮箱作为主身份
+- **数据合并**：将所有身份的提交数、996指数、加班率等指标合并计算
+
+### 使用场景
+
+```bash
+# 场景1: 发现排行榜中有重复的同名作者
+code996 ranking --all-time
+# 输出：jinxin (586 commits), jinxin3 (586 commits) ← 疑似同一人
+
+code996 ranking --all-time --merge
+# 输出：jinxin3 (1172 commits) ← 已合并
+
+# 场景2: 排除机器人后合并真实作者
+code996 ranking --exclude-authors bot,ci,jenkins --merge
+
+# 场景3: 查看合并后的趋势变化
+code996 trend --merge -y 2024
+```
+
+### 效果对比
+
+| 功能 | 不使用 --merge | 使用 --merge |
+|------|----------------|--------------|
+| 作者数量 | 14 | 7 |
+| 数据准确性 | 分散到多个身份 | 聚合为真实个人 |
+| 排名准确性 | 可能低估真实贡献 | 反映真实工作量 |
 
 ## 它怎样工作
 

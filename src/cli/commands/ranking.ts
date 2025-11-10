@@ -11,6 +11,7 @@ import { printAuthorRanking } from './report/ranking-printer'
 export interface RankingOptions extends AnalyzeOptions {
   author?: string // 指定统计某个作者
   excludeAuthors?: string // 排除某些作者（逗号分隔）
+  merge?: boolean // 合并同名不同邮箱的作者
 }
 
 /**
@@ -93,6 +94,18 @@ export class RankingExecutor {
       spinner.text = `匹配到 ${allAuthors.length} 位提交者，正在分析...`
       spinner.render()
 
+      // 如果启用合并，先构建合并映射表
+      let mergeMap: Map<string, { name: string; email: string }> | undefined
+      if (options.merge) {
+        const { AuthorMerger } = await import('../../core/author-merger')
+        const merger = new AuthorMerger()
+        mergeMap = merger.getMergeMap(allAuthors.map((a) => ({ name: a.name, email: a.email })))
+
+        if (mergeMap.size > 0) {
+          console.log(chalk.blue('🔄 启用作者合并:'), `将合并 ${mergeMap.size} 个身份`)
+        }
+      }
+
       // 并行分析每个作者的数据
       const authorStatsPromises = allAuthors.map(async (author) => {
         try {
@@ -132,11 +145,17 @@ export class RankingExecutor {
       })
 
       const authorStatsResults = await Promise.all(authorStatsPromises)
-      const authorStats = authorStatsResults.filter((stats): stats is AuthorStats => stats !== null)
+      let authorStats = authorStatsResults.filter((stats): stats is AuthorStats => stats !== null)
 
       if (authorStats.length === 0) {
         spinner.fail('没有可分析的提交者数据')
         return
+      }
+
+      // 如果启用合并，合并同名作者的统计数据
+      if (options.merge && mergeMap && mergeMap.size > 0) {
+        authorStats = mergeAuthorStats(authorStats, mergeMap)
+        console.log(chalk.green(`✓ 已合并，最终作者数: ${authorStats.length}`))
       }
 
       // 按 996 指数降序排序（卷王排行）
@@ -162,6 +181,52 @@ export class RankingExecutor {
       process.exit(1)
     }
   }
+}
+
+/**
+ * 合并同名作者的统计数据
+ */
+function mergeAuthorStats(
+  stats: AuthorStats[],
+  mergeMap: Map<string, { name: string; email: string }>
+): AuthorStats[] {
+  const merged = new Map<string, AuthorStats>()
+
+  for (const stat of stats) {
+    // 查找是否需要合并到另一个主身份
+    const primaryIdentity = mergeMap.get(stat.email.toLowerCase())
+    const targetEmail = primaryIdentity ? primaryIdentity.email : stat.email
+    const targetName = primaryIdentity ? primaryIdentity.name : stat.name
+
+    const existing = merged.get(targetEmail.toLowerCase())
+
+    if (existing) {
+      // 合并到已有统计
+      existing.totalCommits += stat.totalCommits
+      existing.workingHourCommits += stat.workingHourCommits
+      existing.overtimeCommits += stat.overtimeCommits
+      existing.weekdayCommits += stat.weekdayCommits
+      existing.weekendCommits += stat.weekendCommits
+
+      // 重新计算 996 指数（加权平均）
+      const totalCommits = existing.totalCommits
+      existing.index996 =
+        (existing.index996 * (totalCommits - stat.totalCommits) + stat.index996 * stat.totalCommits) / totalCommits
+      existing.index996Str = existing.index996.toFixed(2)
+
+      // 重新计算加班占比
+      existing.overTimeRadio = existing.overtimeCommits / (existing.workingHourCommits + existing.overtimeCommits)
+    } else {
+      // 新增统计（使用主身份的名称和邮箱）
+      merged.set(targetEmail.toLowerCase(), {
+        ...stat,
+        name: targetName,
+        email: targetEmail,
+      })
+    }
+  }
+
+  return Array.from(merged.values())
 }
 
 /**

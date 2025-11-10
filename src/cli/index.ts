@@ -14,6 +14,7 @@ export interface AnalyzeOptions {
   self?: boolean // 统计当前 Git 用户
   author?: string // 指定作者（名称或邮箱的部分匹配）
   excludeAuthors?: string // 排除作者列表（逗号分隔，名称或邮箱的部分匹配）
+  merge?: boolean // 合并同名不同邮箱的作者
 }
 
 export class CLIManager {
@@ -87,6 +88,7 @@ export class CLIManager {
         '--exclude-authors <names>',
         '排除作者（逗号分隔，支持名称或邮箱部分匹配，适用于排除 bot/CI 等自动化账号）'
       )
+      .option('--merge', '合并同名不同邮箱的作者')
       .argument('[repoPath]', 'Git 仓库根目录路径（默认当前目录）')
       .action(async (repoPath: string | undefined, options: AnalyzeOptions, command: Command) => {
         const processedArgs = typeof repoPath === 'string' ? 1 : 0
@@ -120,6 +122,7 @@ export class CLIManager {
         '--exclude-authors <names>',
         '排除作者（逗号分隔，支持名称或邮箱部分匹配，适用于排除 bot/CI 等自动化账号）'
       )
+      .option('--merge', '合并同名不同邮箱的作者')
       .argument('[repoPath]', 'Git 仓库根目录路径（默认当前目录）')
       .action(async (repoPath: string | undefined, options: any, command: Command) => {
         const processedArgs = typeof repoPath === 'string' ? 1 : 0
@@ -202,6 +205,7 @@ export class CLIManager {
       year: options.year ?? globalOpts.year,
       author: options.author ?? (globalOpts as any).author,
       excludeAuthors: options.excludeAuthors ?? (globalOpts as any).excludeAuthors,
+      merge: options.merge ?? (globalOpts as any).merge,
     }
   }
 
@@ -293,6 +297,7 @@ ${chalk.bold('分析选项:')}
   --self                  仅统计当前 Git 用户的提交 (author 的快捷方式)
   --author <str>          仅统计指定作者（支持名称或邮箱部分匹配）
   --exclude-authors <ls>  排除作者（逗号分隔，支持名称或邮箱部分匹配，排除 bot/CI 等）
+  --merge                 合并同名不同邮箱的作者（用于 ranking/trend）
 
 ${chalk.bold('默认策略:')}
   自动以最后一次提交为基准，回溯365天进行分析
@@ -315,6 +320,7 @@ ${chalk.bold('示例:')}
   code996 ranking -y 2024       # 查看2024年的排名
   code996 ranking --author 张三  # 查看指定作者的详细信息
   code996 ranking --exclude-authors bot,CI  # 排除机器人
+  code996 ranking --merge       # 合并同名不同邮箱的作者统计
 
 ${chalk.bold('更多详情请访问:')} https://github.com/code996/code996
     `)
