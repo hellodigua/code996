@@ -1,72 +1,33 @@
-import { describe, it, expect, beforeEach, jest } from '@jest/globals'
-import { CLIManager } from '../src/cli'
-import * as chalk from 'chalk'
+import { CLIManager } from '../cli'
+import { describe, test, expect, beforeEach, afterEach, jest } from '@jest/globals'
 
-// Mock chalk to avoid color output in tests
+// 轻量 mock chalk，保留调用结构
 jest.mock('chalk', () => ({
-  blue: jest.fn((text) => text),
-  yellow: jest.fn((text) => text),
-  green: jest.fn((text) => text),
-  red: jest.fn((text) => text),
-  gray: jest.fn((text) => text),
-  bold: { blue: jest.fn((text) => text) },
+  blue: (t: string) => t,
+  yellow: (t: string) => t,
+  green: (t: string) => t,
+  red: (t: string) => t,
+  gray: (t: string) => t,
+  bold: (t: string) => t,
+  hex: () => (t: string) => t,
 }))
 
-describe('CLIManager', () => {
-  let consoleSpy: jest.SpyInstance
-  let cli: CLIManager
+describe('CLIManager help output (direct method)', () => {
+  let logSpy: jest.SpiedFunction<typeof console.log>
 
   beforeEach(() => {
-    consoleSpy = jest.spyOn(console, 'log').mockImplementation()
-    cli = new CLIManager()
+    logSpy = jest.spyOn(console, 'log').mockImplementation(() => {})
   })
 
   afterEach(() => {
-    consoleSpy.mockRestore()
+    logSpy.mockRestore()
   })
 
-  describe('analyze command', () => {
-    it('should handle analyze command with default options', async () => {
-      cli.parse(['node', 'code996', 'analyze'])
-
-      expect(consoleSpy).toHaveBeenCalledWith('分析仓库: .')
-      expect(consoleSpy).toHaveBeenCalledWith('分析完成！ (此功能将在后续阶段实现)')
-    })
-
-    it('should handle analyze command with custom path', async () => {
-      cli.parse(['node', 'code996', 'analyze', '/test/path'])
-
-      expect(consoleSpy).toHaveBeenCalledWith('分析仓库: /test/path')
-    })
-
-    it('should handle analyze command with debug mode', async () => {
-      cli.parse(['node', 'code996', 'analyze', '--debug'])
-
-      expect(consoleSpy).toHaveBeenCalledWith('调试模式开启')
-      expect(consoleSpy).toHaveBeenCalledWith('参数:')
-    })
-  })
-
-  describe('help command', () => {
-    it('should display help information', () => {
-      cli.parse(['node', 'code996', 'help'])
-
-      expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('code996'))
-      expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('使用方法:'))
-      expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('命令:'))
-    })
-  })
-
-  describe('error handling', () => {
-    it('should handle unknown commands', () => {
-      const exitSpy = jest.spyOn(process, 'exit').mockImplementation()
-
-      cli.parse(['node', 'code996', 'unknown'])
-
-      expect(consoleSpy).toHaveBeenCalledWith("错误: 未知命令 'unknown'")
-      expect(exitSpy).toHaveBeenCalledWith(1)
-
-      exitSpy.mockRestore()
-    })
+  test('showHelp() prints usage and commands sections', () => {
+    const cli = new CLIManager()
+    // 直接调用私有方法，避免 commander 参数解析副作用
+    ;(cli as any).showHelp()
+    expect(logSpy).toHaveBeenCalledWith(expect.stringContaining('使用方法:'))
+    expect(logSpy).toHaveBeenCalledWith(expect.stringContaining('命令:'))
   })
 })

@@ -58,6 +58,7 @@ code996
 ### 命令与选项
 
 - `trend`：查看月度996指数和工作时间的变化趋势
+- `ranking`：统计排序所有提交者的996指数（卷王排行榜）🆕
 - `help`：显示帮助信息
 
 - `-y, --year <year>`：指定年份或年份范围（推荐）
@@ -66,7 +67,9 @@ code996
 - `-s, --since <date>`：自定义开始日期 (YYYY-MM-DD)
 - `-u, --until <date>`：自定义结束日期 (YYYY-MM-DD)
 - `--all-time`：覆盖整个仓库历史数据
-- `--self`：仅统计当前 Git 用户的提交记录
+- `--self`：仅统计当前 Git 用户的提交记录（等价于自动推断对应的 `--author`）
+- `--author <name>`：仅统计指定作者的提交（支持名称或邮箱部分匹配，适用于所有命令）🆕
+- `--exclude-authors <names>`：排除指定作者（逗号分隔，支持名称或邮箱部分匹配，适用于所有命令，可用于排除 bot/CI）🆕
 
 ### 使用示例
 
@@ -84,7 +87,17 @@ code996 --all-time
 # 仅分析当前用户的提交记录
 code996 --self
 code996 --self -y 2025         # 分析自己在2025年的提交
-code996 trend --self            # 查看自己的趋势分析
+code996 trend --self           # 查看自己的趋势分析
+
+# 🆕 查看卷王排行榜
+code996 ranking                # 查看所有提交者的996指数排名
+code996 ranking -y 2024        # 查看2024年的排名
+code996 ranking --author 张三   # 查看指定作者的详细信息
+code996 ranking --exclude-authors bot,CI  # 排除机器人账号
+
+# 🆕 过滤示例（同样适用于 trend / 基础分析）
+code996 --author alice         # 只看 alice 的整体分析
+code996 trend --exclude-authors bot,CI,dependabot  # 趋势分析中排除自动化账号
 ```
 
 ## 它怎样工作

@@ -183,3 +183,31 @@ export interface TrendAnalysisResult {
     trend: 'increasing' | 'decreasing' | 'stable' // 整体趋势
   }
 }
+
+/**
+ * 作者统计数据
+ */
+export interface AuthorStats {
+  name: string // 作者名字
+  email: string // 作者邮箱
+  totalCommits: number // 总提交数
+  index996: number // 996指数
+  index996Str: string // 996指数描述
+  overTimeRadio: number // 加班比例
+  workingHourCommits: number // 工作时间提交数
+  overtimeCommits: number // 加班时间提交数
+  weekdayCommits: number // 工作日提交数
+  weekendCommits: number // 周末提交数
+}
+
+/**
+ * 作者排名结果
+ */
+export interface AuthorRankingResult {
+  authors: AuthorStats[]
+  totalAuthors: number
+  timeRange: {
+    since?: string
+    until?: string
+  }
+}

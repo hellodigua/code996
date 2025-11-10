@@ -506,4 +506,52 @@ export class GitCollector {
   private escapeAuthorPattern(source: string): string {
     return source.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
   }
+
+  /**
+   * 获取所有提交者列表（name<email>格式）
+   */
+  public async getAllAuthors(options: GitLogOptions): Promise<Array<{ name: string; email: string }>> {
+    const { path } = options
+
+    const args = ['log', '--format=%an|%ae']
+    this.applyCommonFilters(args, options)
+
+    const output = await this.execGitCommand(args, path)
+    const lines = output.split('\n').filter((line) => line.trim())
+
+    // 使用 Map 去重，key 为 "name|email"
+    const authorsMap = new Map<string, { name: string; email: string }>()
+
+    for (const line of lines) {
+      const trimmed = line.trim()
+      if (!trimmed) continue
+
+      const parts = trimmed.split('|')
+      if (parts.length === 2) {
+        const [name, email] = parts
+        const key = `${name}|${email}`
+        if (!authorsMap.has(key)) {
+          authorsMap.set(key, { name, email })
+        }
+      }
+    }
+
+    return Array.from(authorsMap.values())
+  }
+
+  /**
+   * 收集指定作者的 Git 数据
+   */
+  public async collectForAuthor(options: GitLogOptions, author: { name: string; email: string }): Promise<GitLogData> {
+    // 使用邮箱作为精确匹配（邮箱更唯一）
+    const authorPattern = this.escapeAuthorPattern(author.email)
+
+    const authorOptions: GitLogOptions = {
+      ...options,
+      authorPattern,
+      silent: true, // 静默模式，避免输出过多日志
+    }
+
+    return await this.collect(authorOptions)
+  }
 }

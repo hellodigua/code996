@@ -2,6 +2,7 @@ import chalk from 'chalk'
 import ora from 'ora'
 import { GitCollector } from '../../git/git-collector'
 import { GitParser } from '../../git/git-parser'
+import { buildAuthorFilter } from '../common/author-filter'
 import { AnalyzeOptions } from '../index'
 import { calculateTimeRange } from '../../utils/terminal'
 import { GitLogData, GitLogOptions, ParsedGitData, Result996 } from '../../types/git-types'
@@ -59,19 +60,24 @@ export class AnalyzeExecutor {
       }
       console.log()
 
-      let authorFilter: AuthorFilterInfo | undefined
-      if (options.self) {
-        authorFilter = await resolveAuthorFilter(collector, path)
-        console.log(chalk.blue('🙋 作者过滤:'), authorFilter.displayLabel)
-        console.log()
+      // 构建作者过滤（统一处理 self / author / exclude-authors）
+      let authorPattern: string | undefined
+      try {
+        const built = await buildAuthorFilter(collector, path, effectiveSince, effectiveUntil, options)
+        authorPattern = built.pattern
+        built.infoLines.forEach((l) => console.log(l))
+        if (built.infoLines.length) console.log()
+      } catch (e) {
+        console.error(chalk.red('❌ 作者过滤失败:'), (e as Error).message)
+        process.exit(1)
       }
 
-      // 构建统一的 Git 采集参数，保证所有步骤使用一致的过滤条件
+      // 构建统一的 Git 采集参数
       const collectOptions: GitLogOptions = {
         path,
         since: effectiveSince,
         until: effectiveUntil,
-        authorPattern: authorFilter?.pattern,
+        authorPattern,
       }
 
       // 在正式分析前，先检查 commit 样本量是否达到最低要求
@@ -84,7 +90,7 @@ export class AnalyzeExecutor {
       const spinner = ora('📦 开始分析').start()
 
       // 步骤1: 数据采集
-      const rawData = await collector.collect(collectOptions)
+  const rawData = await collector.collect(collectOptions)
       spinner.text = '⚙️ 正在解析数据...'
       spinner.render()
 

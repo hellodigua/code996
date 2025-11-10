@@ -11,7 +11,9 @@ export interface AnalyzeOptions {
   until?: string
   allTime?: boolean
   year?: string
-  self?: boolean
+  self?: boolean // 统计当前 Git 用户
+  author?: string // 指定作者（名称或邮箱的部分匹配）
+  excludeAuthors?: string // 排除作者列表（逗号分隔，名称或邮箱的部分匹配）
 }
 
 export class CLIManager {
@@ -33,6 +35,7 @@ export class CLIManager {
     // 注册根命令默认行为，直接执行分析逻辑
     this.setupDefaultAnalyzeAction()
     this.addTrendCommand()
+    this.addRankingCommand()
     this.addHelpCommand()
 
     // 错误处理
@@ -47,7 +50,12 @@ export class CLIManager {
       .option('-u, --until <date>', '结束日期 (YYYY-MM-DD)')
       .option('-y, --year <year>', '指定年份或年份范围 (例如: 2025 或 2023-2025)')
       .option('--all-time', '查询所有时间的数据（默认为最近一年）')
-      .option('--self', '仅统计当前 Git 用户的提交')
+      .option('--self', '仅统计当前 Git 用户的提交 (author 的快捷方式)')
+      .option('--author <name>', '仅统计指定作者（支持名称或邮箱部分匹配）')
+      .option(
+        '--exclude-authors <names>',
+        '排除作者（逗号分隔，支持名称或邮箱部分匹配，适用于排除 bot/CI 等自动化账号）'
+      )
       .action(async (repoPath: string | undefined, options: AnalyzeOptions, command: Command) => {
         const processedArgs = typeof repoPath === 'string' ? 1 : 0
         const extraArgs = (command.args ?? []).slice(processedArgs)
@@ -73,7 +81,12 @@ export class CLIManager {
       .option('-u, --until <date>', '结束日期 (YYYY-MM-DD)')
       .option('-y, --year <year>', '指定年份或年份范围 (例如: 2025 或 2023-2025)')
       .option('--all-time', '查询所有时间的数据')
-      .option('--self', '仅统计当前 Git 用户的提交')
+      .option('--self', '仅统计当前 Git 用户的提交 (author 的快捷方式)')
+      .option('--author <name>', '仅统计指定作者（支持名称或邮箱部分匹配）')
+      .option(
+        '--exclude-authors <names>',
+        '排除作者（逗号分隔，支持名称或邮箱部分匹配，适用于排除 bot/CI 等自动化账号）'
+      )
       .argument('[repoPath]', 'Git 仓库根目录路径（默认当前目录）')
       .action(async (repoPath: string | undefined, options: AnalyzeOptions, command: Command) => {
         const processedArgs = typeof repoPath === 'string' ? 1 : 0
@@ -91,6 +104,39 @@ export class CLIManager {
       })
 
     this.program.addCommand(trendCmd)
+  }
+
+  /** 注册 ranking 命令，统计所有提交者的996指数并排序 */
+  private addRankingCommand(): void {
+    const rankingCmd = new Command('ranking')
+      .description('统计排序所有提交者的996指数（卷王排行榜）')
+      .option('-s, --since <date>', '开始日期 (YYYY-MM-DD)')
+      .option('-u, --until <date>', '结束日期 (YYYY-MM-DD)')
+      .option('-y, --year <year>', '指定年份或年份范围 (例如: 2025 或 2023-2025)')
+      .option('--all-time', '查询所有时间的数据')
+      .option('--self', '仅统计当前 Git 用户的提交 (author 的快捷方式)')
+      .option('--author <name>', '仅统计指定作者（支持名称或邮箱部分匹配）')
+      .option(
+        '--exclude-authors <names>',
+        '排除作者（逗号分隔，支持名称或邮箱部分匹配，适用于排除 bot/CI 等自动化账号）'
+      )
+      .argument('[repoPath]', 'Git 仓库根目录路径（默认当前目录）')
+      .action(async (repoPath: string | undefined, options: any, command: Command) => {
+        const processedArgs = typeof repoPath === 'string' ? 1 : 0
+        const extraArgs = (command.args ?? []).slice(processedArgs)
+
+        if (extraArgs.length > 0) {
+          const invalid = extraArgs[0]
+          console.error(chalk.red(`错误: 未知命令 '${invalid}'`))
+          console.log('运行 code996 help 查看可用命令')
+          process.exit(1)
+        }
+
+        const targetPath = this.resolveTargetPath(repoPath, `${this.program.name()} ranking`)
+        await this.handleRanking(targetPath, options)
+      })
+
+    this.program.addCommand(rankingCmd)
   }
 
   /** 注册 help 命令，提供统一的帮助入口 */
@@ -135,6 +181,15 @@ export class CLIManager {
     printGlobalNotices()
   }
 
+  /** 处理排名分析流程的执行逻辑，targetPath 为已校验的 Git 根目录 */
+  private async handleRanking(targetPath: string, options: any): Promise<void> {
+    // 导入ranking命令并执行
+    const mergedOptions = this.mergeGlobalOptions(options)
+    const { RankingExecutor } = await import('./commands/ranking')
+    await RankingExecutor.execute(targetPath, mergedOptions)
+    printGlobalNotices()
+  }
+
   /** 合并全局选项（解决子命令无法直接读取根命令参数的问题） */
   private mergeGlobalOptions(options: AnalyzeOptions): AnalyzeOptions {
     const globalOpts = this.program.opts<AnalyzeOptions>()
@@ -145,6 +200,8 @@ export class CLIManager {
       since: options.since ?? globalOpts.since,
       until: options.until ?? globalOpts.until,
       year: options.year ?? globalOpts.year,
+      author: options.author ?? (globalOpts as any).author,
+      excludeAuthors: options.excludeAuthors ?? (globalOpts as any).excludeAuthors,
     }
   }
 
@@ -221,6 +278,7 @@ ${chalk.bold('使用方法:')}
 
 ${chalk.bold('命令:')}
   trend             查看月度996指数和工作时间的变化趋势
+  ranking           统计排序所有提交者的996指数（卷王排行榜）
   help              显示帮助信息
 
 ${chalk.bold('全局选项:')}
@@ -232,7 +290,9 @@ ${chalk.bold('分析选项:')}
   -u, --until <date>      结束日期 (YYYY-MM-DD)
   -y, --year <year>       指定年份或年份范围 (例如: 2025 或 2023-2025)
   --all-time              查询所有时间的数据（覆盖整个仓库历史）
-  --self                  仅统计当前 Git 用户的提交
+  --self                  仅统计当前 Git 用户的提交 (author 的快捷方式)
+  --author <str>          仅统计指定作者（支持名称或邮箱部分匹配）
+  --exclude-authors <ls>  排除作者（逗号分隔，支持名称或邮箱部分匹配，排除 bot/CI 等）
 
 ${chalk.bold('默认策略:')}
   自动以最后一次提交为基准，回溯365天进行分析
@@ -249,6 +309,12 @@ ${chalk.bold('示例:')}
   code996 trend                 # 分析最近一年的月度趋势
   code996 trend -y 2024         # 分析2024年各月趋势
   code996 trend --all-time      # 分析所有时间的月度趋势
+
+  ${chalk.gray('# 卷王排行榜')}
+  code996 ranking               # 查看所有提交者的996指数排名
+  code996 ranking -y 2024       # 查看2024年的排名
+  code996 ranking --author 张三  # 查看指定作者的详细信息
+  code996 ranking --exclude-authors bot,CI  # 排除机器人
 
 ${chalk.bold('更多详情请访问:')} https://github.com/code996/code996
     `)
