@@ -46,6 +46,7 @@ export class TrendExecutor {
         since,
         until,
         authorPattern,
+        silent: false,
       }
 
       // 趋势分析同样需要足够的样本量
@@ -80,8 +81,9 @@ export class TrendExecutor {
   ): Promise<{ since: string; until: string }> {
     // 全时间范围
     if (options.allTime) {
-      const firstCommit = await collector.getFirstCommitDate({ path })
-      const lastCommit = await collector.getLastCommitDate({ path })
+      const baseOpts: GitLogOptions = { path, since: '1970-01-01', until: '2100-01-01', silent: true, authorPattern: undefined }
+      const firstCommit = await collector.getFirstCommitDate(baseOpts)
+      const lastCommit = await collector.getLastCommitDate(baseOpts)
 
       if (!firstCommit || !lastCommit) {
         throw new Error('无法获取仓库的提交历史时间范围')
@@ -123,7 +125,8 @@ export class TrendExecutor {
 
     // 默认：基于最后一次提交回溯365天
     try {
-      const lastCommitDate = await collector.getLastCommitDate({ path })
+      const baseOpts: GitLogOptions = { path, since: '1970-01-01', until: '2100-01-01', silent: true, authorPattern: undefined }
+      const lastCommitDate = await collector.getLastCommitDate(baseOpts)
       if (lastCommitDate) {
         const until = lastCommitDate
         const untilDate = new Date(lastCommitDate)

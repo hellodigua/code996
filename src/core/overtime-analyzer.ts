@@ -4,7 +4,6 @@ import {
   WeekendOvertimeDistribution,
   LateNightAnalysis,
   WorkTimeDetectionResult,
-  TimeCount,
   DailyFirstCommit,
   DailyLatestCommit,
   DailyCommitHours,
@@ -48,7 +47,10 @@ export class OvertimeAnalyzer {
         if (hour >= endHour) {
           const dayNames = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'] as const
           const dayIndex = weekday - 1
-          overtimeCounts[dayNames[dayIndex]] += count
+          const dayKey = dayNames[dayIndex]
+          if (dayKey !== undefined) {
+            overtimeCounts[dayKey] += count
+          }
         }
       }
     }
@@ -86,8 +88,11 @@ export class OvertimeAnalyzer {
               4: 'thursdayDays',
               5: 'fridayDays',
             }
-            dayCounts[map[dow]]++
-            dayCounts.totalOvertimeDays++
+            const dayKey = map[dow]
+            if (dayKey !== undefined) {
+              dayCounts[dayKey]++
+              dayCounts.totalOvertimeDays++
+            }
 
             // 计算加班严重程度
             if (severityLevels && customEndHour !== undefined) {
@@ -114,8 +119,11 @@ export class OvertimeAnalyzer {
               4: 'thursdayDays',
               5: 'fridayDays',
             }
-            dayCounts[map[dow]]++
-            dayCounts.totalOvertimeDays++
+            const dayKey = map[dow]
+            if (dayKey !== undefined) {
+              dayCounts[dayKey]++
+              dayCounts.totalOvertimeDays++
+            }
           }
         }
       }
@@ -123,7 +131,10 @@ export class OvertimeAnalyzer {
 
     // 找出加班最多的一天
     const entries = Object.entries(overtimeCounts)
-    const maxEntry = entries.reduce((max, curr) => (curr[1] > max[1] ? curr : max), entries[0])
+    const firstEntry = entries[0]
+    const maxEntry = firstEntry !== undefined 
+      ? entries.reduce((max, curr) => (curr[1] > max[1] ? curr : max), firstEntry)
+      : undefined
 
     const dayNameMap: Record<string, string> = {
       monday: '周一',
@@ -135,8 +146,8 @@ export class OvertimeAnalyzer {
 
     return {
       ...overtimeCounts,
-      peakDay: dayNameMap[maxEntry[0]],
-      peakCount: maxEntry[1],
+      peakDay: maxEntry !== undefined ? (dayNameMap[maxEntry[0]] ?? undefined) : undefined,
+      peakCount: maxEntry !== undefined ? maxEntry[1] : undefined,
       mondayDays: dayCounts.mondayDays,
       tuesdayDays: dayCounts.tuesdayDays,
       wednesdayDays: dayCounts.wednesdayDays,
@@ -204,16 +215,20 @@ export class OvertimeAnalyzer {
       }
       totalWeekendDays = count
     } else if (dailyCommitHours.length > 0) {
-      const minDate = new Date(dailyCommitHours[0].date)
-      const maxDate = new Date(dailyCommitHours[dailyCommitHours.length - 1].date)
-      let cursor = new Date(minDate.getTime())
-      let count = 0
-      while (cursor.getTime() <= maxDate.getTime()) {
-        const dow = cursor.getDay()
-        if (dow === 0 || dow === 6) count++
-        cursor.setDate(cursor.getDate() + 1)
+      const firstDay = dailyCommitHours[0]
+      const lastDay = dailyCommitHours[dailyCommitHours.length - 1]
+      if (firstDay !== undefined && lastDay !== undefined) {
+        const minDate = new Date(firstDay.date)
+        const maxDate = new Date(lastDay.date)
+        let cursor = new Date(minDate.getTime())
+        let count = 0
+        while (cursor.getTime() <= maxDate.getTime()) {
+          const dow = cursor.getDay()
+          if (dow === 0 || dow === 6) count++
+          cursor.setDate(cursor.getDate() + 1)
+        }
+        totalWeekendDays = count
       }
-      totalWeekendDays = count
     }
 
     const activeWeekendDays = saturdayDays + sundayDays

@@ -1,19 +1,19 @@
 export interface GitLogOptions {
   path: string
-  since?: string
-  until?: string
-  silent?: boolean // 静默模式，不打印日志
-  authorPattern?: string // 作者过滤正则
+  since: string | undefined
+  until: string | undefined
+  silent: boolean | undefined // 静默模式，不打印日志
+  authorPattern: string | undefined // 作者过滤正则
 }
 
 export interface GitLogData {
   byHour: TimeCount[]
   byDay: TimeCount[]
   totalCommits: number
-  dailyFirstCommits?: DailyFirstCommit[]
-  dayHourCommits?: DayHourCommit[]
-  dailyLatestCommits?: DailyLatestCommit[]
-  dailyCommitHours?: DailyCommitHours[]
+  dailyFirstCommits: DailyFirstCommit[] | undefined
+  dayHourCommits: DayHourCommit[] | undefined
+  dailyLatestCommits: DailyLatestCommit[] | undefined
+  dailyCommitHours: DailyCommitHours[] | undefined
 }
 
 export interface TimeCount {
@@ -45,11 +45,11 @@ export interface ParsedGitData {
   totalCommits: number
   workHourPl: WorkTimePl
   workWeekPl: WorkWeekPl
-  detectedWorkTime?: WorkTimeDetectionResult
-  dailyFirstCommits?: DailyFirstCommit[]
-  weekdayOvertime?: WeekdayOvertimeDistribution
-  weekendOvertime?: WeekendOvertimeDistribution
-  lateNightAnalysis?: LateNightAnalysis
+  detectedWorkTime: WorkTimeDetectionResult | undefined
+  dailyFirstCommits: DailyFirstCommit[] | undefined
+  weekdayOvertime: WeekdayOvertimeDistribution | undefined
+  weekendOvertime: WeekendOvertimeDistribution | undefined
+  lateNightAnalysis: LateNightAnalysis | undefined
 }
 
 export type WorkTimePl = [{ time: '工作' | '加班'; count: number }, { time: '工作' | '加班'; count: number }]
@@ -104,13 +104,13 @@ export interface DailyLatestCommit {
  */
 export interface DailyCommitHours {
   date: string
-  hours: Set<number> // 该天所有提交的小时（去重，保留用于兼容旧逻辑：工作日加班提交次数统计）
+  hours: Set<number> // 该天所有提交的小时（去重,保留用于兼容旧逻辑:工作日加班提交次数统计）
   /** 当天首次提交距离午夜的分钟数（用于精确计算跨度） */
-  firstMinutes?: number
+  firstMinutes: number | undefined
   /** 当天最后一次提交距离午夜的分钟数（用于精确计算跨度与加班判定） */
-  lastMinutes?: number
+  lastMinutes: number | undefined
   /** 当天提交总次数（精确，不仅仅是不同小时的数量） */
-  commitCount?: number
+  commitCount: number | undefined
 }
 
 /**
@@ -131,23 +131,23 @@ export interface WeekdayOvertimeDistribution {
   wednesday: number
   thursday: number
   friday: number
-  peakDay?: string // 加班最多的一天
-  peakCount?: number // 加班最多的次数
+  peakDay: string | undefined // 加班最多的一天
+  peakCount: number | undefined // 加班最多的次数
   /** 加班天数（存在至少一次下班后提交） */
-  mondayDays?: number
-  tuesdayDays?: number
-  wednesdayDays?: number
-  thursdayDays?: number
-  fridayDays?: number
+  mondayDays: number | undefined
+  tuesdayDays: number | undefined
+  wednesdayDays: number | undefined
+  thursdayDays: number | undefined
+  fridayDays: number | undefined
   /** 总的工作日加班天数 */
-  totalOvertimeDays?: number
+  totalOvertimeDays: number | undefined
   /** 加班严重程度分级（需配置自定义下班时间 --end-hour） */
-  severityLevels?: {
+  severityLevels: {
     light: number // 轻度加班天数（下班后 2小时内）
     moderate: number // 中度加班天数（2-4小时）
     severe: number // 重度加班天数（4-6小时）
     extreme: number // 极度加班天数（6小时以上）
-  }
+  } | undefined
 }
 
 /**
@@ -159,13 +159,13 @@ export interface WeekendOvertimeDistribution {
   casualFixDays: number // 临时修复天数（跨度 < 阈值 或 提交数 < 阈值）
   realOvertimeDays: number // 真正加班天数（跨度>=spanThreshold 且 提交数>=commitThreshold）
   /** 周末活跃天数（出现过至少一次提交） */
-  activeWeekendDays?: number
+  activeWeekendDays: number | undefined
   /** 时间范围内的总周末天数（用于计算渗透率） */
-  totalWeekendDays?: number
+  totalWeekendDays: number | undefined
   /** 真正加班周末天数 / 总周末天数 * 100 */
-  realOvertimeRate?: number
+  realOvertimeRate: number | undefined
   /** 周末活跃天数 / 总周末天数 * 100 */
-  weekendActivityRate?: number
+  weekendActivityRate: number | undefined
 }
 
 /**
@@ -253,7 +253,7 @@ export interface AuthorRankingResult {
   authors: AuthorStats[]
   totalAuthors: number
   timeRange: {
-    since?: string
-    until?: string
+    since: string | undefined
+    until: string | undefined
   }
 }

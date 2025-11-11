@@ -102,6 +102,7 @@ export class AnalyzeExecutor {
         since: effectiveSince,
         until: effectiveUntil,
         authorPattern,
+        silent: false,
       }
 
       // 使用多仓库采集
@@ -199,6 +200,7 @@ export class AnalyzeExecutor {
         since: effectiveSince,
         until: effectiveUntil,
         authorPattern,
+        silent: false,
       }
 
       // 在正式分析前，先检查 commit 样本量是否达到最低要求
@@ -313,8 +315,12 @@ async function resolveTimeRange({
     }
   }
 
-  const baseOptions = {
+  const baseOptions: GitLogOptions = {
     path,
+    since: '1970-01-01',
+    until: '2100-01-01',
+    silent: true,
+    authorPattern: undefined,
   }
 
   try {

@@ -41,6 +41,11 @@ export class WorkSpanCalculator {
       const firstCommitMinutes = minutes[0]
       const lastCommitMinutes = minutes[minutes.length - 1]
 
+      // 跳过没有有效数据的日期
+      if (firstCommitMinutes === undefined || lastCommitMinutes === undefined) {
+        continue
+      }
+
       // 计算工作跨度（小时）
       const spanMinutes = lastCommitMinutes - firstCommitMinutes
       const spanHours = spanMinutes / 60

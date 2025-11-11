@@ -20,19 +20,19 @@ code996 是一个分析工具，它可以统计 Git 项目的 commit 时间分�
 
 ### 查看核心结果
 
-<img src="https://raw.githubusercontent.com/hellodigua/code996/main/public/images/demo1.png" alt="核心结果预览" style="width:600px; max-width:100%; height:auto;"/>
+![核心结果预览](https://raw.githubusercontent.com/hellodigua/code996/main/public/images/demo1.png)
 
 ### 查看提交时间分布
 
-<img src="https://raw.githubusercontent.com/hellodigua/code996/main/public/images/demo2.png" alt="提交时间分布图" style="width:400px; max-width:100%; height:auto;"/>
+![提交时间分布图](https://raw.githubusercontent.com/hellodigua/code996/main/public/images/demo2.png)
 
 ### 加班情况分析
 
-<img src="https://raw.githubusercontent.com/hellodigua/code996/main/public/images/demo3.png" alt="加班情况分析图" style="width:600px; max-width:100%; height:auto;"/>
+![加班情况分析图](https://raw.githubusercontent.com/hellodigua/code996/main/public/images/demo3.png)
 
 ### 综合建议
 
-<img src="https://raw.githubusercontent.com/hellodigua/code996/main/public/images/demo4.png" alt="综合建议图" style="width:600px; max-width:100%; height:auto;"/>
+![综合建议图](https://raw.githubusercontent.com/hellodigua/code996/main/public/images/demo4.png)
 
 ## 🚀 快速开始
 

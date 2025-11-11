@@ -32,8 +32,8 @@ export function calculateTimeRange(allTime: boolean = false): { since: string; u
   oneYearAgo.setFullYear(today.getFullYear() - 1)
 
   // 格式化为YYYY-MM-DD
-  const since = oneYearAgo.toISOString().split('T')[0]
-  const until = today.toISOString().split('T')[0]
+  const since = oneYearAgo.toISOString().split('T')[0] as string
+  const until = today.toISOString().split('T')[0] as string
 
   return { since, until }
 }
@@ -61,7 +61,10 @@ export function calculateTrendTableWidths(terminalWidth: number): number[] {
   // 如果总宽度小于可用宽度，按顺序补齐
   let index = 0
   while (currentSum < availableWidth) {
-    widths[index % columnCount]++
+    const targetIndex = index % columnCount
+    if (widths[targetIndex] !== undefined) {
+      widths[targetIndex]++
+    }
     currentSum++
     index++
   }
@@ -71,8 +74,9 @@ export function calculateTrendTableWidths(terminalWidth: number): number[] {
   let safetyGuard = columnCount * 10 // 防止极端情况下死循环
   while (currentSum > availableWidth && safetyGuard > 0) {
     const col = index % columnCount
-    if (widths[col] > minColumnWidth) {
-      widths[col]--
+    const colWidth = widths[col]
+    if (colWidth !== undefined && colWidth > minColumnWidth) {
+      widths[col] = colWidth - 1
       currentSum--
     }
     index++

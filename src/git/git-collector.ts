@@ -11,9 +11,6 @@ import {
 import chalk from 'chalk'
 
 export class GitCollector {
-  private static readonly DEFAULT_SINCE = '1970-01-01'
-  private static readonly DEFAULT_UNTIL = '2100-01-01'
-
   /**
    * 执行git命令并返回输出
    */
@@ -114,7 +111,10 @@ export class GitCollector {
           // 查找是否已存在该时间点的计数
           const existingIndex = timeCounts.findIndex((item) => item.time === time)
           if (existingIndex >= 0) {
-            timeCounts[existingIndex].count++
+            const existing = timeCounts[existingIndex]
+            if (existing !== undefined) {
+              existing.count++
+            }
           } else {
             timeCounts.push({
               time,
@@ -154,12 +154,16 @@ export class GitCollector {
       const parts = trimmed.split(/\s+/)
 
       if (parts.length >= 2) {
-        const weekday = parseInt(parts[0], 10)
-        const hour = parseInt(parts[1], 10)
+        const part0 = parts[0]
+        const part1 = parts[1]
+        if (part0 !== undefined && part1 !== undefined) {
+          const weekday = parseInt(part0, 10)
+          const hour = parseInt(part1, 10)
 
-        if (!isNaN(weekday) && !isNaN(hour) && weekday >= 1 && weekday <= 7 && hour >= 0 && hour <= 23) {
-          const key = `${weekday}-${hour}`
-          commitMap.set(key, (commitMap.get(key) || 0) + 1)
+          if (!isNaN(weekday) && !isNaN(hour) && weekday >= 1 && weekday <= 7 && hour >= 0 && hour <= 23) {
+            const key = `${weekday}-${hour}`
+            commitMap.set(key, (commitMap.get(key) || 0) + 1)
+          }
         }
       }
     }
@@ -167,8 +171,16 @@ export class GitCollector {
     // 转换为数组格式
     const result: DayHourCommit[] = []
     commitMap.forEach((count, key) => {
-      const [weekday, hour] = key.split('-').map((v) => parseInt(v, 10))
-      result.push({ weekday, hour, count })
+      const parts = key.split('-')
+      const part0 = parts[0]
+      const part1 = parts[1]
+      if (part0 !== undefined && part1 !== undefined) {
+        const weekday = parseInt(part0, 10)
+        const hour = parseInt(part1, 10)
+        if (!isNaN(weekday) && !isNaN(hour)) {
+          result.push({ weekday, hour, count })
+        }
+      }
     })
 
     return result
@@ -355,6 +367,8 @@ export class GitCollector {
     const email = await this.getGitConfigValue('user.email', path)
     const name = await this.getGitConfigValue('user.name', path)
 
+    
+  
     if (!email && !name) {
       throw new Error('启用 --self 需要先配置 git config user.name 或 user.email')
     }
@@ -425,6 +439,9 @@ export class GitCollector {
 
     for (let i = 0; i < repoPaths.length; i++) {
       const repoPath = repoPaths[i]
+      if (repoPath === undefined) {
+        continue
+      }
       console.log(chalk.gray(`[${i + 1}/${repoPaths.length}] ${repoPath}`))
 
       try {
@@ -459,7 +476,11 @@ export class GitCollector {
     }
 
     if (dataList.length === 1) {
-      return dataList[0]
+      const firstData = dataList[0]
+      if (firstData === undefined) {
+        throw new Error('数据访问异常')
+      }
+      return firstData
     }
 
     // 合并 byHour
@@ -513,8 +534,10 @@ export class GitCollector {
       }
     }
     const dayHourCommits: DayHourCommit[] = Array.from(dayHourMap.entries()).map((entry) => {
-      const [weekday, hour] = entry[0].split('-').map(Number)
-      return { weekday, hour, count: entry[1] }
+  const parts = entry[0].split('-')
+  const weekday = Number(parts[0])
+  const hour = Number(parts[1])
+  return { weekday, hour, count: entry[1] }
     })
 
     // 合并 dailyLatestCommits
@@ -661,6 +684,9 @@ export class GitCollector {
     }
 
     const [, year, month, day, hourStr, minuteStr] = match
+    if (hourStr === undefined || minuteStr === undefined) {
+      return null
+    }
     const hour = parseInt(hourStr, 10)
     const minute = parseInt(minuteStr, 10)
 
@@ -716,7 +742,11 @@ export class GitCollector {
 
       const parts = trimmed.split('|')
       if (parts.length === 2) {
-        const [name, email] = parts
+        const name = parts[0]
+        const email = parts[1]
+        if (name === undefined || email === undefined) {
+          continue
+        }
         const key = `${name}|${email}`
         if (!authorsMap.has(key)) {
           authorsMap.set(key, { name, email })

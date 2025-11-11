@@ -37,6 +37,7 @@ export async function buildAuthorFilter(
     since,
     until,
     silent: true,
+    authorPattern: undefined,
   }
   const allAuthors = await collector.getAllAuthors(authorCollectOpts)
 

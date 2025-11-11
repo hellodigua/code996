@@ -1,9 +1,4 @@
-# Nuxt dev/build outputs
-.output
-.data
-.nuxt
-.nitro
-.cache
+# Build outputs
 dist
 
 # Node dependencies
@@ -23,8 +18,15 @@ logs
 .env.*
 !.env.example
 
-# AI
-CLAUDE.md
-AGENTS.md
+# Lock files (使用npm)
+pnpm-lock.yaml
+yarn.lock
+
+# Backup and temporary files
+备用功能/
+*.bak
+*.tmp
+
+# AI collaboration (optional)
 .cursor/
 .claude/

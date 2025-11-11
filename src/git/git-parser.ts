@@ -51,10 +51,10 @@ export class GitParser {
     const weekendOvertime =
       rawData.dailyCommitHours && rawData.dailyCommitHours.length > 0
         ? OvertimeAnalyzer.calculateWeekendOvertime(rawData.dailyCommitHours, {
-            spanThreshold: overtimeConfig?.weekendSpanThreshold,
-            commitThreshold: overtimeConfig?.weekendCommitThreshold,
-            since,
-            until,
+            spanThreshold: overtimeConfig?.weekendSpanThreshold ?? undefined,
+            commitThreshold: overtimeConfig?.weekendCommitThreshold ?? undefined,
+            since: since ?? undefined,
+            until: until ?? undefined,
           })
         : undefined
 

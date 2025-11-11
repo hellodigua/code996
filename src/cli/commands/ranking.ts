@@ -57,6 +57,8 @@ export class RankingExecutor {
         path,
         since: effectiveSince,
         until: effectiveUntil,
+        silent: false,
+        authorPattern: undefined,
       }
 
       // 检查 commit 样本量
@@ -272,7 +274,13 @@ async function resolveTimeRange({
 
   // 默认回溯最后一次提交的365天
   try {
-    const lastCommitDate = await collector.getLastCommitDate({ path })
+    const lastCommitDate = await collector.getLastCommitDate({ 
+      path,
+      since: '1970-01-01',
+      until: '2100-01-01',
+      silent: true,
+      authorPattern: undefined,
+    })
     if (lastCommitDate) {
       const untilDate = new Date(lastCommitDate)
       const sinceDate = new Date(untilDate)

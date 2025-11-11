@@ -13,7 +13,12 @@
     "declaration": true,
     "declarationMap": true,
     "sourceMap": true,
-    "moduleResolution": "node"
+    "moduleResolution": "node",
+    
+    // 实用的类型检查配置(保持代码质量但不过度严格)
+    "noFallthroughCasesInSwitch": true,
+    "noImplicitReturns": true,
+    "allowUnreachableCode": false
   },
   "include": [
     "src/**/*"

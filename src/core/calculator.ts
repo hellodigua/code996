@@ -11,16 +11,16 @@ export function calculate996Index(data: WorkTimeData): Result996 {
   const { workHourPl, workWeekPl, hourData } = data
 
   // y: 正常工作时间的 commit 数量
-  const y = workHourPl[0].count
+  const y = workHourPl[0]?.count ?? 0
 
   // x: 加班时间的 commit 数量
-  const x = workHourPl[1].count
+  const x = workHourPl[1]?.count ?? 0
 
   // m: 工作日的 commit 数量
-  const m = workWeekPl[0].count
+  const m = workWeekPl[0]?.count ?? 0
 
   // n: 周末的 commit 数量
-  const n = workWeekPl[1].count
+  const n = workWeekPl[1]?.count ?? 0
 
   /**
    * 修正后的加班提交数量 (overTimeAmendCount)
