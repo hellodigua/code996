@@ -141,6 +141,13 @@ export interface WeekdayOvertimeDistribution {
   fridayDays?: number
   /** 总的工作日加班天数 */
   totalOvertimeDays?: number
+  /** 加班严重程度分级（需配置自定义下班时间 --end-hour） */
+  severityLevels?: {
+    light: number // 轻度加班天数（下班后 2小时内）
+    moderate: number // 中度加班天数（2-4小时）
+    severe: number // 重度加班天数（4-6小时）
+    extreme: number // 极度加班天数（6小时以上）
+  }
 }
 
 /**

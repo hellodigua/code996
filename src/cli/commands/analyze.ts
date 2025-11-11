@@ -102,11 +102,13 @@ export class AnalyzeExecutor {
         ? parseInt(options.weekendCommitThreshold, 10)
         : undefined
       const weekdayMode = options.weekdayOvertimeMode || 'both'
+      const customEndHour = options.endHour ? parseInt(options.endHour, 10) : undefined
 
       const parsedData = GitParser.parseGitData(rawData, undefined, effectiveSince, effectiveUntil, {
         weekendSpanThreshold,
         weekendCommitThreshold,
         weekdayMode,
+        customEndHour,
       })
       const validation = GitParser.validateData(parsedData)
 

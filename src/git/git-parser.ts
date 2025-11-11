@@ -25,7 +25,12 @@ export class GitParser {
     customWorkHours?: string,
     since?: string,
     until?: string,
-    overtimeConfig?: { weekendSpanThreshold?: number; weekendCommitThreshold?: number; weekdayMode?: 'commits' | 'days' | 'both' }
+    overtimeConfig?: { 
+      weekendSpanThreshold?: number
+      weekendCommitThreshold?: number
+      weekdayMode?: 'commits' | 'days' | 'both'
+      customEndHour?: number
+    }
   ): ParsedGitData {
     // 智能识别或使用自定义的工作时间
     const workTimeDetection = customWorkHours
@@ -38,7 +43,8 @@ export class GitParser {
         ? OvertimeAnalyzer.calculateWeekdayOvertime(
             rawData.dayHourCommits,
             workTimeDetection,
-            rawData.dailyCommitHours
+            rawData.dailyCommitHours,
+            overtimeConfig?.customEndHour
           )
         : undefined
 

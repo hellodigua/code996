@@ -18,6 +18,8 @@ export interface AnalyzeOptions {
   weekendSpanThreshold?: string // 周末真正加班跨度阈值（小时）
   weekendCommitThreshold?: string // 周末真正加班最少提交数阈值
   weekdayOvertimeMode?: 'commits' | 'days' | 'both' // 工作日加班展示模式
+  endHour?: string // 自定义下班时间（24小时制，例如 18 表示18点）
+  repos?: string // 多个仓库路径（逗号分隔，用于综合分析）
 }
 
 export class CLIManager {
@@ -66,6 +68,8 @@ export class CLIManager {
         '--weekday-overtime-mode <mode>',
         '工作日加班展示模式 commits|days|both（默认 both）'
       )
+      .option('--end-hour <hour>', '自定义下班时间（24小时制，例如 18，用于更精确的加班分级）')
+      .option('--repos <paths>', '多个仓库路径（逗号分隔，用于综合分析多个项目）')
       .action(async (repoPath: string | undefined, options: AnalyzeOptions, command: Command) => {
         const processedArgs = typeof repoPath === 'string' ? 1 : 0
         const extraArgs = (command.args ?? []).slice(processedArgs)
@@ -104,6 +108,8 @@ export class CLIManager {
         '--weekday-overtime-mode <mode>',
         '工作日加班展示模式 commits|days|both（默认 both）'
       )
+      .option('--end-hour <hour>', '自定义下班时间（24小时制，例如 18，用于更精确的加班分级）')
+      .option('--repos <paths>', '多个仓库路径（逗号分隔，用于综合分析多个项目）')
       .argument('[repoPath]', 'Git 仓库根目录路径（默认当前目录）')
       .action(async (repoPath: string | undefined, options: AnalyzeOptions, command: Command) => {
         const processedArgs = typeof repoPath === 'string' ? 1 : 0
@@ -144,6 +150,8 @@ export class CLIManager {
         '--weekday-overtime-mode <mode>',
         '工作日加班展示模式 commits|days|both（默认 both）'
       )
+      .option('--end-hour <hour>', '自定义下班时间（24小时制，例如 18，用于更精确的加班分级）')
+      .option('--repos <paths>', '多个仓库路径（逗号分隔，用于综合分析多个项目）')
       .argument('[repoPath]', 'Git 仓库根目录路径（默认当前目录）')
       .action(async (repoPath: string | undefined, options: any, command: Command) => {
         const processedArgs = typeof repoPath === 'string' ? 1 : 0
@@ -230,6 +238,8 @@ export class CLIManager {
       weekendSpanThreshold: options.weekendSpanThreshold ?? (globalOpts as any).weekendSpanThreshold,
       weekendCommitThreshold: options.weekendCommitThreshold ?? (globalOpts as any).weekendCommitThreshold,
       weekdayOvertimeMode: options.weekdayOvertimeMode ?? (globalOpts as any).weekdayOvertimeMode,
+      endHour: options.endHour ?? (globalOpts as any).endHour,
+      repos: options.repos ?? (globalOpts as any).repos,
     }
   }
 
@@ -325,6 +335,8 @@ ${chalk.bold('分析选项:')}
   --weekend-span-threshold <h>   周末真正加班的最小时跨度（小时，默认 3）
   --weekend-commit-threshold <n> 周末真正加班的最少提交次数（默认 3）
   --weekday-overtime-mode <mode> 工作日加班展示模式 commits|days|both（默认 both）
+  --end-hour <hour>              自定义下班时间（24小时制，例如 18，用于更精确的加班分级）
+  --repos <paths>                多个仓库路径（逗号分隔，用于综合分析多个项目）
 
 ${chalk.bold('默认策略:')}
   自动以最后一次提交为基准，回溯365天进行分析
@@ -350,6 +362,13 @@ ${chalk.bold('示例:')}
   code996 ranking --author 张三  # 查看指定作者的详细信息
   code996 ranking --exclude-authors bot,CI  # 排除机器人
   code996 ranking --merge       # 合并同名不同邮箱的作者统计
+
+  ${chalk.gray('# 自定义下班时间与加班分级')}
+  code996 --end-hour 18         # 设置18点下班，自动分析加班严重程度
+  code996 --end-hour 19 -y 2025 # 设置19点下班分析2025年
+
+  ${chalk.gray('# 多仓库综合分析')}
+  code996 --repos "/path/repo1,/path/repo2"  # 合并多个仓库统计
 
 ${chalk.bold('更多详情请访问:')} https://github.com/code996/code996
     `)

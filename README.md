@@ -71,9 +71,11 @@ code996
 - `--author <name>`：仅统计指定作者的提交（支持名称或邮箱部分匹配，适用于所有命令）🆕
 - `--exclude-authors <names>`：排除指定作者（逗号分隔，支持名称或邮箱部分匹配，适用于所有命令，可用于排除 bot/CI）🆕
 - `--merge`：合并同名不同邮箱的作者统计（适用于 `ranking` 和 `trend` 命令）🆕
-- `--weekend-span-threshold <hours>`：周末“真正加班”最小时间跨度（小时，默认 3，需与提交次数共同满足）🆕
-- `--weekend-commit-threshold <count>`：周末“真正加班”最少提交次数（默认 3）🆕
+- `--weekend-span-threshold <hours>`：周末"真正加班"最小时间跨度（小时，默认 3，需与提交次数共同满足）🆕
+- `--weekend-commit-threshold <count>`：周末"真正加班"最少提交次数（默认 3）🆕
 - `--weekday-overtime-mode <mode>`：工作日加班分布视角：`commits`（下班后提交次数）| `days`（加班天数）| `both`（默认，同时展示）🆕
+- `--end-hour <hour>`：自定义下班时间（24小时制，例如 18，用于更精确的加班严重程度分级）🆕
+- `--repos <paths>`：多个仓库路径（逗号分隔，用于综合分析多个项目）🆕
 
 ### 使用示例
 
@@ -106,6 +108,14 @@ code996 trend --exclude-authors bot,CI,dependabot  # 趋势分析中排除自动
 # 🆕 周末加班阈值与工作日展示模式
 code996 --weekend-span-threshold 4 --weekend-commit-threshold 5  # 将真正加班判定调严
 code996 --weekday-overtime-mode days  # 仅用加班天数视角，弱化提交频率差异
+
+# 🆕 自定义下班时间与加班分级
+code996 --end-hour 18         # 设置18点下班，自动分析加班严重程度
+code996 --end-hour 19 -y 2025 # 设置19点下班分析2025年
+# 分级标准：轻度(2h内)、中度(2-4h)、重度(4-6h)、极度(6h以上)
+
+# 🆕 多仓库综合分析（暂未完全实现）
+# code996 --repos "/path/repo1,/path/repo2"  # 合并多个仓库统计
 
 # 🆕 合并同名作者（处理一人多邮箱的情况）
 code996 ranking --merge        # 自动合并同名不同邮箱的作者

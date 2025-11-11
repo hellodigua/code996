@@ -19,13 +19,15 @@ export class OvertimeAnalyzer {
    * 计算工作日加班分布（周一到周五的下班后提交数）
    * @param dayHourCommits 按星期几和小时的提交数据
    * @param workTime 工作时间识别结果
+   * @param customEndHour 自定义下班时间（优先级高于工作时间识别结果）
    */
   static calculateWeekdayOvertime(
     dayHourCommits: DayHourCommit[],
     workTime: WorkTimeDetectionResult,
-    dailyCommitHours?: DailyCommitHours[]
+    dailyCommitHours?: DailyCommitHours[],
+    customEndHour?: number
   ): WeekdayOvertimeDistribution {
-    const endHour = Math.ceil(workTime.endHour)
+    const endHour = customEndHour !== undefined ? customEndHour : Math.ceil(workTime.endHour)
 
     // 初始化周一到周五的加班计数
     const overtimeCounts = {
@@ -50,7 +52,7 @@ export class OvertimeAnalyzer {
         }
       }
     }
-    // 计算加班“天数”视角：某天存在至少一条下班后提交（使用精确分钟）
+    // 计算加班"天数"视角：某天存在至少一条下班后提交（使用精确分钟）
     const dayCounts = {
       mondayDays: 0,
       tuesdayDays: 0,
@@ -60,6 +62,14 @@ export class OvertimeAnalyzer {
       totalOvertimeDays: 0,
     }
 
+    // 加班严重程度分级（仅当设置了自定义下班时间时计算）
+    const severityLevels = customEndHour !== undefined ? {
+      light: 0,    // 下班后 2小时内
+      moderate: 0, // 2-4小时
+      severe: 0,   // 4-6小时
+      extreme: 0,  // 6小时以上
+    } : undefined
+
     if (dailyCommitHours && dailyCommitHours.length > 0) {
       for (const day of dailyCommitHours) {
         const dateObj = new Date(day.date)
@@ -68,7 +78,7 @@ export class OvertimeAnalyzer {
         // 精确判定：最后一次提交分钟 >= endHour*60 视为加班天
         const lastMinutes = day.lastMinutes
         if (lastMinutes !== undefined) {
-          if (lastMinutes >= workTime.endHour * 60) {
+          if (lastMinutes >= endHour * 60) {
             const map: Record<number, keyof typeof dayCounts> = {
               1: 'mondayDays',
               2: 'tuesdayDays',
@@ -78,6 +88,20 @@ export class OvertimeAnalyzer {
             }
             dayCounts[map[dow]]++
             dayCounts.totalOvertimeDays++
+
+            // 计算加班严重程度
+            if (severityLevels && customEndHour !== undefined) {
+              const overtimeHours = (lastMinutes - customEndHour * 60) / 60
+              if (overtimeHours <= 2) {
+                severityLevels.light++
+              } else if (overtimeHours <= 4) {
+                severityLevels.moderate++
+              } else if (overtimeHours <= 6) {
+                severityLevels.severe++
+              } else {
+                severityLevels.extreme++
+              }
+            }
           }
         } else {
           // 兼容旧数据：若无分钟精度，使用小时集合判定
@@ -119,6 +143,7 @@ export class OvertimeAnalyzer {
       thursdayDays: dayCounts.thursdayDays,
       fridayDays: dayCounts.fridayDays,
       totalOvertimeDays: dayCounts.totalOvertimeDays,
+      severityLevels,
     }
   }
 

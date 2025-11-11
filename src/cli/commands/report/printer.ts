@@ -23,6 +23,11 @@ export function printCoreResults(
 
   const indexColor = getIndexColor(result.index996)
   const radioColor = result.overTimeRadio > 0 ? chalk.red : chalk.green
+  
+  // 格式化加班率显示（负值友好提示）
+  const overtimeDisplay = result.overTimeRadio < 0 
+    ? `${chalk.blue('工作不饱和')} ${result.overTimeRadio.toFixed(1)}%`
+    : radioColor(`${result.overTimeRadio.toFixed(1)}%`)
 
   // 构建时间范围文本
   let periodText = ''
@@ -59,7 +64,7 @@ export function printCoreResults(
     ],
     [
       { content: chalk.bold('加班比例'), colSpan: 1 },
-      { content: radioColor(`${result.overTimeRadio.toFixed(1)}%`), colSpan: 1 },
+      { content: overtimeDisplay, colSpan: 1 },
     ],
     [
       { content: chalk.bold('总提交数'), colSpan: 1 },
@@ -247,6 +252,35 @@ export function printWeekdayOvertime(parsedData: ParsedGitData, options?: Analyz
         `加班天数合计: ${overtime.totalOvertimeDays}天 (存在至少一次下班后提交，判定依据: 最晚提交时间 >= 推测下班时间)`
       )
     )
+  }
+
+  // 打印加班严重程度分级（如果有的话）
+  if (overtime.severityLevels) {
+    const levels = overtime.severityLevels
+    console.log()
+    console.log(chalk.bold('💀 加班严重程度分级:'))
+    console.log()
+    
+    const severityData = [
+      { emoji: '😊', level: '轻度加班', count: levels.light, desc: '下班后2小时内', color: chalk.green },
+      { emoji: '😰', level: '中度加班', count: levels.moderate, desc: '下班后2-4小时', color: chalk.yellow },
+      { emoji: '😱', level: '重度加班', count: levels.severe, desc: '下班后4-6小时', color: chalk.red },
+      { emoji: '💀', level: '极度加班', count: levels.extreme, desc: '下班后6小时以上', color: chalk.bgRed.white },
+    ]
+
+    severityData.forEach(({ emoji, level, count, desc, color }) => {
+      console.log(`${emoji} ${color(level)}: ${count}天 (${desc})`)
+    })
+
+    console.log()
+    const total = levels.light + levels.moderate + levels.severe + levels.extreme
+    if (levels.extreme > 0) {
+      console.log(chalk.bgRed.white(` ⚠️ 警告: 检测到 ${levels.extreme} 天极度加班，建议尽快调整！`))
+    } else if (levels.severe > 0) {
+      console.log(chalk.red(`⚠️ 提示: 检测到 ${levels.severe} 天重度加班，请注意身体健康。`))
+    } else if (total > 0) {
+      console.log(chalk.yellow(`ℹ️ 提示: 当前加班强度相对温和，继续保持。`))
+    }
   }
 
   console.log()
