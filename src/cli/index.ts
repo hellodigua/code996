@@ -82,8 +82,14 @@ export class CLIManager {
         }
 
         const mergedOptions = this.mergeGlobalOptions(options)
-        const targetPath = this.resolveTargetPath(repoPath, this.program.name())
-        await this.handleAnalyze(targetPath, mergedOptions)
+        
+        // 如果提供了 --repos 参数,则使用多仓库模式
+        if (mergedOptions.repos) {
+          await this.handleAnalyzeMultiple(mergedOptions)
+        } else {
+          const targetPath = this.resolveTargetPath(repoPath, this.program.name())
+          await this.handleAnalyze(targetPath, mergedOptions)
+        }
       })
   }
 
@@ -201,6 +207,13 @@ export class CLIManager {
     const mergedOptions = this.mergeGlobalOptions(options)
     const { AnalyzeExecutor } = await import('./commands/analyze')
     await AnalyzeExecutor.execute(targetPath, mergedOptions)
+    printGlobalNotices()
+  }
+
+  /** 处理多仓库分析流程 */
+  private async handleAnalyzeMultiple(options: AnalyzeOptions): Promise<void> {
+    const { AnalyzeExecutor } = await import('./commands/analyze')
+    await AnalyzeExecutor.executeMultiple(options)
     printGlobalNotices()
   }
 

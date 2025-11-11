@@ -27,6 +27,127 @@ interface AuthorFilterInfo {
 
 /** 分析执行器，集中处理采集、解析与渲染流程 */
 export class AnalyzeExecutor {
+  /** 执行多仓库分析的主流程 */
+  static async executeMultiple(options: AnalyzeOptions): Promise<void> {
+    if (!options.repos) {
+      throw new Error('多仓库分析需要提供 --repos 参数')
+    }
+
+    // 解析仓库路径（逗号分隔）
+    const repoPaths = options.repos
+      .split(',')
+      .map((p) => p.trim())
+      .filter((p) => p.length > 0)
+
+    if (repoPaths.length === 0) {
+      throw new Error('未提供有效的仓库路径')
+    }
+
+    if (repoPaths.length === 1) {
+      console.log(chalk.yellow('⚠️ 仅提供了一个仓库，将使用单仓库分析模式'))
+      return this.execute(repoPaths[0], options)
+    }
+
+    try {
+      const collector = new GitCollector()
+
+      // 计算时间范围
+      const {
+        since: effectiveSince,
+        until: effectiveUntil,
+        mode: rangeMode,
+        note: rangeNote,
+      } = await resolveTimeRange({ collector, path: repoPaths[0], options })
+
+      // 显示分析开始信息
+      console.log(chalk.blue('🔍 多仓库综合分析'))
+      console.log(chalk.gray(`仓库数量: ${repoPaths.length}`))
+      repoPaths.forEach((p, i) => {
+        console.log(chalk.gray(`  [${i + 1}] ${p}`))
+      })
+      console.log()
+
+      switch (rangeMode) {
+        case 'all-time':
+          console.log(chalk.blue('📅 时间范围:'), '所有时间')
+          break
+        case 'custom':
+          console.log(chalk.blue('📅 时间范围:'), `${effectiveSince} 至 ${effectiveUntil}`)
+          break
+        case 'auto-last-commit':
+          console.log(
+            chalk.blue('📅 时间范围:'),
+            `${effectiveSince} 至 ${effectiveUntil}${rangeNote ? `（${rangeNote}）` : ''}`
+          )
+          break
+        default:
+          console.log(chalk.blue('📅 时间范围:'), `${effectiveSince} 至 ${effectiveUntil}（按当前日期回溯）`)
+      }
+      console.log()
+
+      // 构建作者过滤（对第一个仓库做预检）
+      let authorPattern: string | undefined
+      try {
+        const built = await buildAuthorFilter(collector, repoPaths[0], effectiveSince, effectiveUntil, options)
+        authorPattern = built.pattern
+        built.infoLines.forEach((l) => console.log(l))
+        if (built.infoLines.length) console.log()
+      } catch (e) {
+        console.error(chalk.red('❌ 作者过滤失败:'), (e as Error).message)
+        process.exit(1)
+      }
+
+      // 构建统一的 Git 采集参数（不含 path）
+      const collectOptions = {
+        since: effectiveSince,
+        until: effectiveUntil,
+        authorPattern,
+      }
+
+      // 使用多仓库采集
+      const rawData = await collector.collectMultiple(repoPaths, collectOptions)
+
+      console.log(chalk.green(`✓ 合并完成: 总计 ${rawData.totalCommits} 个commit`))
+      console.log()
+
+      // 数据解析与验证
+      const weekendSpanThreshold = options.weekendSpanThreshold ? parseFloat(options.weekendSpanThreshold) : undefined
+      const weekendCommitThreshold = options.weekendCommitThreshold
+        ? parseInt(options.weekendCommitThreshold, 10)
+        : undefined
+      const weekdayMode = options.weekdayOvertimeMode || 'both'
+      const customEndHour = options.endHour ? parseInt(options.endHour, 10) : undefined
+
+      const parsedData = GitParser.parseGitData(rawData, undefined, effectiveSince, effectiveUntil, {
+        weekendSpanThreshold,
+        weekendCommitThreshold,
+        weekdayMode,
+        customEndHour,
+      })
+
+      const validation = GitParser.validateData(parsedData)
+
+      if (!validation.isValid) {
+        console.log(chalk.red('❌ 数据验证失败:'))
+        validation.errors.forEach((error) => {
+          console.log(`  ${chalk.red('•')} ${error}`)
+        })
+        process.exit(1)
+      }
+
+      // 计算996指数
+      const result = GitParser.calculate996Index(parsedData)
+
+      console.log(chalk.green('✓ 分析完成！'))
+      console.log()
+
+      printResults(result, parsedData, rawData, options, effectiveSince, effectiveUntil, rangeMode)
+    } catch (error) {
+      console.error(chalk.red('❌ 多仓库分析失败:'), (error as Error).message)
+      process.exit(1)
+    }
+  }
+
   /** 执行分析的主流程 */
   static async execute(path: string, options: AnalyzeOptions): Promise<void> {
     try {
