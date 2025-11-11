@@ -71,6 +71,9 @@ code996
 - `--author <name>`：仅统计指定作者的提交（支持名称或邮箱部分匹配，适用于所有命令）🆕
 - `--exclude-authors <names>`：排除指定作者（逗号分隔，支持名称或邮箱部分匹配，适用于所有命令，可用于排除 bot/CI）🆕
 - `--merge`：合并同名不同邮箱的作者统计（适用于 `ranking` 和 `trend` 命令）🆕
+- `--weekend-span-threshold <hours>`：周末“真正加班”最小时间跨度（小时，默认 3，需与提交次数共同满足）🆕
+- `--weekend-commit-threshold <count>`：周末“真正加班”最少提交次数（默认 3）🆕
+- `--weekday-overtime-mode <mode>`：工作日加班分布视角：`commits`（下班后提交次数）| `days`（加班天数）| `both`（默认，同时展示）🆕
 
 ### 使用示例
 
@@ -99,6 +102,10 @@ code996 ranking --exclude-authors bot,CI  # 排除机器人账号
 # 🆕 过滤示例（同样适用于 trend / 基础分析）
 code996 --author alice         # 只看 alice 的整体分析
 code996 trend --exclude-authors bot,CI,dependabot  # 趋势分析中排除自动化账号
+
+# 🆕 周末加班阈值与工作日展示模式
+code996 --weekend-span-threshold 4 --weekend-commit-threshold 5  # 将真正加班判定调严
+code996 --weekday-overtime-mode days  # 仅用加班天数视角，弱化提交频率差异
 
 # 🆕 合并同名作者（处理一人多邮箱的情况）
 code996 ranking --merge        # 自动合并同名不同邮箱的作者
@@ -149,7 +156,7 @@ code996 trend --merge -y 2024
 
 ### 数据采集流程
 
-```
+```text
 Git 仓库 → git log 采集 → 日级首提 + 小时分布 → 分位数推算上/下班 → 996 指数计算 → 结果输出
 ```
 

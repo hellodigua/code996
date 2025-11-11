@@ -228,7 +228,8 @@ export class GitCollector {
     const output = await this.execGitCommand(args, path)
     const lines = output.split('\n').filter((line) => line.trim())
 
-    const dailyHours = new Map<string, Set<number>>()
+  // date -> { hours:Set<number>, firstMinutes:number, lastMinutes:number, commitCount:number }
+  const dailyHours = new Map<string, { hours: Set<number>; firstMinutes: number; lastMinutes: number; commitCount: number }>()
 
     for (const line of lines) {
       const trimmed = line.trim()
@@ -242,15 +243,28 @@ export class GitCollector {
       }
 
       if (!dailyHours.has(parsed.dateKey)) {
-        dailyHours.set(parsed.dateKey, new Set())
+        dailyHours.set(parsed.dateKey, {
+          hours: new Set<number>(),
+          firstMinutes: parsed.hour * 60 + parsed.minute,
+          lastMinutes: parsed.hour * 60 + parsed.minute,
+          commitCount: 0,
+        })
       }
-      dailyHours.get(parsed.dateKey)!.add(parsed.hour)
+      const info = dailyHours.get(parsed.dateKey)!
+      info.hours.add(parsed.hour)
+      const minutesFromMidnight = parsed.hour * 60 + parsed.minute
+      if (minutesFromMidnight < info.firstMinutes) info.firstMinutes = minutesFromMidnight
+      if (minutesFromMidnight > info.lastMinutes) info.lastMinutes = minutesFromMidnight
+      info.commitCount++
     }
 
     return Array.from(dailyHours.entries())
-      .map(([date, hours]) => ({
+      .map(([date, info]) => ({
         date,
-        hours,
+        hours: info.hours,
+        firstMinutes: info.firstMinutes,
+        lastMinutes: info.lastMinutes,
+        commitCount: info.commitCount,
       }))
       .sort((a, b) => a.date.localeCompare(b.date))
   }

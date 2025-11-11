@@ -42,7 +42,7 @@ export function printDetailedAnalysis(result: Result996, parsedData: ParsedGitDa
     }
   }
 
-  // 3. 周末加班分析
+  // 3. 周末加班分析（采用跨度+提交数双阈值判定真正加班）
   if (parsedData.weekendOvertime) {
     const weekend = parsedData.weekendOvertime
     if (weekend.realOvertimeDays > 15) {
@@ -53,6 +53,11 @@ export function printDetailedAnalysis(result: Result996, parsedData: ParsedGitDa
       analysis.push(`📝 偶有周末加班（${weekend.realOvertimeDays}天），大部分是临时修复`)
     } else if (weekend.casualFixDays > 0) {
       analysis.push(`✅ 周末基本无加班，仅${weekend.casualFixDays}天临时修复`)
+    }
+    if (weekend.realOvertimeRate !== undefined && weekend.weekendActivityRate !== undefined) {
+      analysis.push(
+        `  • 周末活跃渗透率 ${(weekend.weekendActivityRate || 0).toFixed(1)}%，真正加班渗透率 ${(weekend.realOvertimeRate || 0).toFixed(1)}%`
+      )
     }
   }
 

@@ -15,6 +15,9 @@ export interface AnalyzeOptions {
   author?: string // 指定作者（名称或邮箱的部分匹配）
   excludeAuthors?: string // 排除作者列表（逗号分隔，名称或邮箱的部分匹配）
   merge?: boolean // 合并同名不同邮箱的作者
+  weekendSpanThreshold?: string // 周末真正加班跨度阈值（小时）
+  weekendCommitThreshold?: string // 周末真正加班最少提交数阈值
+  weekdayOvertimeMode?: 'commits' | 'days' | 'both' // 工作日加班展示模式
 }
 
 export class CLIManager {
@@ -57,6 +60,12 @@ export class CLIManager {
         '--exclude-authors <names>',
         '排除作者（逗号分隔，支持名称或邮箱部分匹配，适用于排除 bot/CI 等自动化账号）'
       )
+      .option('--weekend-span-threshold <hours>', '周末真正加班的最小时跨度（小时，默认 3）')
+      .option('--weekend-commit-threshold <count>', '周末真正加班的最少提交次数（默认 3）')
+      .option(
+        '--weekday-overtime-mode <mode>',
+        '工作日加班展示模式 commits|days|both（默认 both）'
+      )
       .action(async (repoPath: string | undefined, options: AnalyzeOptions, command: Command) => {
         const processedArgs = typeof repoPath === 'string' ? 1 : 0
         const extraArgs = (command.args ?? []).slice(processedArgs)
@@ -89,6 +98,12 @@ export class CLIManager {
         '排除作者（逗号分隔，支持名称或邮箱部分匹配，适用于排除 bot/CI 等自动化账号）'
       )
       .option('--merge', '合并同名不同邮箱的作者')
+      .option('--weekend-span-threshold <hours>', '周末真正加班的最小时跨度（小时，默认 3）')
+      .option('--weekend-commit-threshold <count>', '周末真正加班的最少提交次数（默认 3）')
+      .option(
+        '--weekday-overtime-mode <mode>',
+        '工作日加班展示模式 commits|days|both（默认 both）'
+      )
       .argument('[repoPath]', 'Git 仓库根目录路径（默认当前目录）')
       .action(async (repoPath: string | undefined, options: AnalyzeOptions, command: Command) => {
         const processedArgs = typeof repoPath === 'string' ? 1 : 0
@@ -123,6 +138,12 @@ export class CLIManager {
         '排除作者（逗号分隔，支持名称或邮箱部分匹配，适用于排除 bot/CI 等自动化账号）'
       )
       .option('--merge', '合并同名不同邮箱的作者')
+      .option('--weekend-span-threshold <hours>', '周末真正加班的最小时跨度（小时，默认 3）')
+      .option('--weekend-commit-threshold <count>', '周末真正加班的最少提交次数（默认 3）')
+      .option(
+        '--weekday-overtime-mode <mode>',
+        '工作日加班展示模式 commits|days|both（默认 both）'
+      )
       .argument('[repoPath]', 'Git 仓库根目录路径（默认当前目录）')
       .action(async (repoPath: string | undefined, options: any, command: Command) => {
         const processedArgs = typeof repoPath === 'string' ? 1 : 0
@@ -206,6 +227,9 @@ export class CLIManager {
       author: options.author ?? (globalOpts as any).author,
       excludeAuthors: options.excludeAuthors ?? (globalOpts as any).excludeAuthors,
       merge: options.merge ?? (globalOpts as any).merge,
+      weekendSpanThreshold: options.weekendSpanThreshold ?? (globalOpts as any).weekendSpanThreshold,
+      weekendCommitThreshold: options.weekendCommitThreshold ?? (globalOpts as any).weekendCommitThreshold,
+      weekdayOvertimeMode: options.weekdayOvertimeMode ?? (globalOpts as any).weekdayOvertimeMode,
     }
   }
 
@@ -298,9 +322,14 @@ ${chalk.bold('分析选项:')}
   --author <str>          仅统计指定作者（支持名称或邮箱部分匹配）
   --exclude-authors <ls>  排除作者（逗号分隔，支持名称或邮箱部分匹配，排除 bot/CI 等）
   --merge                 合并同名不同邮箱的作者（用于 ranking/trend）
+  --weekend-span-threshold <h>   周末真正加班的最小时跨度（小时，默认 3）
+  --weekend-commit-threshold <n> 周末真正加班的最少提交次数（默认 3）
+  --weekday-overtime-mode <mode> 工作日加班展示模式 commits|days|both（默认 both）
 
 ${chalk.bold('默认策略:')}
   自动以最后一次提交为基准，回溯365天进行分析
+  周末真正加班：同时满足跨度>=weekend-span-threshold 且 提交数>=weekend-commit-threshold
+  工作日加班：提交次数统计使用下班后整点提交；加班天数统计使用最后一次提交时间 >= 推测下班时间
 
 ${chalk.bold('示例:')}
   ${chalk.gray('# 基础分析')}

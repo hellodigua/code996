@@ -95,7 +95,19 @@ export class AnalyzeExecutor {
       spinner.render()
 
       // 步骤2: 数据解析与验证
-      const parsedData = GitParser.parseGitData(rawData, undefined, effectiveSince, effectiveUntil)
+      const weekendSpanThreshold = options.weekendSpanThreshold
+        ? parseFloat(options.weekendSpanThreshold)
+        : undefined
+      const weekendCommitThreshold = options.weekendCommitThreshold
+        ? parseInt(options.weekendCommitThreshold, 10)
+        : undefined
+      const weekdayMode = options.weekdayOvertimeMode || 'both'
+
+      const parsedData = GitParser.parseGitData(rawData, undefined, effectiveSince, effectiveUntil, {
+        weekendSpanThreshold,
+        weekendCommitThreshold,
+        weekdayMode,
+      })
       const validation = GitParser.validateData(parsedData)
 
       if (!validation.isValid) {
@@ -295,8 +307,8 @@ function printResults(
   printDetailedAnalysis(result, parsedData) // 新增：详细分析
   printWorkTimeSummary(parsedData)
   printTimeDistribution(parsedData)
-  printWeekdayOvertime(parsedData)
-  printWeekendOvertime(parsedData)
+  printWeekdayOvertime(parsedData, options)
+  printWeekendOvertime(parsedData, options)
   printLateNightAnalysis(parsedData)
   printRecommendation(result, parsedData)
 }

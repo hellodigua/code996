@@ -20,7 +20,13 @@ export class GitParser {
    * @param since 开始日期
    * @param until 结束日期
    */
-  static parseGitData(rawData: GitLogData, customWorkHours?: string, since?: string, until?: string): ParsedGitData {
+  static parseGitData(
+    rawData: GitLogData,
+    customWorkHours?: string,
+    since?: string,
+    until?: string,
+    overtimeConfig?: { weekendSpanThreshold?: number; weekendCommitThreshold?: number; weekdayMode?: 'commits' | 'days' | 'both' }
+  ): ParsedGitData {
     // 智能识别或使用自定义的工作时间
     const workTimeDetection = customWorkHours
       ? this.parseCustomWorkHours(customWorkHours)
@@ -29,12 +35,21 @@ export class GitParser {
     // 计算加班相关分析
     const weekdayOvertime =
       rawData.dayHourCommits && rawData.dayHourCommits.length > 0
-        ? OvertimeAnalyzer.calculateWeekdayOvertime(rawData.dayHourCommits, workTimeDetection)
+        ? OvertimeAnalyzer.calculateWeekdayOvertime(
+            rawData.dayHourCommits,
+            workTimeDetection,
+            rawData.dailyCommitHours
+          )
         : undefined
 
     const weekendOvertime =
       rawData.dailyCommitHours && rawData.dailyCommitHours.length > 0
-        ? OvertimeAnalyzer.calculateWeekendOvertime(rawData.dailyCommitHours)
+        ? OvertimeAnalyzer.calculateWeekendOvertime(rawData.dailyCommitHours, {
+            spanThreshold: overtimeConfig?.weekendSpanThreshold,
+            commitThreshold: overtimeConfig?.weekendCommitThreshold,
+            since,
+            until,
+          })
         : undefined
 
     const lateNightAnalysis =

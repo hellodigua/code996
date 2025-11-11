@@ -170,67 +170,107 @@ export function printWorkTimeSummary(parsedData: ParsedGitData): void {
 }
 
 /** 打印工作日加班分布 */
-export function printWeekdayOvertime(parsedData: ParsedGitData): void {
-  if (!parsedData.weekdayOvertime) {
-    return
-  }
+export function printWeekdayOvertime(parsedData: ParsedGitData, options?: AnalyzeOptions): void {
+  if (!parsedData.weekdayOvertime) return
+
+  const mode = options?.weekdayOvertimeMode || 'both'
+  const overtime = parsedData.weekdayOvertime
+  const weekdays = [
+    { name: '周一', key: 'monday' as const, dayKey: 'mondayDays' as const },
+    { name: '周二', key: 'tuesday' as const, dayKey: 'tuesdayDays' as const },
+    { name: '周三', key: 'wednesday' as const, dayKey: 'wednesdayDays' as const },
+    { name: '周四', key: 'thursday' as const, dayKey: 'thursdayDays' as const },
+    { name: '周五', key: 'friday' as const, dayKey: 'fridayDays' as const },
+  ]
 
   console.log(chalk.blue('💼 工作日加班分布:'))
   console.log()
 
-  const overtime = parsedData.weekdayOvertime
-  const weekdays = [
-    { name: '周一', key: 'monday' as const },
-    { name: '周二', key: 'tuesday' as const },
-    { name: '周三', key: 'wednesday' as const },
-    { name: '周四', key: 'thursday' as const },
-    { name: '周五', key: 'friday' as const },
-  ]
+  const commitMax = Math.max(overtime.monday, overtime.tuesday, overtime.wednesday, overtime.thursday, overtime.friday)
+  const dayMax = Math.max(
+    overtime.mondayDays || 0,
+    overtime.tuesdayDays || 0,
+    overtime.wednesdayDays || 0,
+    overtime.thursdayDays || 0,
+    overtime.fridayDays || 0
+  )
 
-  // 找出最大值用于计算条形图长度
-  const maxCount = Math.max(overtime.monday, overtime.tuesday, overtime.wednesday, overtime.thursday, overtime.friday)
-
-  if (maxCount === 0) {
+  if (commitMax === 0 && dayMax === 0) {
     console.log('暂无工作日加班数据')
     console.log()
     return
   }
 
   const barLength = 20
+  const peakThreshold = commitMax * 0.9
 
-  // 计算加班高峰阈值（最大值的90%）
-  const peakThreshold = maxCount * 0.9
+  weekdays.forEach(({ name, key, dayKey }) => {
+    const commitCount = overtime[key]
+    const dayCount = (overtime as any)[dayKey] || 0
 
-  weekdays.forEach(({ name, key }) => {
-    const count = overtime[key]
-    const percentage = maxCount > 0 ? (count / maxCount) * barLength : 0
+    // 确定用于绘制的主值
+    let primaryValue: number
+    let primaryMax: number
+    let primaryUnit: string
+    if (mode === 'days') {
+      primaryValue = dayCount
+      primaryMax = dayMax || 1
+      primaryUnit = '天'
+    } else {
+      primaryValue = commitCount
+      primaryMax = commitMax || 1
+      primaryUnit = '次'
+    }
+
+    const percentage = primaryMax > 0 ? (primaryValue / primaryMax) * barLength : 0
     const filledLength = Math.min(barLength, Math.max(0, Math.round(percentage)))
     const bar = '█'.repeat(filledLength) + ' '.repeat(barLength - filledLength)
-    const countText = count.toString().padStart(3)
+    const primaryText = primaryValue.toString().padStart(3)
 
-    // 如果加班次数 >= 90% 的最大值，标注为加班高峰
-    const isPeak = count >= peakThreshold && count > 0
+    const isPeak = mode !== 'days' && commitCount >= peakThreshold && commitCount > 0
     const peakLabel = isPeak ? chalk.red(' ⚠️ 加班高峰') : ''
 
-    console.log(`${name}: ${bar} ${countText}次${peakLabel}`)
+    let extra = ''
+    if (mode === 'both') {
+      extra = ` / 加班天数 ${dayCount}天`
+    } else if (mode === 'commits' && dayCount) {
+      extra = ` (${dayCount}天)`
+    }
+
+    console.log(`${name}: ${bar} ${primaryText}${primaryUnit}${extra}${peakLabel}`)
   })
 
+  if (overtime.totalOvertimeDays !== undefined && mode !== 'commits') {
+    console.log()
+    console.log(
+      chalk.gray(
+        `加班天数合计: ${overtime.totalOvertimeDays}天 (存在至少一次下班后提交，判定依据: 最晚提交时间 >= 推测下班时间)`
+      )
+    )
+  }
+
+  console.log()
+  console.log(
+    chalk.gray(
+      mode === 'both'
+        ? '说明: 条形图按提交次数绘制；同时显示加班天数用于降低高频碎片提交对结果的干扰。'
+        : mode === 'days'
+        ? '说明: 使用加班天数视角呈现，减少提交频率差异影响。'
+        : '说明: 使用提交次数视角。可通过 --weekday-overtime-mode 切换为 days 或 both。'
+    )
+  )
   console.log()
 }
 
 /** 打印周末加班分布 */
-export function printWeekendOvertime(parsedData: ParsedGitData): void {
-  if (!parsedData.weekendOvertime) {
-    return
-  }
-
+export function printWeekendOvertime(parsedData: ParsedGitData, options?: AnalyzeOptions): void {
+  if (!parsedData.weekendOvertime) return
   const weekend = parsedData.weekendOvertime
-  const totalDays = weekend.saturdayDays + weekend.sundayDays
+  const totalActive = weekend.saturdayDays + weekend.sundayDays
+  if (totalActive === 0) return
 
-  // 如果没有周末工作，不显示
-  if (totalDays === 0) {
-    return
-  }
+  const spanThreshold = options?.weekendSpanThreshold ? parseFloat(options.weekendSpanThreshold) : 3
+  const commitThreshold = options?.weekendCommitThreshold ? parseInt(options.weekendCommitThreshold, 10) : 3
 
   console.log(chalk.blue('📅 周末加班分析:'))
   console.log()
@@ -239,35 +279,51 @@ export function printWeekendOvertime(parsedData: ParsedGitData): void {
     { name: '周六', count: weekend.saturdayDays },
     { name: '周日', count: weekend.sundayDays },
   ]
-
   const barLength = 20
   const maxCount = Math.max(weekend.saturdayDays, weekend.sundayDays)
 
   weekendDays.forEach(({ name, count }) => {
     if (count === 0) return
-
     const percentage = maxCount > 0 ? (count / maxCount) * barLength : 0
     const filledLength = Math.min(barLength, Math.max(0, Math.round(percentage)))
     const bar = '█'.repeat(filledLength) + ' '.repeat(barLength - filledLength)
     const countText = count.toString().padStart(3)
-    const percentOfTotal = totalDays > 0 ? ((count / totalDays) * 100).toFixed(1) : '0.0'
-
-    console.log(`${name}: ${bar} ${countText}天 (${percentOfTotal}%)`)
+    const percentOfActive = totalActive > 0 ? ((count / totalActive) * 100).toFixed(1) : '0.0'
+    console.log(`${name}: ${bar} ${countText}天 (${percentOfActive}%)`)
   })
 
   console.log()
-
-  // 显示加班类型分布
   const totalWorkDays = weekend.realOvertimeDays + weekend.casualFixDays
   const realOvertimeColor =
     weekend.realOvertimeDays > 15 ? chalk.red : weekend.realOvertimeDays > 8 ? chalk.yellow : chalk.green
 
   console.log('加班类型:')
   console.log(
-    `  真正加班: ${realOvertimeColor(chalk.bold(weekend.realOvertimeDays.toString()))}天 (提交时间跨度>=3小时)`
+    `  真正加班: ${realOvertimeColor(
+      chalk.bold(weekend.realOvertimeDays.toString())
+    )}天 (跨度≥${spanThreshold}h 且 提交数≥${commitThreshold})`
   )
-  console.log(`  临时修复: ${chalk.gray(weekend.casualFixDays.toString())}天 (提交时间跨度<3小时)`)
-  console.log(`  加班占比: ${realOvertimeColor(((weekend.realOvertimeDays / totalWorkDays) * 100).toFixed(1) + '%')}`)
+  console.log(
+    `  临时修复: ${chalk.gray(
+      weekend.casualFixDays.toString()
+    )}天 (跨度<${spanThreshold}h 或 提交数<${commitThreshold})`
+  )
+  console.log(
+    `  加班占比(真正加班/活跃周末): ${realOvertimeColor(
+      ((weekend.realOvertimeDays / (totalActive || 1)) * 100).toFixed(1) + '%'
+    )}`
+  )
+  if (weekend.totalWeekendDays && weekend.activeWeekendDays) {
+    console.log(
+      `  周末活跃渗透率: ${(weekend.weekendActivityRate || 0).toFixed(1)}%  真正加班渗透率: ${(weekend.realOvertimeRate || 0).toFixed(1)}%`
+    )
+  }
+  console.log()
+  console.log(
+    chalk.gray(
+      '说明: 真正加班采用“时间跨度 + 提交次数”双阈值判定，减少零散修复对结果的干扰；可通过阈值参数调整。'
+    )
+  )
   console.log()
 }
 

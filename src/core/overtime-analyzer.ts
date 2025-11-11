@@ -22,7 +22,8 @@ export class OvertimeAnalyzer {
    */
   static calculateWeekdayOvertime(
     dayHourCommits: DayHourCommit[],
-    workTime: WorkTimeDetectionResult
+    workTime: WorkTimeDetectionResult,
+    dailyCommitHours?: DailyCommitHours[]
   ): WeekdayOvertimeDistribution {
     const endHour = Math.ceil(workTime.endHour)
 
@@ -49,6 +50,52 @@ export class OvertimeAnalyzer {
         }
       }
     }
+    // 计算加班“天数”视角：某天存在至少一条下班后提交（使用精确分钟）
+    const dayCounts = {
+      mondayDays: 0,
+      tuesdayDays: 0,
+      wednesdayDays: 0,
+      thursdayDays: 0,
+      fridayDays: 0,
+      totalOvertimeDays: 0,
+    }
+
+    if (dailyCommitHours && dailyCommitHours.length > 0) {
+      for (const day of dailyCommitHours) {
+        const dateObj = new Date(day.date)
+        const dow = dateObj.getDay() // 0=Sun .. 6=Sat
+        if (dow < 1 || dow > 5) continue
+        // 精确判定：最后一次提交分钟 >= endHour*60 视为加班天
+        const lastMinutes = day.lastMinutes
+        if (lastMinutes !== undefined) {
+          if (lastMinutes >= workTime.endHour * 60) {
+            const map: Record<number, keyof typeof dayCounts> = {
+              1: 'mondayDays',
+              2: 'tuesdayDays',
+              3: 'wednesdayDays',
+              4: 'thursdayDays',
+              5: 'fridayDays',
+            }
+            dayCounts[map[dow]]++
+            dayCounts.totalOvertimeDays++
+          }
+        } else {
+          // 兼容旧数据：若无分钟精度，使用小时集合判定
+          const hasAfterEndHour = Array.from(day.hours.values()).some((h) => h >= endHour)
+          if (hasAfterEndHour) {
+            const map: Record<number, keyof typeof dayCounts> = {
+              1: 'mondayDays',
+              2: 'tuesdayDays',
+              3: 'wednesdayDays',
+              4: 'thursdayDays',
+              5: 'fridayDays',
+            }
+            dayCounts[map[dow]]++
+            dayCounts.totalOvertimeDays++
+          }
+        }
+      }
+    }
 
     // 找出加班最多的一天
     const entries = Object.entries(overtimeCounts)
@@ -66,6 +113,12 @@ export class OvertimeAnalyzer {
       ...overtimeCounts,
       peakDay: dayNameMap[maxEntry[0]],
       peakCount: maxEntry[1],
+      mondayDays: dayCounts.mondayDays,
+      tuesdayDays: dayCounts.tuesdayDays,
+      wednesdayDays: dayCounts.wednesdayDays,
+      thursdayDays: dayCounts.thursdayDays,
+      fridayDays: dayCounts.fridayDays,
+      totalOvertimeDays: dayCounts.totalOvertimeDays,
     }
   }
 
@@ -73,54 +126,86 @@ export class OvertimeAnalyzer {
    * 计算周末加班分布（基于每天的提交小时数区分真正加班和临时修复）
    * @param dailyCommitHours 每日提交小时列表
    */
-  static calculateWeekendOvertime(dailyCommitHours: DailyCommitHours[]): WeekendOvertimeDistribution {
-    // 定义阈值：提交时间跨度 >= 3 小时才算真正加班
-    const REAL_OVERTIME_THRESHOLD = 3
+  static calculateWeekendOvertime(
+    dailyCommitHours: DailyCommitHours[],
+    config?: { spanThreshold?: number; commitThreshold?: number; since?: string; until?: string }
+  ): WeekendOvertimeDistribution {
+    const spanThreshold = config?.spanThreshold ?? 3
+    const commitThreshold = config?.commitThreshold ?? 3
 
-    // 统计结果
     let saturdayDays = 0
     let sundayDays = 0
     let casualFixDays = 0
     let realOvertimeDays = 0
 
-    for (const { date, hours } of dailyCommitHours) {
+    for (const { date, hours, firstMinutes, lastMinutes, commitCount } of dailyCommitHours) {
       const commitDate = new Date(date)
       const dayOfWeek = commitDate.getDay() // 0=Sunday, 6=Saturday
+      if (dayOfWeek !== 0 && dayOfWeek !== 6) continue
 
-      // 只统计周末
-      if (dayOfWeek !== 0 && dayOfWeek !== 6) {
-        continue
+      // 计算真实跨度（小时）
+      let spanHours: number | undefined
+      if (firstMinutes !== undefined && lastMinutes !== undefined) {
+        spanHours = (lastMinutes - firstMinutes) / 60
       }
 
-      const commitHours = hours.size
-
-      // 根据提交的小时数判断是否为真正加班
-      const isRealOvertime = commitHours >= REAL_OVERTIME_THRESHOLD
+      // 判定真正加班：同时满足跨度与提交数阈值；若缺失分钟精度则使用小时集合大小近似
+      const effectiveCommitCount = commitCount ?? hours.size
+      const effectiveSpan = spanHours !== undefined ? spanHours : hours.size // 退回小时段数量近似
+      const isRealOvertime = effectiveSpan >= spanThreshold && effectiveCommitCount >= commitThreshold
 
       if (dayOfWeek === 6) {
-        // 周六
         saturdayDays++
-        if (isRealOvertime) {
-          realOvertimeDays++
-        } else {
-          casualFixDays++
-        }
-      } else if (dayOfWeek === 0) {
-        // 周日
+        if (isRealOvertime) realOvertimeDays++
+        else casualFixDays++
+      } else {
         sundayDays++
-        if (isRealOvertime) {
-          realOvertimeDays++
-        } else {
-          casualFixDays++
-        }
+        if (isRealOvertime) realOvertimeDays++
+        else casualFixDays++
       }
     }
+
+    // 计算时间范围内总周末天数
+    let totalWeekendDays: number | undefined
+    if (config?.since && config?.until) {
+      const sinceDate = new Date(config.since)
+      const untilDate = new Date(config.until)
+      let cursor = new Date(sinceDate.getTime())
+      let count = 0
+      while (cursor.getTime() <= untilDate.getTime()) {
+        const dow = cursor.getDay()
+        if (dow === 0 || dow === 6) count++
+        cursor.setDate(cursor.getDate() + 1)
+      }
+      totalWeekendDays = count
+    } else if (dailyCommitHours.length > 0) {
+      const minDate = new Date(dailyCommitHours[0].date)
+      const maxDate = new Date(dailyCommitHours[dailyCommitHours.length - 1].date)
+      let cursor = new Date(minDate.getTime())
+      let count = 0
+      while (cursor.getTime() <= maxDate.getTime()) {
+        const dow = cursor.getDay()
+        if (dow === 0 || dow === 6) count++
+        cursor.setDate(cursor.getDate() + 1)
+      }
+      totalWeekendDays = count
+    }
+
+    const activeWeekendDays = saturdayDays + sundayDays
+    const realOvertimeRate =
+      totalWeekendDays && totalWeekendDays > 0 ? (realOvertimeDays / totalWeekendDays) * 100 : undefined
+    const weekendActivityRate =
+      totalWeekendDays && totalWeekendDays > 0 ? (activeWeekendDays / totalWeekendDays) * 100 : undefined
 
     return {
       saturdayDays,
       sundayDays,
       casualFixDays,
       realOvertimeDays,
+      activeWeekendDays,
+      totalWeekendDays,
+      realOvertimeRate,
+      weekendActivityRate,
     }
   }
 

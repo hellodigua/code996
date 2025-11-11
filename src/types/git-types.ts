@@ -92,7 +92,13 @@ export interface DailyLatestCommit {
  */
 export interface DailyCommitHours {
   date: string
-  hours: Set<number> // 该天所有提交的小时（去重）
+  hours: Set<number> // 该天所有提交的小时（去重，保留用于兼容旧逻辑：工作日加班提交次数统计）
+  /** 当天首次提交距离午夜的分钟数（用于精确计算跨度） */
+  firstMinutes?: number
+  /** 当天最后一次提交距离午夜的分钟数（用于精确计算跨度与加班判定） */
+  lastMinutes?: number
+  /** 当天提交总次数（精确，不仅仅是不同小时的数量） */
+  commitCount?: number
 }
 
 /**
@@ -115,6 +121,14 @@ export interface WeekdayOvertimeDistribution {
   friday: number
   peakDay?: string // 加班最多的一天
   peakCount?: number // 加班最多的次数
+  /** 加班天数（存在至少一次下班后提交） */
+  mondayDays?: number
+  tuesdayDays?: number
+  wednesdayDays?: number
+  thursdayDays?: number
+  fridayDays?: number
+  /** 总的工作日加班天数 */
+  totalOvertimeDays?: number
 }
 
 /**
@@ -123,8 +137,16 @@ export interface WeekdayOvertimeDistribution {
 export interface WeekendOvertimeDistribution {
   saturdayDays: number // 周六加班天数
   sundayDays: number // 周日加班天数
-  casualFixDays: number // 临时修复天数（提交1-2次）
-  realOvertimeDays: number // 真正加班天数（提交>=3次）
+  casualFixDays: number // 临时修复天数（跨度 < 阈值 或 提交数 < 阈值）
+  realOvertimeDays: number // 真正加班天数（跨度>=spanThreshold 且 提交数>=commitThreshold）
+  /** 周末活跃天数（出现过至少一次提交） */
+  activeWeekendDays?: number
+  /** 时间范围内的总周末天数（用于计算渗透率） */
+  totalWeekendDays?: number
+  /** 真正加班周末天数 / 总周末天数 * 100 */
+  realOvertimeRate?: number
+  /** 周末活跃天数 / 总周末天数 * 100 */
+  weekendActivityRate?: number
 }
 
 /**
