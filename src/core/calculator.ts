@@ -23,21 +23,24 @@ export function calculate996Index(data: WorkTimeData): Result996 {
   const n = workWeekPl[1].count
 
   /**
-   * 修正后的加班 commit 数量
+   * 修正后的加班提交数量 (overTimeAmendCount)
    *
-   * 公式：x + (y * n) / (m + n)
+   * 原始工作日加班提交：x
+   * 周末修正项： (y * n) / (m + n)
+   *   - 若周末提交较少，修正项按工作日平均效率折算为等效加班提交，避免少量零散周末提交直接导致加班率异常偏高或偏低。
    *
-   * 说明：
-   * - x: 工作日加班时间的 commit
-   * - (y * n) / (m + n): 周末工作的修正值
+   * 最终加班率 overTimeRadio 公式：ceil( ( overTimeAmendCount / (x + y) ) * 100 )
+   *   - 百分比语义：数值即百分比（35 表示 35%）
+   *   - 仅在初算为 0 且样本小时 < 9 时，进入“不饱和”补偿逻辑 (getUn996Radio)，可能产生负值。
+   *   - 负值解释：工作量不足，返回与标准 9 小时产能的差异百分比（例如 -88 表示低 88%）。
    */
   const overTimeAmendCount = Math.round(x + (y * n) / (m + n))
 
-  // 总 commit 数
+  // 总工作日提交（不含周末修正项，用于分母）
   const totalCount = y + x
 
-  // 加班 commit 百分比
-  let overTimeRadio = Math.ceil((overTimeAmendCount / totalCount) * 100)
+  // 加班提交百分比（正值区间通常 0-100，负值表示不饱和），使用整数先乘确保浮点稳定
+  let overTimeRadio = Math.ceil((overTimeAmendCount * 100) / totalCount)
 
   // 针对低加班且数据量不足的情况进行特殊处理
   if (overTimeRadio === 0 && hourData.length < 9) {

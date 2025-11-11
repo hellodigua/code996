@@ -37,7 +37,8 @@ export function printAuthorRanking(result: AuthorRankingResult, options: Ranking
   authors.forEach((author, index) => {
     const rank = index + 1
     const rankEmoji = getRankEmoji(rank)
-    const percentOvertime = (author.overTimeRadio * 100).toFixed(1) + '%'
+  // overTimeRadio 已经是百分比整数或小数（例如 8 表示 8%），无需再次乘 100
+  const percentOvertime = author.overTimeRadio.toFixed(1) + '%'
     const weekendPercent = ((author.weekendCommits / author.totalCommits) * 100).toFixed(1) + '%'
 
     // 根据996指数着色
@@ -75,7 +76,7 @@ function printSingleAuthorDetail(author: any): void {
     ['邮箱地址', author.email],
     ['总提交数', author.totalCommits],
     ['996指数', `${chalk.hex(getIndex996Color(author.index996))(author.index996.toFixed(1))} (${author.index996Str})`],
-    ['加班率', `${(author.overTimeRadio * 100).toFixed(1)}%`],
+  ['加班率', `${author.overTimeRadio.toFixed(1)}%`],
     ['工作时间提交', author.workingHourCommits],
     ['加班时间提交', author.overtimeCommits],
     ['工作日提交', author.weekdayCommits],

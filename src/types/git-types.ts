@@ -71,6 +71,18 @@ export interface WorkTimeData {
 export interface Result996 {
   index996: number
   index996Str: string
+  /**
+   * 加班率（百分比，数值本身代表 %，例如 8 表示 8 而不是 0.08）
+   * 计算公式：ceil( ( x + (y * n) / (m + n) ) / (x + y) * 100 )
+   *   x = 工作日加班时间段提交次数（工作日下班后）
+   *   y = 工作日正常工作时间段提交次数（推断出的工作窗口内）
+   *   m = 工作日所有提交次数
+   *   n = 周末所有提交次数
+   * 周末修正：将周末的工作按 (y * n)/(m + n) 折算为等效“加班提交”并与 x 相加，弱化周末少量零散提交的噪声。
+   * 负值含义：初算加班率为 0 且样本小时数 < 9 时，表示工作量极低，会调用 getUn996Radio 推算“工作不饱和度”，返回一个负百分比（例如 -88 表示比标准 9 小时产能低 88%）。
+   * 取值范围：正常 >= 0 且 <= 100；仅在低样本低工作量场景可能出现 < 0。
+   * 展示规范：输出中统一追加 '%'；负值代表“工作不饱和”而非加班。
+   */
   overTimeRadio: number
 }
 
@@ -215,7 +227,12 @@ export interface AuthorStats {
   totalCommits: number // 总提交数
   index996: number // 996指数
   index996Str: string // 996指数描述
-  overTimeRadio: number // 加班比例
+  /**
+   * 个人加班率（与 Result996.overTimeRadio 语义与公式一致）
+   * 已按该作者的工作日 / 周末分布独立计算；数值为百分比（8 表示 8%）。
+   * 低工作量且无加班样本时可能出现负值，表示工作不饱和度。
+   */
+  overTimeRadio: number
   workingHourCommits: number // 工作时间提交数
   overtimeCommits: number // 加班时间提交数
   weekdayCommits: number // 工作日提交数

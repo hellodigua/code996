@@ -214,8 +214,15 @@ function mergeAuthorStats(
         (existing.index996 * (totalCommits - stat.totalCommits) + stat.index996 * stat.totalCommits) / totalCommits
       existing.index996Str = existing.index996.toFixed(2)
 
-      // 重新计算加班占比
-      existing.overTimeRadio = existing.overtimeCommits / (existing.workingHourCommits + existing.overtimeCommits)
+      // 重新计算加班占比，保持与 calculate996Index 相同的百分比逻辑（包含周末修正）
+      const y = existing.workingHourCommits // 工作时间提交
+      const x = existing.overtimeCommits // 加班时间提交
+      const m = existing.weekdayCommits // 工作日提交数
+      const n = existing.weekendCommits // 周末提交数
+      if (m + n > 0 && y + x > 0) {
+        const overTimeAmendCount = Math.round(x + (y * n) / (m + n))
+        existing.overTimeRadio = Math.ceil((overTimeAmendCount / (y + x)) * 100) // 百分比数值（与其他路径统一）
+      }
     } else {
       // 新增统计（使用主身份的名称和邮箱）
       merged.set(targetEmail.toLowerCase(), {
