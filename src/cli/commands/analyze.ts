@@ -89,7 +89,7 @@ export class AnalyzeExecutor {
       spinner.render()
 
       // 步骤2: 数据解析与验证
-      const parsedData = GitParser.parseGitData(rawData, undefined, effectiveSince, effectiveUntil)
+      const parsedData = GitParser.parseGitData(rawData, options.hours, effectiveSince, effectiveUntil)
       const validation = GitParser.validateData(parsedData)
 
       if (!validation.isValid) {

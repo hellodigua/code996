@@ -12,6 +12,7 @@ export interface AnalyzeOptions {
   allTime?: boolean
   year?: string
   self?: boolean
+  hours?: string // 手动指定标准工作时间，格式：9-18 或 9.5-18.5
 }
 
 export class CLIManager {
@@ -48,6 +49,7 @@ export class CLIManager {
       .option('-y, --year <year>', '指定年份或年份范围 (例如: 2025 或 2023-2025)')
       .option('--all-time', '查询所有时间的数据（默认为最近一年）')
       .option('--self', '仅统计当前 Git 用户的提交')
+      .option('-H, --hours <range>', '手动指定标准工作时间 (例如: 9-18 或 9.5-18.5)')
       .action(async (repoPath: string | undefined, options: AnalyzeOptions, command: Command) => {
         const processedArgs = typeof repoPath === 'string' ? 1 : 0
         const extraArgs = (command.args ?? []).slice(processedArgs)
@@ -145,6 +147,7 @@ export class CLIManager {
       since: options.since ?? globalOpts.since,
       until: options.until ?? globalOpts.until,
       year: options.year ?? globalOpts.year,
+      hours: options.hours ?? globalOpts.hours,
     }
   }
 
@@ -233,6 +236,7 @@ ${chalk.bold('分析选项:')}
   -y, --year <year>       指定年份或年份范围 (例如: 2025 或 2023-2025)
   --all-time              查询所有时间的数据（覆盖整个仓库历史）
   --self                  仅统计当前 Git 用户的提交
+  -H, --hours <range>     手动指定标准工作时间 (例如: 9-18 或 9.5-18.5)
 
 ${chalk.bold('默认策略:')}
   自动以最后一次提交为基准，回溯365天进行分析

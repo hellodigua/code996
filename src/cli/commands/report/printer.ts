@@ -135,14 +135,22 @@ export function printTimeDistribution(parsedData: ParsedGitData): void {
 
 /** 打印上班与下班时间的推测信息 */
 export function printWorkTimeSummary(parsedData: ParsedGitData): void {
-  console.log(chalk.blue('⌛ 工作时间推测:'))
-
   const detection = parsedData.detectedWorkTime
   if (!detection) {
+    console.log(chalk.blue('⌛ 工作时间推测:'))
     console.log('暂无可用的工作时间推测数据')
     console.log()
     return
   }
+
+  if (detection.detectionMethod === 'manual') {
+    // 用户已通过 --hours 指定标准工时，这里直接跳过推测模块以避免重复信息
+    return
+  }
+
+  // 只在自动推断场景展示该模块，因此固定输出自动提示
+  const titleSuffix = chalk.gray('（自动推断）')
+  console.log(chalk.blue('⌛ 工作时间推测:') + ' ' + titleSuffix)
 
   const startClock = formatStartClock(detection)
   const endClock = formatEndClock(detection)
@@ -161,7 +169,7 @@ export function printWorkTimeSummary(parsedData: ParsedGitData): void {
     ],
     [
       { content: chalk.bold('可信度'), colSpan: 1 },
-      { content: `${detection.confidence}%（样本天数: ${detection.sampleCount}）`, colSpan: 1 },
+      { content: `${detection.confidence}%（样本天数: ${detection.sampleCount >= 0 ? detection.sampleCount : '手动'}）`, colSpan: 1 },
     ]
   )
 

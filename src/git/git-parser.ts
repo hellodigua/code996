@@ -67,20 +67,20 @@ export class GitParser {
 
   /**
    * 解析自定义工作时间字符串
-   * @param customWorkHours 格式："9-18" 或 "10-19"
+   * @param customWorkHours 格式："9-18" 或 "9.5-18.5" (支持小数，0.5代表30分钟)
    * @returns 工作时间识别结果
    */
   private static parseCustomWorkHours(customWorkHours: string): WorkTimeDetectionResult {
     const parts = customWorkHours.split('-')
     if (parts.length !== 2) {
-      throw new Error(`无效的工作时间格式: ${customWorkHours}，正确格式为 "9-18"`)
+      throw new Error(`无效的工作时间格式: ${customWorkHours}，正确格式为 "9-18" 或 "9.5-18.5"`)
     }
 
-    const startHour = parseInt(parts[0], 10)
-    const endHour = parseInt(parts[1], 10)
+    const startHour = parseFloat(parts[0])
+    const endHour = parseFloat(parts[1])
 
-    if (isNaN(startHour) || isNaN(endHour) || startHour < 0 || startHour > 23 || endHour < 0 || endHour > 23) {
-      throw new Error(`无效的工作时间: ${customWorkHours}，小时必须在 0-23 之间`)
+    if (isNaN(startHour) || isNaN(endHour) || startHour < 0 || startHour > 23 || endHour < 0 || endHour > 24) {
+      throw new Error(`无效的工作时间: ${customWorkHours}，小时必须在 0-23 之间，结束时间可到24`)
     }
 
     if (startHour >= endHour) {
