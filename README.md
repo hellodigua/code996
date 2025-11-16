@@ -55,9 +55,10 @@ code996
 
 ## 📖 详细使用说明
 
-### 命令与选项
+### 基础命令与选项
 
 - `trend`：查看月度996指数和工作时间的变化趋势
+- `multi`：分析多个 Git 仓库，汇总展示整体996指数
 - `help`：显示帮助信息
 
 - `-y, --year <year>`：指定年份或年份范围（推荐）
@@ -85,6 +86,12 @@ code996 --all-time
 code996 --self
 code996 --self -y 2025         # 分析自己在2025年的提交
 code996 trend --self            # 查看自己的趋势分析
+
+# 多仓库分析
+code996 multi                  # 扫描当前目录所有子目录
+code996 multi -y 2025          # 分析多个仓库2025年的数据
+code996 multi --max 10         # 限制最多分析10个仓库
+code996 multi /path/to/repo1 /path/to/repo2  # 指定具体仓库路径
 ```
 
 ## 它怎样工作

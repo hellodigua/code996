@@ -14,6 +14,9 @@ export interface GitLogData {
   dayHourCommits?: DayHourCommit[]
   dailyLatestCommits?: DailyLatestCommit[]
   dailyCommitHours?: DailyCommitHours[]
+  contributors?: number // 参与人数
+  firstCommitDate?: string // 第一次提交日期
+  lastCommitDate?: string // 最后一次提交日期
 }
 
 export interface TimeCount {
@@ -182,4 +185,44 @@ export interface TrendAnalysisResult {
     avgWorkSpan: number
     trend: 'increasing' | 'decreasing' | 'stable' // 整体趋势
   }
+}
+
+// ====== 以下是多仓库功能的新增类型 ======
+
+/**
+ * 仓库信息
+ */
+export interface RepoInfo {
+  name: string
+  path: string
+}
+
+/**
+ * 仓库分析记录（用于对比表）
+ */
+export interface RepoAnalysisRecord {
+  repo: RepoInfo
+  data: GitLogData
+  result: Result996
+  status: 'success' | 'failed'
+  error?: string
+}
+
+/**
+ * Multi 命令的选项
+ */
+export interface MultiOptions extends AnalyzeOptions {
+  max?: number // 最大分析仓库数
+}
+
+/**
+ * Analyze 命令的选项
+ */
+export interface AnalyzeOptions {
+  since?: string
+  until?: string
+  allTime?: boolean
+  year?: string
+  self?: boolean
+  hours?: string
 }

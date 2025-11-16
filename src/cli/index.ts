@@ -15,6 +15,10 @@ export interface AnalyzeOptions {
   hours?: string // 手动指定标准工作时间，格式：9-18 或 9.5-18.5
 }
 
+export interface MultiOptions extends AnalyzeOptions {
+  max?: number // 最大分析仓库数
+}
+
 export class CLIManager {
   private program: Command
 
@@ -34,6 +38,7 @@ export class CLIManager {
     // 注册根命令默认行为，直接执行分析逻辑
     this.setupDefaultAnalyzeAction()
     this.addTrendCommand()
+    this.addMultiCommand()
     this.addHelpCommand()
 
     // 错误处理
@@ -65,6 +70,24 @@ export class CLIManager {
         const targetPath = this.resolveTargetPath(repoPath, this.program.name())
         await this.handleAnalyze(targetPath, mergedOptions)
       })
+  }
+
+  /** 注册 multi 命令，分析多个仓库 */
+  private addMultiCommand(): void {
+    const multiCmd = new Command('multi')
+      .description('分析多个Git仓库，汇总展示整体996指数')
+      .option('-s, --since <date>', '开始日期 (YYYY-MM-DD)')
+      .option('-u, --until <date>', '结束日期 (YYYY-MM-DD)')
+      .option('-y, --year <year>', '指定年份或年份范围 (例如: 2025 或 2023-2025)')
+      .option('--all-time', '查询所有时间的数据')
+      .option('--max <number>', '最大分析仓库数', '20')
+      .option('-H, --hours <range>', '手动指定标准工作时间 (例如: 9-18 或 9.5-18.5)')
+      .argument('[dirs...]', '要扫描的目录列表（默认当前目录的子目录）')
+      .action(async (dirs: string[], options: MultiOptions) => {
+        await this.handleMulti(dirs, options)
+      })
+
+    this.program.addCommand(multiCmd)
   }
 
   /** 注册 trend 命令，分析月度趋势并支持自定义仓库路径 */
@@ -137,8 +160,20 @@ export class CLIManager {
     printGlobalNotices()
   }
 
+  /** 处理多仓库分析流程的执行逻辑 */
+  private async handleMulti(dirs: string[], options: MultiOptions): Promise<void> {
+    // 导入multi命令并执行
+    const mergedOptions = this.mergeGlobalOptions(options) as MultiOptions
+    if (options.max) {
+      mergedOptions.max = parseInt(options.max.toString(), 10)
+    }
+    const { MultiExecutor } = await import('./commands/multi')
+    await MultiExecutor.execute(dirs, mergedOptions)
+    printGlobalNotices()
+  }
+
   /** 合并全局选项（解决子命令无法直接读取根命令参数的问题） */
-  private mergeGlobalOptions(options: AnalyzeOptions): AnalyzeOptions {
+  private mergeGlobalOptions(options: AnalyzeOptions | MultiOptions): AnalyzeOptions | MultiOptions {
     const globalOpts = this.program.opts<AnalyzeOptions>()
     return {
       ...options,
@@ -224,6 +259,7 @@ ${chalk.bold('使用方法:')}
 
 ${chalk.bold('命令:')}
   trend             查看月度996指数和工作时间的变化趋势
+  multi             分析多个Git仓库，汇总展示整体996指数
   help              显示帮助信息
 
 ${chalk.bold('全局选项:')}
@@ -253,6 +289,11 @@ ${chalk.bold('示例:')}
   code996 trend                 # 分析最近一年的月度趋势
   code996 trend -y 2024         # 分析2024年各月趋势
   code996 trend --all-time      # 分析所有时间的月度趋势
+
+  ${chalk.gray('# 多仓库分析')}
+  code996 multi                 # 扫描当前目录的子目录，选择仓库进行汇总分析
+  code996 multi /path/to/dir1 /path/to/dir2  # 扫描指定目录
+  code996 multi --max 30        # 最多选择30个仓库（默认20）
 
 ${chalk.bold('更多详情请访问:')} https://github.com/code996/code996
     `)

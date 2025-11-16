@@ -10,3 +10,6 @@ export {
   printWeekendOvertime,
   printLateNightAnalysis,
 } from './printer'
+
+// 多仓库对比
+export { MultiComparisonPrinter } from './multi-comparison'

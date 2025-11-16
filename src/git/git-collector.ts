@@ -382,8 +382,8 @@ export class GitCollector {
     this.applyCommonFilters(args, options)
 
     const output = await this.execGitCommand(args, path)
-    const lines = output.split('\\n').filter((line) => line.trim())
-    return lines[0] || ''
+    const lines = output.split('\n').filter((line) => line.trim())
+    return lines[0]?.trim() || ''
   }
 
   /**
@@ -396,8 +396,23 @@ export class GitCollector {
     this.applyCommonFilters(args, options)
 
     const output = await this.execGitCommand(args, path)
-    const lines = output.split('\\n').filter((line) => line.trim())
-    return lines[0] || ''
+    const lines = output.split('\n').filter((line) => line.trim())
+    return lines[0]?.trim() || ''
+  }
+
+  /**
+   * 统计参与人数（不同的作者数量）
+   */
+  private async getContributorCount(options: GitLogOptions): Promise<number> {
+    const { path } = options
+
+    const args = ['log', '--format=%ae']
+    this.applyCommonFilters(args, options)
+
+    const output = await this.execGitCommand(args, path)
+    const emails = output.split('\n').filter((line) => line.trim())
+    const uniqueEmails = new Set(emails)
+    return uniqueEmails.size
   }
 
   /**
@@ -414,16 +429,29 @@ export class GitCollector {
     }
 
     try {
-      const [byHour, byDay, totalCommits, dailyFirstCommits, dayHourCommits, dailyLatestCommits, dailyCommitHours] =
-        await Promise.all([
-          this.getCommitsByHour(options),
-          this.getCommitsByDay(options),
-          this.countCommits(options),
-          this.getDailyFirstCommits(options),
-          this.getCommitsByDayAndHour(options),
-          this.getDailyLatestCommits(options),
-          this.getDailyCommitHours(options),
-        ])
+      const [
+        byHour,
+        byDay,
+        totalCommits,
+        dailyFirstCommits,
+        dayHourCommits,
+        dailyLatestCommits,
+        dailyCommitHours,
+        contributors,
+        firstCommitDate,
+        lastCommitDate,
+      ] = await Promise.all([
+        this.getCommitsByHour(options),
+        this.getCommitsByDay(options),
+        this.countCommits(options),
+        this.getDailyFirstCommits(options),
+        this.getCommitsByDayAndHour(options),
+        this.getDailyLatestCommits(options),
+        this.getDailyCommitHours(options),
+        this.getContributorCount(options),
+        this.getFirstCommitDate(options),
+        this.getLastCommitDate(options),
+      ])
 
       if (!options.silent) {
         console.log(chalk.green(`数据采集完成: ${totalCommits} 个commit`))
@@ -437,6 +465,9 @@ export class GitCollector {
         dayHourCommits: dayHourCommits.length > 0 ? dayHourCommits : undefined,
         dailyLatestCommits: dailyLatestCommits.length > 0 ? dailyLatestCommits : undefined,
         dailyCommitHours: dailyCommitHours.length > 0 ? dailyCommitHours : undefined,
+        contributors,
+        firstCommitDate: firstCommitDate || undefined,
+        lastCommitDate: lastCommitDate || undefined,
       }
     } catch (error) {
       if (!options.silent) {
