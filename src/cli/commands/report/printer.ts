@@ -5,6 +5,7 @@ import { getIndexColor, formatStartClock, formatEndClock } from '../../../utils/
 import { AnalyzeOptions } from '../../index'
 
 type TimeRangeMode = 'all-time' | 'custom' | 'auto-last-commit' | 'fallback'
+const MAX_STANDARD_WORK_HOURS = 9
 
 /** 打印核心指标（整合统计信息，统一表格展示） */
 export function printCoreResults(
@@ -145,6 +146,7 @@ export function printWorkTimeSummary(parsedData: ParsedGitData): void {
 
   if (detection.detectionMethod === 'manual') {
     // 用户已通过 --hours 指定标准工时，这里直接跳过推测模块以避免重复信息
+    printWorkHourCapNotice(detection)
     return
   }
 
@@ -169,12 +171,17 @@ export function printWorkTimeSummary(parsedData: ParsedGitData): void {
     ],
     [
       { content: chalk.bold('可信度'), colSpan: 1 },
-      { content: `${detection.confidence}%（样本天数: ${detection.sampleCount >= 0 ? detection.sampleCount : '手动'}）`, colSpan: 1 },
+      {
+        content: `${detection.confidence}%（样本天数: ${detection.sampleCount >= 0 ? detection.sampleCount : '手动'}）`,
+        colSpan: 1,
+      },
     ]
   )
 
   console.log(workTimeTable.toString())
   console.log()
+
+  printWorkHourCapNotice(detection)
 }
 
 /** 打印工作日加班分布 */
@@ -356,4 +363,24 @@ export function printLateNightAnalysis(parsedData: ParsedGitData): void {
     )
     console.log()
   }
+}
+
+// 当推测/指定的工作时段超过 9 小时时，告知用户超出的部分已按加班计算
+function printWorkHourCapNotice(detection: ParsedGitData['detectedWorkTime']): void {
+  if (!detection) {
+    return
+  }
+
+  const actualSpan = detection.endHour - detection.startHour
+  if (actualSpan <= MAX_STANDARD_WORK_HOURS) {
+    return
+  }
+
+  const spanText = actualSpan.toFixed(1)
+  console.log(
+    chalk.yellow(
+      `⚠️  加班判定说明：推测的平均工作时长约为 ${spanText} 小时，指数计算仅将前9小时视为正常工时，超出时段已按加班统计。`
+    )
+  )
+  console.log()
 }

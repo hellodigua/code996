@@ -67,7 +67,9 @@ export class WorkTimeAnalyzer {
   static isWorkingHour(hour: number, detection: WorkTimeDetectionResult): boolean {
     const hourStartMinutes = hour * 60
     const startMinutes = detection.startHour * 60
-    const endMinutes = detection.endHour * 60
+    // 加班判定：即便检测到更晚的下班时间，正常工时最多只统计 9 小时
+    const cappedEndHour = Math.min(detection.endHour, detection.startHour + this.STANDARD_WORK_HOURS)
+    const endMinutes = Math.max(startMinutes, cappedEndHour * 60)
     return hourStartMinutes >= startMinutes && hourStartMinutes < endMinutes
   }
 
