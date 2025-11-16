@@ -288,7 +288,7 @@ function printResults(
   printCoreResults(result, rawData, options, since, until, rangeMode)
   printDetailedAnalysis(result, parsedData) // 新增：详细分析
   printWorkTimeSummary(parsedData)
-  printTimeDistribution(parsedData)
+  printTimeDistribution(parsedData, options.halfHour) // 传递半小时模式参数
   printWeekdayOvertime(parsedData)
   printWeekendOvertime(parsedData)
   printLateNightAnalysis(parsedData)

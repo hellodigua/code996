@@ -5,19 +5,10 @@ import path from 'path'
 import { execSync } from 'child_process'
 import { getPackageVersion } from '../utils/version'
 import { printGlobalNotices } from './common/notices'
+import { AnalyzeOptions, MultiOptions } from '../types/git-types'
 
-export interface AnalyzeOptions {
-  since?: string
-  until?: string
-  allTime?: boolean
-  year?: string
-  self?: boolean
-  hours?: string // 手动指定标准工作时间，格式：9-18 或 9.5-18.5
-}
-
-export interface MultiOptions extends AnalyzeOptions {
-  max?: number // 最大分析仓库数
-}
+// Re-export types for convenience
+export { AnalyzeOptions, MultiOptions }
 
 export class CLIManager {
   private program: Command
@@ -55,6 +46,7 @@ export class CLIManager {
       .option('--all-time', '查询所有时间的数据（默认为最近一年）')
       .option('--self', '仅统计当前 Git 用户的提交')
       .option('-H, --hours <range>', '手动指定标准工作时间 (例如: 9-18 或 9.5-18.5)')
+      .option('--half-hour', '以半小时粒度展示时间分布（默认按小时展示）')
       .action(async (repoPath: string | undefined, options: AnalyzeOptions, command: Command) => {
         const processedArgs = typeof repoPath === 'string' ? 1 : 0
         const extraArgs = (command.args ?? []).slice(processedArgs)
@@ -82,6 +74,7 @@ export class CLIManager {
       .option('--all-time', '查询所有时间的数据')
       .option('--max <number>', '最大分析仓库数', '20')
       .option('-H, --hours <range>', '手动指定标准工作时间 (例如: 9-18 或 9.5-18.5)')
+      .option('--half-hour', '以半小时粒度展示时间分布（默认按小时展示）')
       .argument('[dirs...]', '要扫描的目录列表（默认当前目录的子目录）')
       .action(async (dirs: string[], options: MultiOptions) => {
         await this.handleMulti(dirs, options)
@@ -99,6 +92,7 @@ export class CLIManager {
       .option('-y, --year <year>', '指定年份或年份范围 (例如: 2025 或 2023-2025)')
       .option('--all-time', '查询所有时间的数据')
       .option('--self', '仅统计当前 Git 用户的提交')
+      .option('--half-hour', '以半小时粒度展示时间分布（默认按小时展示）')
       .argument('[repoPath]', 'Git 仓库根目录路径（默认当前目录）')
       .action(async (repoPath: string | undefined, options: AnalyzeOptions, command: Command) => {
         const processedArgs = typeof repoPath === 'string' ? 1 : 0
@@ -183,6 +177,7 @@ export class CLIManager {
       until: options.until ?? globalOpts.until,
       year: options.year ?? globalOpts.year,
       hours: options.hours ?? globalOpts.hours,
+      halfHour: options.halfHour ?? globalOpts.halfHour,
     }
   }
 
@@ -273,6 +268,7 @@ ${chalk.bold('分析选项:')}
   --all-time              查询所有时间的数据（覆盖整个仓库历史）
   --self                  仅统计当前 Git 用户的提交
   -H, --hours <range>     手动指定标准工作时间 (例如: 9-18 或 9.5-18.5)
+  --half-hour             以半小时粒度展示时间分布（默认按小时展示）
 
 ${chalk.bold('默认策略:')}
   自动以最后一次提交为基准，回溯365天进行分析
@@ -304,3 +300,7 @@ ${chalk.bold('更多详情请访问:')} https://github.com/code996/code996
     this.program.parse(argv)
   }
 }
+
+// 主入口
+const cliManager = new CLIManager()
+cliManager.parse(process.argv)

@@ -27,36 +27,42 @@ export class GitDataMerger {
       dayHourCommits: this.mergeDayHourCommits(dataList),
       dailyLatestCommits: this.mergeDailyLatestCommits(dataList),
       dailyCommitHours: this.mergeDailyCommitHours(dataList),
+      granularity: 'half-hour', // 合并后保持半小时粒度
     }
   }
 
   /**
-   * 合并按小时统计的数据（24小时）
+   * 合并按半小时统计的数据（48个半小时点）
    */
   private static mergeByHour(dataList: GitLogData[]): TimeCount[] {
-    const hourMap = new Map<string, number>()
+    const halfHourMap = new Map<string, number>()
 
-    // 初始化 24 小时
+    // 初始化 48 个半小时点
     for (let i = 0; i < 24; i++) {
       const hour = i.toString().padStart(2, '0')
-      hourMap.set(hour, 0)
+      halfHourMap.set(`${hour}:00`, 0)
+      halfHourMap.set(`${hour}:30`, 0)
     }
 
     // 累加各仓库的数据
     for (const data of dataList) {
       for (const item of data.byHour) {
-        const current = hourMap.get(item.time) || 0
-        hourMap.set(item.time, current + item.count)
+        const current = halfHourMap.get(item.time) || 0
+        halfHourMap.set(item.time, current + item.count)
       }
     }
 
-    // 转换为数组
+    // 转换为数组（保持顺序）
     const result: TimeCount[] = []
     for (let i = 0; i < 24; i++) {
       const hour = i.toString().padStart(2, '0')
       result.push({
-        time: hour,
-        count: hourMap.get(hour) || 0,
+        time: `${hour}:00`,
+        count: halfHourMap.get(`${hour}:00`) || 0,
+      })
+      result.push({
+        time: `${hour}:30`,
+        count: halfHourMap.get(`${hour}:30`) || 0,
       })
     }
 

@@ -194,7 +194,7 @@ export class MultiExecutor {
       printCoreResults(result, mergedData, options, effectiveSince, effectiveUntil)
       printDetailedAnalysis(result, parsedData)
       printWorkTimeSummary(parsedData)
-      printTimeDistribution(parsedData)
+      printTimeDistribution(parsedData, options.halfHour) // 传递半小时模式参数
       printWeekdayOvertime(parsedData)
       printWeekendOvertime(parsedData)
       printLateNightAnalysis(parsedData)

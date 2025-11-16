@@ -1,8 +1,8 @@
 import chalk from 'chalk'
-import { GitLogData, ParsedGitData, Result996 } from '../../../types/git-types'
+import { GitLogData, ParsedGitData, Result996, AnalyzeOptions, TimeCount } from '../../../types/git-types'
 import { getTerminalWidth, createAdaptiveTable } from '../../../utils/terminal'
 import { getIndexColor, formatStartClock, formatEndClock } from '../../../utils/formatter'
-import { AnalyzeOptions } from '../../index'
+import { TimeAggregator } from '../../../utils/time-aggregator'
 
 type TimeRangeMode = 'all-time' | 'custom' | 'auto-last-commit' | 'fallback'
 const MAX_STANDARD_WORK_HOURS = 9
@@ -77,18 +77,24 @@ export function printCoreResults(
 }
 
 /** 打印 24 小时提交分布与星期分布图形 */
-export function printTimeDistribution(parsedData: ParsedGitData): void {
+export function printTimeDistribution(parsedData: ParsedGitData, halfHourMode = false): void {
   const barLength = 20
 
-  console.log(chalk.blue('🕐 24小时分布:'))
+  // 根据模式决定展示的数据
+  const displayData: TimeCount[] = halfHourMode
+    ? parsedData.hourData // 直接展示48点
+    : TimeAggregator.aggregateToHour(parsedData.hourData) // 聚合为24点
 
-  const maxCount = Math.max(0, ...parsedData.hourData.map((item) => item.count))
+  const title = halfHourMode ? '🕐 24小时分布（半小时粒度）:' : '🕐 24小时分布:'
+  console.log(chalk.blue(title))
+
+  const maxCount = Math.max(0, ...displayData.map((item: TimeCount) => item.count))
 
   if (maxCount === 0) {
     console.log('暂无提交数据')
     console.log()
   } else {
-    parsedData.hourData.forEach((hour) => {
+    displayData.forEach((hour: TimeCount) => {
       if (hour.count === 0) {
         return
       }
@@ -97,7 +103,10 @@ export function printTimeDistribution(parsedData: ParsedGitData): void {
       const filledLength = Math.min(barLength, Math.max(1, Math.round(percentage)))
       const bar = '█'.repeat(filledLength) + ' '.repeat(barLength - filledLength)
       const countText = hour.count.toString().padStart(3)
-      console.log(`${hour.time}: ${bar} ${countText}`)
+
+      // 格式化时间显示：半小时模式显示 "09:30"，小时模式显示 "09"
+      const timeLabel = halfHourMode ? hour.time.padStart(5) : hour.time.padStart(2)
+      console.log(`${timeLabel}: ${bar} ${countText}`)
     })
 
     console.log()

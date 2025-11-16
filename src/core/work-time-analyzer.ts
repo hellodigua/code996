@@ -1,5 +1,6 @@
 import { DailyFirstCommit, TimeCount, WorkTimeDetectionResult } from '../types/git-types'
 import { detectEndHourWindow } from './end-hour-detector'
+import { TimeAggregator } from '../utils/time-aggregator'
 
 /**
  * 工作时间分析器
@@ -12,7 +13,7 @@ export class WorkTimeAnalyzer {
 
   /**
    * 检测工作时间
-   * @param hourData 按小时统计的提交数量
+   * @param hourData 按小时或半小时统计的提交数量
    * @param dayData 按星期统计的提交数量（保留参数以兼容旧逻辑）
    * @param dailyFirstCommits 每日最早提交时间集合
    */
@@ -20,6 +21,10 @@ export class WorkTimeAnalyzer {
     hourData: TimeCount[],
     dailyFirstCommits: DailyFirstCommit[] = []
   ): WorkTimeDetectionResult {
+    // 如果是半小时数据，先聚合为小时数据用于算法分析
+    const granularity = TimeAggregator.detectGranularity(hourData)
+    const hourDataForAnalysis = granularity === 'half-hour' ? TimeAggregator.aggregateToHour(hourData) : hourData
+
     const filteredDailyCommits = this.filterValidDailyCommits(dailyFirstCommits)
     const sampleCount = filteredDailyCommits.length
 
@@ -39,7 +44,7 @@ export class WorkTimeAnalyzer {
 
     const startHour = startRange.startHour
     const standardEndHour = Math.min(startHour + this.STANDARD_WORK_HOURS, 24)
-    const observedEndWindow = detectEndHourWindow(hourData, startHour, standardEndHour)
+    const observedEndWindow = detectEndHourWindow(hourDataForAnalysis, startHour, standardEndHour)
     const standardRange = this.buildEndHourRange(startHour, standardEndHour)
 
     const useObserved = observedEndWindow.method === 'backward-threshold'

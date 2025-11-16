@@ -1,3 +1,8 @@
+/**
+ * 时间统计粒度
+ */
+export type TimeGranularity = 'hour' | 'half-hour'
+
 export interface GitLogOptions {
   path: string
   since?: string
@@ -7,7 +12,7 @@ export interface GitLogOptions {
 }
 
 export interface GitLogData {
-  byHour: TimeCount[]
+  byHour: TimeCount[] // 时间分布数据（48个半小时点）
   byDay: TimeCount[]
   totalCommits: number
   dailyFirstCommits?: DailyFirstCommit[]
@@ -17,6 +22,7 @@ export interface GitLogData {
   contributors?: number // 参与人数
   firstCommitDate?: string // 第一次提交日期
   lastCommitDate?: string // 最后一次提交日期
+  granularity?: TimeGranularity // 时间粒度标识（默认 'half-hour'）
 }
 
 export interface TimeCount {
@@ -225,4 +231,5 @@ export interface AnalyzeOptions {
   year?: string
   self?: boolean
   hours?: string
+  halfHour?: boolean // 是否以半小时粒度展示
 }
