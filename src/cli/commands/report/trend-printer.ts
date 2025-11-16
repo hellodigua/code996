@@ -31,32 +31,40 @@ export function printTrendReport(result: TrendAnalysisResult): void {
  */
 function printMonthlyTable(monthlyData: MonthlyTrendData[]): void {
   const terminalWidth = Math.min(getTerminalWidth(), 120)
-  // 根据终端宽度动态计算7列表格的列宽，避免窄终端溢出
+  // 根据终端宽度动态计算11列表格的列宽，避免窄终端溢出
   const adaptiveColWidths = calculateTrendTableWidths(terminalWidth)
   const table = createAdaptiveTable(terminalWidth, 'stats', {}, adaptiveColWidths)
 
-  // 表头
+  // 表头（支持两行显示）
   table.push([
     { content: chalk.bold('月份'), hAlign: 'center' },
     { content: chalk.bold('996指数'), hAlign: 'center' },
     { content: chalk.bold('平均工时'), hAlign: 'center' },
     { content: chalk.bold('稳定性'), hAlign: 'center' },
-    { content: chalk.bold('最晚下班'), hAlign: 'center' },
+    { content: chalk.bold('开始提交\n(平均)'), hAlign: 'center' },
+    { content: chalk.bold('结束提交\n(平均)'), hAlign: 'center' },
+    { content: chalk.bold('结束提交\n(最晚)'), hAlign: 'center' },
     { content: chalk.bold('提交数'), hAlign: 'center' },
+    { content: chalk.bold('参与人数'), hAlign: 'center' },
     { content: chalk.bold('工作天数'), hAlign: 'center' },
+    { content: chalk.bold('置信度'), hAlign: 'center' },
   ])
 
   // 数据行
   for (const data of monthlyData) {
     const indexColor = getIndexColor(data.index996)
     const qualityMark = getQualityMark(data.dataQuality)
+    const confidenceMark = getConfidenceMark(data.confidence)
 
     // 格式化数据
     const index996Text = data.totalCommits > 0 ? data.index996.toFixed(1) : '--'
     const avgWorkSpanText = data.totalCommits > 0 ? `${data.avgWorkSpan.toFixed(1)}h` : '--'
     const stdDevText = data.totalCommits > 0 ? `±${data.workSpanStdDev.toFixed(1)}h` : '--'
+    const avgStartTimeText = data.avgStartTime
+    const avgEndTimeText = data.avgEndTime
     const latestEndTimeText = data.latestEndTime
     const totalCommitsText = data.totalCommits.toString()
+    const contributorsText = data.contributors.toString()
     const workDaysText = `${data.workDays}天${qualityMark}`
 
     table.push([
@@ -64,9 +72,13 @@ function printMonthlyTable(monthlyData: MonthlyTrendData[]): void {
       { content: indexColor(index996Text), hAlign: 'center' },
       { content: avgWorkSpanText, hAlign: 'center' },
       { content: chalk.gray(stdDevText), hAlign: 'center' },
+      { content: chalk.green(avgStartTimeText), hAlign: 'center' },
+      { content: chalk.cyan(avgEndTimeText), hAlign: 'center' },
       { content: chalk.yellow(latestEndTimeText), hAlign: 'center' },
       { content: totalCommitsText, hAlign: 'center' },
+      { content: chalk.magenta(contributorsText), hAlign: 'center' },
       { content: workDaysText, hAlign: 'center' },
+      { content: confidenceMark, hAlign: 'center' },
     ])
   }
 
@@ -114,6 +126,9 @@ function printDataQualityLegend(): void {
   console.log(chalk.gray('数据质量标记:'))
   console.log(chalk.gray('  ✓ 数据充足 (≥10天) | ⚠ 数据有限 (5-9天) | ✗ 数据不足 (<5天)'))
   console.log()
+  console.log(chalk.gray('置信度标记:'))
+  console.log(chalk.gray('  ✓✓ 高可信 (提交≥100且天≥10) | ✓ 中可信 (提交≥50或天≥5) | ✗ 低可信'))
+  console.log()
 }
 
 /**
@@ -127,6 +142,20 @@ function getQualityMark(quality: 'sufficient' | 'limited' | 'insufficient'): str
       return chalk.yellow(' ⚠')
     case 'insufficient':
       return chalk.red(' ✗')
+  }
+}
+
+/**
+ * 获取置信度标记
+ */
+function getConfidenceMark(confidence: 'high' | 'medium' | 'low'): string {
+  switch (confidence) {
+    case 'high':
+      return chalk.green('✓✓')
+    case 'medium':
+      return chalk.yellow('✓')
+    case 'low':
+      return chalk.red('✗')
   }
 }
 

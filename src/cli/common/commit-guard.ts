@@ -17,9 +17,7 @@ export async function ensureCommitSamples(
 
   console.log(chalk.bgYellow.black(' ⚠️ 样本不足 '))
   console.log(
-    chalk.yellow(
-      `当前${sceneLabel}范围内仅检测到 ${commitCount} 个 commit，低于可靠分析所需的 ${minCount} 个。`
-    )
+    chalk.yellow(`当前${sceneLabel}范围内仅检测到 ${commitCount} 个 commit，低于可靠分析所需的 ${minCount} 个。`)
   )
   console.log(chalk.yellow('建议：扩大时间范围、取消作者过滤，或积累更多提交后再试。'))
 

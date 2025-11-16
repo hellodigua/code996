@@ -1,4 +1,11 @@
-import { GitLogData, TimeCount, DailyFirstCommit, DailyLatestCommit, DayHourCommit, DailyCommitHours } from '../types/git-types'
+import {
+  GitLogData,
+  TimeCount,
+  DailyFirstCommit,
+  DailyLatestCommit,
+  DayHourCommit,
+  DailyCommitHours,
+} from '../types/git-types'
 
 /**
  * Git 数据合并器
@@ -153,8 +160,8 @@ export class GitDataMerger {
 
       for (const item of data.dailyLatestCommits) {
         const current = dailyMap.get(item.date)
-        if (current === undefined || item.hour > current) {
-          dailyMap.set(item.date, item.hour)
+        if (current === undefined || item.minutesFromMidnight > current) {
+          dailyMap.set(item.date, item.minutesFromMidnight)
         }
       }
     }
@@ -164,9 +171,9 @@ export class GitDataMerger {
     }
 
     return Array.from(dailyMap.entries())
-      .map(([date, hour]) => ({
+      .map(([date, minutesFromMidnight]) => ({
         date,
-        hour,
+        minutesFromMidnight,
       }))
       .sort((a, b) => a.date.localeCompare(b.date))
   }
@@ -236,4 +243,3 @@ export class GitDataMerger {
       .sort((a, b) => a.date.localeCompare(b.date))
   }
 }
-

@@ -151,7 +151,9 @@ export class OvertimeAnalyzer {
     const midnightDaysSet = new Set<string>()
 
     // 按照每天的最晚提交时间来统计
-    for (const { date, hour: latestHour } of dailyLatestCommits) {
+    for (const { date, minutesFromMidnight } of dailyLatestCommits) {
+      const latestHour = Math.floor(minutesFromMidnight / 60)
+
       if (latestHour >= endHour && latestHour < 21) {
         evening++
       } else if (latestHour >= 21 && latestHour < 23) {

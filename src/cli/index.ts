@@ -28,7 +28,6 @@ export class CLIManager {
 
     // 注册根命令默认行为，直接执行分析逻辑
     this.setupDefaultAnalyzeAction()
-    this.addTrendCommand()
     this.addMultiCommand()
     this.addHelpCommand()
 
@@ -72,7 +71,6 @@ export class CLIManager {
       .option('-u, --until <date>', '结束日期 (YYYY-MM-DD)')
       .option('-y, --year <year>', '指定年份或年份范围 (例如: 2025 或 2023-2025)')
       .option('--all-time', '查询所有时间的数据')
-      .option('--max <number>', '最大分析仓库数', '20')
       .option('-H, --hours <range>', '手动指定标准工作时间 (例如: 9-18 或 9.5-18.5)')
       .option('--half-hour', '以半小时粒度展示时间分布（默认按小时展示）')
       .argument('[dirs...]', '要扫描的目录列表（默认当前目录的子目录）')
@@ -81,35 +79,6 @@ export class CLIManager {
       })
 
     this.program.addCommand(multiCmd)
-  }
-
-  /** 注册 trend 命令，分析月度趋势并支持自定义仓库路径 */
-  private addTrendCommand(): void {
-    const trendCmd = new Command('trend')
-      .description('分析月度996指数和工作时间的变化趋势')
-      .option('-s, --since <date>', '开始日期 (YYYY-MM-DD)')
-      .option('-u, --until <date>', '结束日期 (YYYY-MM-DD)')
-      .option('-y, --year <year>', '指定年份或年份范围 (例如: 2025 或 2023-2025)')
-      .option('--all-time', '查询所有时间的数据')
-      .option('--self', '仅统计当前 Git 用户的提交')
-      .option('--half-hour', '以半小时粒度展示时间分布（默认按小时展示）')
-      .argument('[repoPath]', 'Git 仓库根目录路径（默认当前目录）')
-      .action(async (repoPath: string | undefined, options: AnalyzeOptions, command: Command) => {
-        const processedArgs = typeof repoPath === 'string' ? 1 : 0
-        const extraArgs = (command.args ?? []).slice(processedArgs)
-
-        if (extraArgs.length > 0) {
-          const invalid = extraArgs[0]
-          console.error(chalk.red(`错误: 未知命令 '${invalid}'`))
-          console.log('运行 code996 help 查看可用命令')
-          process.exit(1)
-        }
-
-        const targetPath = this.resolveTargetPath(repoPath, `${this.program.name()} trend`)
-        await this.handleTrend(targetPath, options)
-      })
-
-    this.program.addCommand(trendCmd)
   }
 
   /** 注册 help 命令，提供统一的帮助入口 */
@@ -145,22 +114,10 @@ export class CLIManager {
     printGlobalNotices()
   }
 
-  /** 处理趋势分析流程的执行逻辑，targetPath 为已校验的 Git 根目录 */
-  private async handleTrend(targetPath: string, options: AnalyzeOptions): Promise<void> {
-    // 导入trend命令并执行
-    const mergedOptions = this.mergeGlobalOptions(options)
-    const { TrendExecutor } = await import('./commands/trend')
-    await TrendExecutor.execute(targetPath, mergedOptions)
-    printGlobalNotices()
-  }
-
   /** 处理多仓库分析流程的执行逻辑 */
   private async handleMulti(dirs: string[], options: MultiOptions): Promise<void> {
     // 导入multi命令并执行
     const mergedOptions = this.mergeGlobalOptions(options) as MultiOptions
-    if (options.max) {
-      mergedOptions.max = parseInt(options.max.toString(), 10)
-    }
     const { MultiExecutor } = await import('./commands/multi')
     await MultiExecutor.execute(dirs, mergedOptions)
     printGlobalNotices()
@@ -250,11 +207,10 @@ export class CLIManager {
 
 ${chalk.bold('使用方法:')}
   code996 [选项]
-  code996 trend [选项]
+  code996 multi [选项] [目录...]
 
 ${chalk.bold('命令:')}
-  trend             查看月度996指数和工作时间的变化趋势
-  multi             分析多个Git仓库，汇总展示整体996指数
+  multi             分析多个Git仓库，汇总展示整体996指数和月度趋势
   help              显示帮助信息
 
 ${chalk.bold('全局选项:')}
@@ -281,15 +237,10 @@ ${chalk.bold('示例:')}
   code996 -y 2023-2025          # 分析2023-2025年
   code996 --all-time            # 分析所有时间
 
-  ${chalk.gray('# 趋势分析')}
-  code996 trend                 # 分析最近一年的月度趋势
-  code996 trend -y 2024         # 分析2024年各月趋势
-  code996 trend --all-time      # 分析所有时间的月度趋势
-
-  ${chalk.gray('# 多仓库分析')}
+  ${chalk.gray('# 多仓库分析（自动包含月度趋势）')}
   code996 multi                 # 扫描当前目录的子目录，选择仓库进行汇总分析
   code996 multi /path/to/dir1 /path/to/dir2  # 扫描指定目录
-  code996 multi --max 30        # 最多选择30个仓库（默认20）
+  code996 multi -y 2024         # 分析2024年的数据和趋势
 
 ${chalk.bold('更多详情请访问:')} https://github.com/code996/code996
     `)
@@ -300,7 +251,3 @@ ${chalk.bold('更多详情请访问:')} https://github.com/code996/code996
     this.program.parse(argv)
   }
 }
-
-// 主入口
-const cliManager = new CLIManager()
-cliManager.parse(process.argv)

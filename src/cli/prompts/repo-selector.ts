@@ -4,10 +4,9 @@ import { RepoInfo } from '../../types/git-types'
 /**
  * 交互式仓库选择器
  * @param repos 候选仓库列表
- * @param max 最大选择数量
  * @returns 用户选择的仓库列表
  */
-export async function promptRepoSelection(repos: RepoInfo[], max: number = 20): Promise<RepoInfo[]> {
+export async function promptRepoSelection(repos: RepoInfo[]): Promise<RepoInfo[]> {
   if (repos.length === 0) {
     return []
   }
@@ -26,15 +25,12 @@ export async function promptRepoSelection(repos: RepoInfo[], max: number = 20): 
   }))
 
   const selected = await checkbox({
-    message: `请选择需要分析的仓库（空格选择，回车确认，至多 ${max} 个）`,
+    message: '请选择需要分析的仓库（空格选择，回车确认）',
     choices,
     pageSize: Math.min(10, choices.length),
     validate: (answer) => {
       if (answer.length === 0) {
         return '请至少选择一个仓库'
-      }
-      if (answer.length > max) {
-        return `最多只能同时分析 ${max} 个仓库`
       }
       return true
     },
@@ -42,4 +38,3 @@ export async function promptRepoSelection(repos: RepoInfo[], max: number = 20): 
 
   return selected
 }
-

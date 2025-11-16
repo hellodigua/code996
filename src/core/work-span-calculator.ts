@@ -89,6 +89,75 @@ export class WorkSpanCalculator {
   }
 
   /**
+   * 获取平均开始工作时间
+   * @param spans 工作跨度数组
+   * @returns 平均开始工作时间 (HH:mm)
+   */
+  static getAverageStartTime(spans: DailyWorkSpan[]): string {
+    if (spans.length === 0) return '--:--'
+
+    // 使用与 getAverageEndTime 相同的过滤逻辑
+    const validSpans = spans.filter((span) => {
+      const date = new Date(`${span.date}T00:00:00`)
+      const dayOfWeek = date.getDay()
+
+      return (
+        dayOfWeek >= 1 &&
+        dayOfWeek <= 5 && // 工作日
+        span.spanHours >= 4 && // 跨度≥4小时
+        span.lastCommitMinutes >= 15 * 60 // 15:00后结束
+      )
+    })
+
+    const dataToUse = validSpans.length > 0 ? validSpans : spans
+
+    const totalMinutes = dataToUse.reduce((sum, span) => sum + span.firstCommitMinutes, 0)
+    const avgMinutes = Math.round(totalMinutes / dataToUse.length)
+    return this.formatTime(avgMinutes)
+  }
+
+  /**
+   * 获取平均结束工作时间
+   * @param spans 工作跨度数组
+   * @returns 平均结束工作时间 (HH:mm)
+   */
+  static getAverageEndTime(spans: DailyWorkSpan[]): string {
+    if (spans.length === 0) return '--:--'
+
+    // 过滤条件：只统计正常工作日
+    const validSpans = spans.filter((span) => {
+      const date = new Date(`${span.date}T00:00:00`)
+      const dayOfWeek = date.getDay() // 0=Sunday, 6=Saturday
+
+      // 1. 排除周末（周六、周日）
+      if (dayOfWeek === 0 || dayOfWeek === 6) {
+        return false
+      }
+
+      // 2. 排除工作跨度过短的异常天（<4小时，可能是临时修复或远程单次提交）
+      // 正常工作日至少应该工作4小时以上
+      if (span.spanHours < 4) {
+        return false
+      }
+
+      // 3. 排除过早结束的天（15:00之前结束，明显不是正常下班）
+      // 正常下班时间至少应该在15:00之后
+      if (span.lastCommitMinutes < 15 * 60) {
+        return false
+      }
+
+      return true
+    })
+
+    // 如果过滤后没有有效数据，降级使用所有数据
+    const dataToUse = validSpans.length > 0 ? validSpans : spans
+
+    const totalMinutes = dataToUse.reduce((sum, span) => sum + span.lastCommitMinutes, 0)
+    const avgMinutes = Math.round(totalMinutes / dataToUse.length)
+    return this.formatTime(avgMinutes)
+  }
+
+  /**
    * 获取最晚的提交时间
    * @param spans 工作跨度数组
    * @returns 最晚提交时间 (HH:mm)
@@ -112,11 +181,23 @@ export class WorkSpanCalculator {
 
   /**
    * 格式化分钟数为 HH:mm
+   * 注意：支持超过24小时的分钟数（用于表示次日凌晨）
    */
   private static formatTime(minutes: number): string {
-    const hours = Math.floor(minutes / 60)
-    const mins = minutes % 60
-    return `${String(hours).padStart(2, '0')}:${String(mins).padStart(2, '0')}`
+    // 如果超过24小时，说明是次日凌晨，转换回0-24范围并标注
+    let displayMinutes = minutes
+    let nextDay = false
+
+    if (minutes >= 24 * 60) {
+      displayMinutes = minutes - 24 * 60
+      nextDay = true
+    }
+
+    const hours = Math.floor(displayMinutes / 60)
+    const mins = displayMinutes % 60
+    const timeStr = `${String(hours).padStart(2, '0')}:${String(mins).padStart(2, '0')}`
+
+    // 如果是次日凌晨，添加标记
+    return nextDay ? `${timeStr}+1` : timeStr
   }
 }
-

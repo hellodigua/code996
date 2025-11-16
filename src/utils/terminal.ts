@@ -23,7 +23,7 @@ export function calculateTimeRange(allTime: boolean = false): { since: string; u
   if (allTime) {
     return {
       since: '1970-01-01', // Unix纪元开始
-      until: '2100-01-01'    // 远期日期
+      until: '2100-01-01', // 远期日期
     }
   }
 
@@ -39,17 +39,17 @@ export function calculateTimeRange(allTime: boolean = false): { since: string; u
 }
 
 /**
- * 计算趋势报告表格列宽（7列表头），根据终端宽度自适应
+ * 计算趋势报告表格列宽（11列表头），根据终端宽度自适应
  * @param terminalWidth 终端宽度
- * @returns 7列宽度数组
+ * @returns 11列宽度数组
  */
 export function calculateTrendTableWidths(terminalWidth: number): number[] {
-  const columnCount = 7
-  const baseWidths = [9, 10, 12, 10, 10, 8, 12] // 月份、指数、平均工时、稳定性、最晚下班、提交数、工作天数
+  const columnCount = 11
+  const baseWidths = [9, 10, 12, 10, 10, 10, 10, 8, 10, 12, 10] // 月份、指数、平均工时、稳定性、平均开始、平均结束、最晚结束、提交数、参与人数、工作天数、置信度
   const minColumnWidth = 3
 
-  // 估算边框和分隔线占用：列间分隔线(columnCount-1) + 左右边框2，共 columnCount+1 个字符
-  const borderOverhead = columnCount + 1
+  // 估算边框和分隔线占用：列间分隔线(columnCount-1) + 左右边框2，共 columnCount 个字符
+  const borderOverhead = columnCount
   const availableWidth = Math.max(terminalWidth - borderOverhead, columnCount)
 
   const baseTotal = baseWidths.reduce((sum, width) => sum + width, 0)
@@ -142,10 +142,7 @@ export function createAdaptiveTable(
  * @param tableType 表格类型
  * @param terminalWidth 终端宽度
  */
-function calculatePresetTableWidths(
-  tableType: 'core' | 'stats' | 'time' | string,
-  terminalWidth: number
-): number[] {
+function calculatePresetTableWidths(tableType: 'core' | 'stats' | 'time' | string, terminalWidth: number): number[] {
   if (tableType === 'time') {
     // 时间分布表格：保留固定的时间列，剩余宽度用于进度条
     const fixedOverhead = 5
@@ -184,10 +181,7 @@ function calculateTwoColumnWidths(
   const availableWidth = terminalWidth - fixedOverhead
 
   const labelColumnMaxByRatio = Math.floor(availableWidth * options.labelRatioMax)
-  const labelColumnWidth = Math.max(
-    options.labelMin,
-    Math.min(labelColumnMaxByRatio, options.labelHardMax)
-  )
+  const labelColumnWidth = Math.max(options.labelMin, Math.min(labelColumnMaxByRatio, options.labelHardMax))
 
   const valueColumnWidth = availableWidth - labelColumnWidth
   return [labelColumnWidth, valueColumnWidth]

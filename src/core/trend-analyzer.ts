@@ -21,17 +21,38 @@ export class TrendAnalyzer {
    * @param since 开始日期 (YYYY-MM-DD)
    * @param until 结束日期 (YYYY-MM-DD)
    * @param authorPattern 作者过滤正则（仅统计指定作者）
+   * @param progressCallback 进度回调函数 (当前月份, 总月数, 月份名称)
    * @returns 趋势分析结果
    */
-  static async analyzeTrend(path: string, since: string, until: string, authorPattern?: string): Promise<TrendAnalysisResult> {
+  static async analyzeTrend(
+    path: string,
+    since: string | null,
+    until: string | null,
+    authorPattern?: string,
+    progressCallback?: (current: number, total: number, month: string) => void
+  ): Promise<TrendAnalysisResult> {
     const collector = new GitCollector()
+
+    // 如果时间范围为空，自动获取
+    if (!since || !until) {
+      const firstCommit = await collector.getFirstCommitDate({ path })
+      const lastCommit = await collector.getLastCommitDate({ path })
+      since = since || firstCommit
+      until = until || lastCommit
+    }
 
     // 生成月份列表
     const months = this.generateMonthsList(since, until)
 
-    // 并行分析每个月的数据
-    const monthlyDataPromises = months.map((month) => this.analyzeMonth(collector, path, month, authorPattern))
-    const monthlyData = await Promise.all(monthlyDataPromises)
+    // 串行分析每个月的数据（以便显示进度）
+    const monthlyData: (MonthlyTrendData | null)[] = []
+    for (let i = 0; i < months.length; i++) {
+      if (progressCallback) {
+        progressCallback(i + 1, months.length, months[i])
+      }
+      const data = await this.analyzeMonth(collector, path, months[i], authorPattern)
+      monthlyData.push(data)
+    }
 
     // 过滤掉数据不足的月份（可选，这里保留所有月份）
     const validMonthlyData = monthlyData.filter((data) => data !== null) as MonthlyTrendData[]
@@ -70,10 +91,14 @@ export class TrendAnalyzer {
           index996: 0,
           avgWorkSpan: 0,
           workSpanStdDev: 0,
+          avgStartTime: '--:--',
+          avgEndTime: '--:--',
           latestEndTime: '--:--',
           totalCommits: 0,
+          contributors: 0,
           workDays: 0,
           dataQuality: 'insufficient',
+          confidence: 'low',
         }
       }
 
@@ -93,21 +118,30 @@ export class TrendAnalyzer {
 
       const avgWorkSpan = WorkSpanCalculator.calculateAverage(dailySpans)
       const workSpanStdDev = WorkSpanCalculator.calculateStdDev(dailySpans)
+      const avgStartTime = WorkSpanCalculator.getAverageStartTime(dailySpans)
+      const avgEndTime = WorkSpanCalculator.getAverageEndTime(dailySpans)
       const latestEndTime = WorkSpanCalculator.getLatestEndTime(dailySpans)
 
       // 判断数据质量
       const workDays = dailySpans.length
       const dataQuality = workDays >= 10 ? 'sufficient' : workDays >= 5 ? 'limited' : 'insufficient'
 
+      // 计算置信度：综合提交数和工作天数
+      const confidence = this.calculateConfidence(gitLogData.totalCommits, workDays)
+
       return {
         month,
         index996: result996.index996,
         avgWorkSpan,
         workSpanStdDev,
+        avgStartTime,
+        avgEndTime,
         latestEndTime,
         totalCommits: gitLogData.totalCommits,
+        contributors: gitLogData.contributors || 0,
         workDays,
         dataQuality,
+        confidence,
       }
     } catch (error) {
       console.error(`分析月份 ${month} 时出错:`, error)
@@ -124,19 +158,18 @@ export class TrendAnalyzer {
   ): DailyWorkSpan[] {
     const spans: DailyWorkSpan[] = []
 
-    // 创建最晚提交的映射表
+    // 创建最晚提交的映射表（现在直接存储分钟数）
     const latestCommitMap = new Map<string, number>()
     for (const commit of dailyLatestCommits) {
-      latestCommitMap.set(commit.date, commit.hour)
+      latestCommitMap.set(commit.date, commit.minutesFromMidnight)
     }
 
     // 遍历每日首次提交，计算工作跨度
     for (const firstCommit of dailyFirstCommits) {
-      const latestHour = latestCommitMap.get(firstCommit.date)
-      if (latestHour === undefined) continue
+      const lastCommitMinutes = latestCommitMap.get(firstCommit.date)
+      if (lastCommitMinutes === undefined) continue
 
       const firstCommitMinutes = firstCommit.minutesFromMidnight
-      const lastCommitMinutes = latestHour * 60 + 30 // 假设最晚提交在该小时的中间
 
       const spanHours = (lastCommitMinutes - firstCommitMinutes) / 60
 
@@ -264,5 +297,24 @@ export class TrendAnalyzer {
 
     if (Math.abs(diff) < 10) return 'stable' // 差异小于 10 认为稳定
     return diff > 0 ? 'increasing' : 'decreasing'
+  }
+
+  /**
+   * 计算置信度等级
+   * 综合考虑提交数和工作天数两个维度
+   */
+  private static calculateConfidence(commits: number, workDays: number): 'high' | 'medium' | 'low' {
+    // 高可信：提交数≥100 且 工作天数≥10
+    if (commits >= 100 && workDays >= 10) {
+      return 'high'
+    }
+
+    // 中可信：提交数≥50 或 工作天数≥5
+    if (commits >= 50 || workDays >= 5) {
+      return 'medium'
+    }
+
+    // 低可信：提交数<50 且 工作天数<5
+    return 'low'
   }
 }

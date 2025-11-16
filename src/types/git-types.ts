@@ -93,7 +93,7 @@ export interface DailyFirstCommit {
  */
 export interface DailyLatestCommit {
   date: string
-  hour: number // 最晚提交的小时 (0-23)
+  minutesFromMidnight: number // 最晚提交距离午夜的分钟数 (0-1439)
 }
 
 /**
@@ -170,10 +170,14 @@ export interface MonthlyTrendData {
   index996: number // 996指数
   avgWorkSpan: number // 平均工作跨度（小时）
   workSpanStdDev: number // 工作跨度标准差（小时）
-  latestEndTime: string // 最晚下班时间 (HH:mm)
+  avgStartTime: string // 平均开始工作时间 (HH:mm)
+  avgEndTime: string // 平均结束工作时间 (HH:mm)
+  latestEndTime: string // 最晚结束时间 (HH:mm)
   totalCommits: number // 总提交数
+  contributors: number // 参与人数
   workDays: number // 工作天数
   dataQuality: 'sufficient' | 'limited' | 'insufficient' // 数据质量标记
+  confidence: 'high' | 'medium' | 'low' // 置信度等级
 }
 
 /**
@@ -217,9 +221,7 @@ export interface RepoAnalysisRecord {
 /**
  * Multi 命令的选项
  */
-export interface MultiOptions extends AnalyzeOptions {
-  max?: number // 最大分析仓库数
-}
+export interface MultiOptions extends AnalyzeOptions {}
 
 /**
  * Analyze 命令的选项
@@ -232,4 +234,5 @@ export interface AnalyzeOptions {
   self?: boolean
   hours?: string
   halfHour?: boolean // 是否以半小时粒度展示
+  trend?: boolean // 是否显示月度趋势分析
 }

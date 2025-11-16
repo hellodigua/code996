@@ -60,4 +60,3 @@ export class TimeAggregator {
     return hasColon ? 'half-hour' : 'hour'
   }
 }
-

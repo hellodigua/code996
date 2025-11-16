@@ -5,6 +5,7 @@ import { promptRepoSelection } from '../prompts/repo-selector'
 import { GitCollector } from '../../git/git-collector'
 import { GitParser } from '../../git/git-parser'
 import { GitDataMerger } from '../../git/git-data-merger'
+import { TrendAnalyzer } from '../../core/trend-analyzer'
 import { MultiOptions, GitLogData, RepoAnalysisRecord, RepoInfo } from '../../types/git-types'
 import { calculateTimeRange } from '../../utils/terminal'
 import {
@@ -18,8 +19,7 @@ import {
   printRecommendation,
   MultiComparisonPrinter,
 } from './report'
-
-const DEFAULT_MAX_REPOS = 20
+import { printTrendReport } from './report/trend-printer'
 
 /**
  * Multi 命令执行器
@@ -33,8 +33,6 @@ export class MultiExecutor {
    */
   static async execute(inputDirs: string[], options: MultiOptions): Promise<void> {
     try {
-      const maxCount = options.max && options.max > 0 ? options.max : DEFAULT_MAX_REPOS
-
       // ========== 步骤 1: 扫描仓库 ==========
       const spinner = ora('🔍 正在扫描 Git 仓库...').start()
 
@@ -57,13 +55,11 @@ export class MultiExecutor {
         return
       }
 
-      console.log(
-        chalk.gray(`可选择的仓库总数: ${repos.length} 个，默认最多分析 ${maxCount} 个（可通过 --max 调整上限）。`)
-      )
+      console.log(chalk.gray(`可选择的仓库总数: ${repos.length} 个`))
       console.log()
 
       // ========== 步骤 2: 交互式选择仓库 ==========
-      const selectedRepos = await promptRepoSelection(repos, maxCount)
+      const selectedRepos = await promptRepoSelection(repos)
 
       if (selectedRepos.length === 0) {
         console.log(chalk.yellow('⚠️ 未选择任何仓库，分析已取消。'))
@@ -202,6 +198,34 @@ export class MultiExecutor {
 
       // ========== 步骤 7: 输出各仓库对比表 ==========
       MultiComparisonPrinter.print(repoRecords)
+
+      // ========== 步骤 8: 月度趋势分析（默认启用） ==========
+      if (selectedRepos.length > 0) {
+        console.log()
+        const trendSpinner = ora('📈 正在进行月度趋势分析...').start()
+        try {
+          // 使用第一个仓库路径作为代表路径进行趋势分析
+          // 注意：这里我们需要对所有仓库的汇总数据进行趋势分析
+          // 但TrendAnalyzer目前只支持单个路径，需要改进
+          const firstRepoPath = selectedRepos[0].path
+          const trendResult = await TrendAnalyzer.analyzeTrend(
+            firstRepoPath,
+            effectiveSince ?? null,
+            effectiveUntil ?? null,
+            undefined, // multi命令暂不支持作者过滤的趋势分析
+            (current, total, month) => {
+              // 实时更新进度
+              trendSpinner.text = `📈 正在分析月度趋势... (${current}/${total}: ${month})`
+            }
+          )
+          trendSpinner.succeed('趋势分析完成！')
+          console.log(chalk.yellow('💡 注意：当前趋势分析基于单个仓库，未来版本将支持多仓库汇总趋势'))
+          printTrendReport(trendResult)
+        } catch (error) {
+          trendSpinner.fail('趋势分析失败')
+          console.error(chalk.red('⚠️  趋势分析错误:'), (error as Error).message)
+        }
+      }
     } catch (error) {
       console.error(chalk.red('❌ 多仓库分析失败:'), (error as Error).message)
       process.exit(1)
