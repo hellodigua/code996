@@ -1,5 +1,6 @@
 import { GitCollector } from '../git/git-collector'
 import { GitParser } from '../git/git-parser'
+import { GitDataMerger } from '../git/git-data-merger'
 import { calculate996Index } from './calculator'
 import { WorkSpanCalculator } from './work-span-calculator'
 import {
@@ -8,6 +9,7 @@ import {
   DailyWorkSpan,
   DailyFirstCommit,
   DailyLatestCommit,
+  GitLogData,
 } from '../types/git-types'
 
 /**
@@ -16,7 +18,7 @@ import {
  */
 export class TrendAnalyzer {
   /**
-   * 分析指定时间范围内的月度趋势
+   * 分析指定时间范围内的月度趋势（单仓库）
    * @param path Git 仓库路径
    * @param since 开始日期 (YYYY-MM-DD)
    * @param until 结束日期 (YYYY-MM-DD)
@@ -68,7 +70,180 @@ export class TrendAnalyzer {
   }
 
   /**
-   * 分析单个月份的数据
+   * 分析指定时间范围内的月度趋势（多仓库汇总）
+   * @param paths Git 仓库路径列表
+   * @param since 开始日期 (YYYY-MM-DD)
+   * @param until 结束日期 (YYYY-MM-DD)
+   * @param authorPattern 作者过滤正则（仅统计指定作者）
+   * @param progressCallback 进度回调函数 (当前月份, 总月数, 月份名称)
+   * @returns 趋势分析结果
+   */
+  static async analyzeMultiRepoTrend(
+    paths: string[],
+    since: string | null,
+    until: string | null,
+    authorPattern: string | undefined,
+    progressCallback?: (current: number, total: number, month: string) => void
+  ): Promise<TrendAnalysisResult> {
+    const collector = new GitCollector()
+
+    // 如果时间范围为空，自动获取所有仓库中最早和最晚的提交
+    if (!since || !until) {
+      const dates = await Promise.all(
+        paths.map(async (path) => {
+          try {
+            const firstCommit = await collector.getFirstCommitDate({ path })
+            const lastCommit = await collector.getLastCommitDate({ path })
+            return { firstCommit, lastCommit }
+          } catch {
+            return null
+          }
+        })
+      )
+
+      const validDates = dates.filter((d) => d !== null) as { firstCommit: string; lastCommit: string }[]
+      if (validDates.length > 0) {
+        since = since || validDates.reduce((min, d) => (d.firstCommit < min ? d.firstCommit : min), validDates[0].firstCommit)
+        until = until || validDates.reduce((max, d) => (d.lastCommit > max ? d.lastCommit : max), validDates[0].lastCommit)
+      }
+    }
+
+    if (!since || !until) {
+      throw new Error('无法确定时间范围')
+    }
+
+    // 生成月份列表
+    const months = this.generateMonthsList(since, until)
+
+    // 串行分析每个月的数据（以便显示进度）
+    const monthlyData: (MonthlyTrendData | null)[] = []
+    for (let i = 0; i < months.length; i++) {
+      if (progressCallback) {
+        progressCallback(i + 1, months.length, months[i])
+      }
+      const data = await this.analyzeMonthMultiRepo(collector, paths, months[i], authorPattern)
+      monthlyData.push(data)
+    }
+
+    // 过滤掉数据不足的月份（可选，这里保留所有月份）
+    const validMonthlyData = monthlyData.filter((data) => data !== null) as MonthlyTrendData[]
+
+    // 计算整体趋势
+    const summary = this.calculateSummary(validMonthlyData)
+
+    return {
+      monthlyData: validMonthlyData,
+      timeRange: { since, until },
+      summary,
+    }
+  }
+
+  /**
+   * 分析单个月份的数据（多仓库汇总）
+   */
+  private static async analyzeMonthMultiRepo(
+    collector: GitCollector,
+    paths: string[],
+    month: string,
+    authorPattern?: string
+  ): Promise<MonthlyTrendData | null> {
+    try {
+      // 计算该月的起止日期
+      const { since, until } = this.getMonthRange(month)
+
+      // 收集所有仓库在该月的数据
+      const monthDataList: GitLogData[] = []
+      const contributorSet = new Set<string>()
+
+      for (const path of paths) {
+        try {
+          const gitLogData = await collector.collect({ path, since, until, authorPattern, silent: true })
+          if (gitLogData.totalCommits > 0) {
+            monthDataList.push(gitLogData)
+            // 收集参与者（如果有的话）
+            if (gitLogData.contributors) {
+              contributorSet.add(path) // 简化处理，用路径代表仓库
+            }
+          }
+        } catch {
+          // 单个仓库失败不影响其他仓库
+          continue
+        }
+      }
+
+      // 如果所有仓库该月都没有提交，返回空数据
+      if (monthDataList.length === 0) {
+        return {
+          month,
+          index996: 0,
+          avgWorkSpan: 0,
+          workSpanStdDev: 0,
+          avgStartTime: '--:--',
+          avgEndTime: '--:--',
+          latestEndTime: '--:--',
+          totalCommits: 0,
+          contributors: 0,
+          workDays: 0,
+          dataQuality: 'insufficient',
+          confidence: 'low',
+        }
+      }
+
+      // 合并所有仓库的数据
+      const mergedData = GitDataMerger.merge(monthDataList)
+
+      // 解析数据并计算 996 指数
+      const parsedData = GitParser.parseGitData(mergedData, undefined, since, until)
+      const result996 = calculate996Index({
+        workHourPl: parsedData.workHourPl,
+        workWeekPl: parsedData.workWeekPl,
+        hourData: parsedData.hourData,
+      })
+
+      // 计算工作跨度指标
+      const dailySpans = this.calculateWorkSpansFromData(
+        mergedData.dailyFirstCommits || [],
+        mergedData.dailyLatestCommits || []
+      )
+
+      const avgWorkSpan = WorkSpanCalculator.calculateAverage(dailySpans)
+      const workSpanStdDev = WorkSpanCalculator.calculateStdDev(dailySpans)
+      const avgStartTime = WorkSpanCalculator.getAverageStartTime(dailySpans)
+      const avgEndTime = WorkSpanCalculator.getAverageEndTime(dailySpans)
+      const latestEndTime = WorkSpanCalculator.getLatestEndTime(dailySpans)
+
+      // 判断数据质量
+      const workDays = dailySpans.length
+      const dataQuality = workDays >= 10 ? 'sufficient' : workDays >= 5 ? 'limited' : 'insufficient'
+
+      // 计算置信度：综合提交数和工作天数
+      const confidence = this.calculateConfidence(mergedData.totalCommits, workDays)
+
+      // 统计总参与人数（所有仓库的贡献者数量之和）
+      const totalContributors = monthDataList.reduce((sum, data) => sum + (data.contributors || 0), 0)
+
+      return {
+        month,
+        index996: result996.index996,
+        avgWorkSpan,
+        workSpanStdDev,
+        avgStartTime,
+        avgEndTime,
+        latestEndTime,
+        totalCommits: mergedData.totalCommits,
+        contributors: totalContributors,
+        workDays,
+        dataQuality,
+        confidence,
+      }
+    } catch (error) {
+      console.error(`分析月份 ${month} 时出错:`, error)
+      return null
+    }
+  }
+
+  /**
+   * 分析单个月份的数据（单仓库）
    * @param authorPattern 作者过滤正则
    */
   private static async analyzeMonth(

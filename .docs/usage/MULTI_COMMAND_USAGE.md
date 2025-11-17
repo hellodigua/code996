@@ -38,6 +38,10 @@ code996 multi --all-time
 # 手动指定工作时间
 code996 multi -H 9-18
 
+# 仅统计当前用户的提交
+code996 multi --self
+code996 multi --self -y 2025
+
 # 查看帮助
 code996 multi --help
 ```
@@ -100,6 +104,13 @@ code996 multi --help
    - 按星期统计：累加各仓库相同星期的提交数
    - 每日首次提交：同一天取最早时间
    - 每日最晚提交：同一天取最晚时间
+
+5. **作者过滤（--self）**
+   - 使用 `--self` 选项可以只统计当前用户在所有仓库中的提交
+   - 作者信息从第一个选中的仓库中读取（git config user.name 或 user.email）
+   - 在所有仓库中使用相同的作者过滤条件
+   - 适用于主报表、对比表和月度趋势分析
+   - 示例：`code996 multi --self -y 2025`
 
 ## 适用场景
 

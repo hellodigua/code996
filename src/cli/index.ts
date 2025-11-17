@@ -71,6 +71,7 @@ export class CLIManager {
       .option('-u, --until <date>', '结束日期 (YYYY-MM-DD)')
       .option('-y, --year <year>', '指定年份或年份范围 (例如: 2025 或 2023-2025)')
       .option('--all-time', '查询所有时间的数据')
+      .option('--self', '仅统计当前 Git 用户的提交')
       .option('-H, --hours <range>', '手动指定标准工作时间 (例如: 9-18 或 9.5-18.5)')
       .option('--half-hour', '以半小时粒度展示时间分布（默认按小时展示）')
       .argument('[dirs...]', '要扫描的目录列表（默认当前目录的子目录）')
@@ -241,6 +242,7 @@ ${chalk.bold('示例:')}
   code996 multi                 # 扫描当前目录的子目录，选择仓库进行汇总分析
   code996 multi /path/to/dir1 /path/to/dir2  # 扫描指定目录
   code996 multi -y 2024         # 分析2024年的数据和趋势
+  code996 multi --self          # 仅统计当前用户在所有仓库中的提交
 
 ${chalk.bold('更多详情请访问:')} https://github.com/code996/code996
     `)

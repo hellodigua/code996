@@ -95,6 +95,7 @@ code996 --self -y 2025         # 分析自己在2025年的提交
 # 多仓库分析（自动包含月度趋势分析）
 code996 multi                  # 扫描当前目录所有子目录，自动展示趋势分析
 code996 multi -y 2025          # 分析多个仓库2025年的数据和趋势
+code996 multi --self           # 仅统计当前用户在所有仓库中的提交
 code996 multi /path/to/repo1 /path/to/repo2  # 指定具体仓库路径
 
 # 📈 月度趋势分析（multi 命令自动包含）

@@ -73,6 +73,21 @@ export class MultiExecutor {
       // 创建 collector 实例
       const collector = new GitCollector()
 
+      // 解析作者过滤（如果启用 --self）
+      let authorPattern: string | undefined
+      if (options.self) {
+        try {
+          const authorInfo = await collector.resolveSelfAuthor(selectedRepos[0].path)
+          authorPattern = authorInfo.pattern
+          console.log(chalk.blue('🙋 作者过滤:'), authorInfo.displayLabel)
+          console.log(chalk.gray('   将在所有仓库中只统计该作者的提交'))
+          console.log()
+        } catch (error) {
+          console.error(chalk.red('❌ 解析当前用户信息失败:'), (error as Error).message)
+          return
+        }
+      }
+
       // 计算时间范围
       let effectiveSince: string | undefined
       let effectiveUntil: string | undefined
@@ -128,6 +143,7 @@ export class MultiExecutor {
             path: repo.path,
             since: effectiveSince,
             until: effectiveUntil,
+            authorPattern,
             silent: true,
           })
 
@@ -202,25 +218,30 @@ export class MultiExecutor {
       // ========== 步骤 8: 月度趋势分析（默认启用） ==========
       if (selectedRepos.length > 0) {
         console.log()
-        const trendSpinner = ora('📈 正在进行月度趋势分析...').start()
+        const trendSpinner = ora('📈 正在进行多仓库汇总月度趋势分析...').start()
         try {
-          // 使用第一个仓库路径作为代表路径进行趋势分析
-          // 注意：这里我们需要对所有仓库的汇总数据进行趋势分析
-          // 但TrendAnalyzer目前只支持单个路径，需要改进
-          const firstRepoPath = selectedRepos[0].path
-          const trendResult = await TrendAnalyzer.analyzeTrend(
-            firstRepoPath,
-            effectiveSince ?? null,
-            effectiveUntil ?? null,
-            undefined, // multi命令暂不支持作者过滤的趋势分析
-            (current, total, month) => {
-              // 实时更新进度
-              trendSpinner.text = `📈 正在分析月度趋势... (${current}/${total}: ${month})`
-            }
-          )
-          trendSpinner.succeed('趋势分析完成！')
-          console.log(chalk.yellow('💡 注意：当前趋势分析基于单个仓库，未来版本将支持多仓库汇总趋势'))
-          printTrendReport(trendResult)
+          // 提取所有成功分析的仓库路径
+          const successfulRepoPaths = selectedRepos
+            .filter((_, index) => repoRecords[index].status === 'success')
+            .map((repo) => repo.path)
+
+          if (successfulRepoPaths.length === 0) {
+            trendSpinner.warn('没有成功的仓库数据，跳过趋势分析')
+          } else {
+            // 使用新的多仓库汇总趋势分析方法
+            const trendResult = await TrendAnalyzer.analyzeMultiRepoTrend(
+              successfulRepoPaths,
+              effectiveSince ?? null,
+              effectiveUntil ?? null,
+              authorPattern,
+              (current, total, month) => {
+                // 实时更新进度
+                trendSpinner.text = `📈 正在分析月度趋势... (${current}/${total}: ${month})`
+              }
+            )
+            trendSpinner.succeed(`趋势分析完成！(汇总了 ${successfulRepoPaths.length} 个仓库)`)
+            printTrendReport(trendResult)
+          }
         } catch (error) {
           trendSpinner.fail('趋势分析失败')
           console.error(chalk.red('⚠️  趋势分析错误:'), (error as Error).message)
