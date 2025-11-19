@@ -1,5 +1,5 @@
 // 分析和建议
-export { printDetailedAnalysis, generateRecommendation, printRecommendation } from './analysis'
+export { printDetailedAnalysis } from './analysis'
 
 // 报表打印
 export {

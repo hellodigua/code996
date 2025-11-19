@@ -16,7 +16,6 @@ import {
   printWeekdayOvertime,
   printWeekendOvertime,
   printLateNightAnalysis,
-  printRecommendation,
   MultiComparisonPrinter,
 } from './report'
 import { printTrendReport } from './report/trend-printer'
@@ -219,7 +218,6 @@ export class MultiExecutor {
       printWeekdayOvertime(parsedData)
       printWeekendOvertime(parsedData)
       printLateNightAnalysis(parsedData)
-      printRecommendation(result, parsedData)
 
       // ========== 步骤 7: 输出各仓库对比表 ==========
       MultiComparisonPrinter.print(repoRecords)

@@ -14,7 +14,6 @@ import {
   printWeekdayOvertime,
   printWeekendOvertime,
   printLateNightAnalysis,
-  printRecommendation,
 } from './report'
 import { printTrendReport } from './report/trend-printer'
 import { ensureCommitSamples } from '../common/commit-guard'
@@ -336,5 +335,4 @@ function printResults(
   printWeekdayOvertime(parsedData)
   printWeekendOvertime(parsedData)
   printLateNightAnalysis(parsedData)
-  printRecommendation(result, parsedData)
 }

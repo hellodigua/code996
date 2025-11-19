@@ -32,10 +32,6 @@ code996 是一个分析工具，它可以统计 Git 项目的 commit 时间分�
 
 <img src="https://raw.githubusercontent.com/hellodigua/code996/main/public/images/demo3.png" alt="加班情况分析图" style="width:600px; max-width:100%; height:auto;"/>
 
-### 综合建议
-
-<img src="https://raw.githubusercontent.com/hellodigua/code996/main/public/images/demo4.png" alt="综合建议图" style="width:600px; max-width:100%; height:auto;"/>
-
 ## 🚀 快速开始
 
 无需安装，快速使用：

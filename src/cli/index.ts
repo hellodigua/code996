@@ -49,12 +49,11 @@ export class CLIManager {
       .option('--ignore-msg <regex>', '排除匹配的提交消息 (例如: merge|lint)')
       .action(async (paths: string[], options: AnalyzeOptions, command: Command) => {
         const mergedOptions = this.mergeGlobalOptions(options)
-        
+
         // 智能检测模式
         await this.handleSmartMode(paths, mergedOptions)
       })
   }
-
 
   /** 注册 help 命令，提供统一的帮助入口 */
   private addHelpCommand(): void {
@@ -295,12 +294,12 @@ ${chalk.bold('命令:')}
 
 ${chalk.bold('智能分析模式:')}
   code996 会自动检测并选择最合适的分析模式：
-  
+
   ${chalk.cyan('●')} ${chalk.bold('单仓库深度分析')}
     • 在 Git 仓库中运行 code996
     • 或指定单个仓库路径: code996 /path/to/repo
     → 深度分析单个项目，包含月度趋势
-  
+
   ${chalk.cyan('●')} ${chalk.bold('多仓库横向对比')}
     • 传入多个路径: code996 /path1 /path2
     • 或在有多个子仓库的目录运行
