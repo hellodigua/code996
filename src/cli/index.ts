@@ -28,17 +28,16 @@ export class CLIManager {
 
     // 注册根命令默认行为，直接执行分析逻辑
     this.setupDefaultAnalyzeAction()
-    this.addMultiCommand()
     this.addHelpCommand()
 
     // 错误处理
     this.setupErrorHandling()
   }
 
-  /** 注册根命令，使用户直接运行 code996 即触发分析，并可选传入仓库路径 */
+  /** 注册根命令，支持智能检测单仓库或多仓库场景 */
   private setupDefaultAnalyzeAction(): void {
     this.program
-      .argument('[repoPath]', 'Git 仓库根目录路径（默认当前目录）')
+      .argument('[paths...]', 'Git 仓库路径（默认当前目录，支持多个路径）')
       .option('-s, --since <date>', '开始日期 (YYYY-MM-DD)')
       .option('-u, --until <date>', '结束日期 (YYYY-MM-DD)')
       .option('-y, --year <year>', '指定年份或年份范围 (例如: 2025 或 2023-2025)')
@@ -48,43 +47,14 @@ export class CLIManager {
       .option('--half-hour', '以半小时粒度展示时间分布（默认按小时展示）')
       .option('--ignore-author <regex>', '排除匹配的作者 (例如: bot|jenkins)')
       .option('--ignore-msg <regex>', '排除匹配的提交消息 (例如: merge|lint)')
-      .action(async (repoPath: string | undefined, options: AnalyzeOptions, command: Command) => {
-        const processedArgs = typeof repoPath === 'string' ? 1 : 0
-        const extraArgs = (command.args ?? []).slice(processedArgs)
-
-        if (extraArgs.length > 0) {
-          const invalid = extraArgs[0]
-          console.error(chalk.red(`错误: 未知命令 '${invalid}'`))
-          console.log('运行 code996 -h 查看可用命令')
-          process.exit(1)
-        }
-
+      .action(async (paths: string[], options: AnalyzeOptions, command: Command) => {
         const mergedOptions = this.mergeGlobalOptions(options)
-        const targetPath = this.resolveTargetPath(repoPath, this.program.name())
-        await this.handleAnalyze(targetPath, mergedOptions)
+        
+        // 智能检测模式
+        await this.handleSmartMode(paths, mergedOptions)
       })
   }
 
-  /** 注册 multi 命令，分析多个仓库 */
-  private addMultiCommand(): void {
-    const multiCmd = new Command('multi')
-      .description('分析多个Git仓库，汇总展示整体996指数')
-      .option('-s, --since <date>', '开始日期 (YYYY-MM-DD)')
-      .option('-u, --until <date>', '结束日期 (YYYY-MM-DD)')
-      .option('-y, --year <year>', '指定年份或年份范围 (例如: 2025 或 2023-2025)')
-      .option('--all-time', '查询所有时间的数据')
-      .option('--self', '仅统计当前 Git 用户的提交')
-      .option('-H, --hours <range>', '手动指定标准工作时间 (例如: 9-18 或 9.5-18.5)')
-      .option('--half-hour', '以半小时粒度展示时间分布（默认按小时展示）')
-      .option('--ignore-author <regex>', '排除匹配的作者 (例如: bot|jenkins)')
-      .option('--ignore-msg <regex>', '排除匹配的提交消息 (例如: merge|lint)')
-      .argument('[dirs...]', '要扫描的目录列表（默认当前目录的子目录）')
-      .action(async (dirs: string[], options: MultiOptions) => {
-        await this.handleMulti(dirs, options)
-      })
-
-    this.program.addCommand(multiCmd)
-  }
 
   /** 注册 help 命令，提供统一的帮助入口 */
   private addHelpCommand(): void {
@@ -109,6 +79,71 @@ export class CLIManager {
     })
   }
 
+  /**
+   * 智能模式：根据路径和上下文自动判断是单仓库还是多仓库分析
+   */
+  private async handleSmartMode(paths: string[], options: AnalyzeOptions): Promise<void> {
+    const targetPaths = paths.length > 0 ? paths : [process.cwd()]
+
+    // 情况1: 传入多个路径，直接进入多仓库模式
+    if (targetPaths.length > 1) {
+      console.log(chalk.cyan('💡 检测到多个路径，自动进入多仓库分析模式'))
+      console.log()
+      await this.handleMulti(targetPaths, options)
+      return
+    }
+
+    // 情况2: 单个路径，需要智能判断
+    const singlePath = path.resolve(targetPaths[0])
+
+    // 检查路径是否存在
+    if (!fs.existsSync(singlePath)) {
+      console.error(chalk.red('❌ 指定的路径不存在:'), singlePath)
+      process.exit(1)
+    }
+
+    // 检查是否为Git仓库
+    const isGit = await this.isGitRepository(singlePath)
+
+    if (isGit) {
+      // 是Git仓库，使用单仓库分析
+      const gitRoot = this.resolveGitRoot(singlePath)
+      await this.handleAnalyze(gitRoot, options)
+      return
+    }
+
+    // 不是Git仓库，尝试扫描子目录
+    console.log(chalk.yellow('⚠️  当前目录不是 Git 仓库，正在扫描子目录...'))
+    console.log()
+
+    const { RepoScanner } = await import('../workspace/repo-scanner')
+    const repos = await RepoScanner.scanSubdirectories(singlePath)
+
+    if (repos.length === 0) {
+      console.error(chalk.red('❌ 未在当前目录找到 Git 仓库'))
+      console.log()
+      console.log(chalk.cyan('💡 提示:'))
+      console.log('  • 请在 Git 仓库根目录运行 code996')
+      console.log('  • 或者使用 code996 <仓库路径> 指定要分析的仓库')
+      console.log('  • 或者传入多个路径进行对比: code996 /path1 /path2')
+      process.exit(1)
+    }
+
+    if (repos.length === 1) {
+      // 只有一个子仓库，自动使用单仓库模式
+      console.log(chalk.green('✓ 找到 1 个 Git 仓库，自动使用单仓库分析模式'))
+      console.log(chalk.gray(`  仓库: ${repos[0].name}`))
+      console.log()
+      await this.handleAnalyze(repos[0].path, options)
+      return
+    }
+
+    // 多个子仓库，进入多仓库模式（传递已扫描的仓库列表）
+    console.log(chalk.cyan(`💡 找到 ${repos.length} 个 Git 仓库，自动进入多仓库分析模式`))
+    console.log()
+    await this.handleMulti([], options, repos)
+  }
+
   /** 处理分析流程的执行逻辑，targetPath 为已校验的 Git 根目录 */
   private async handleAnalyze(targetPath: string, options: AnalyzeOptions): Promise<void> {
     // 默认以当前工作目录作为分析目标，保持使用体验简单
@@ -120,11 +155,10 @@ export class CLIManager {
   }
 
   /** 处理多仓库分析流程的执行逻辑 */
-  private async handleMulti(dirs: string[], options: MultiOptions): Promise<void> {
-    // 导入multi命令并执行
+  private async handleMulti(dirs: string[], options: MultiOptions, preScannedRepos?: any[]): Promise<void> {
     const mergedOptions = this.mergeGlobalOptions(options) as MultiOptions
     const { MultiExecutor } = await import('./commands/multi')
-    await MultiExecutor.execute(dirs, mergedOptions)
+    await MultiExecutor.execute(dirs, mergedOptions, preScannedRepos)
     printGlobalNotices()
   }
 
@@ -145,7 +179,48 @@ export class CLIManager {
     }
   }
 
-  /** 解析并校验仓库路径，确保用户位于 Git 仓库根目录 */
+  /**
+   * 检查指定目录是否为 Git 仓库
+   */
+  private async isGitRepository(dirPath: string): Promise<boolean> {
+    try {
+      // 检查 .git 目录是否存在
+      const gitDir = path.join(dirPath, '.git')
+      if (fs.existsSync(gitDir)) {
+        return true
+      }
+
+      // 使用 git 命令检查
+      execSync('git rev-parse --is-inside-work-tree', {
+        cwd: dirPath,
+        stdio: 'ignore',
+      })
+      return true
+    } catch {
+      return false
+    }
+  }
+
+  /**
+   * 解析 Git 仓库的根目录
+   */
+  private resolveGitRoot(dirPath: string): string {
+    try {
+      const gitRoot = execSync('git rev-parse --show-toplevel', {
+        cwd: dirPath,
+        stdio: ['ignore', 'pipe', 'pipe'],
+      })
+        .toString()
+        .trim()
+
+      return fs.realpathSync(gitRoot)
+    } catch {
+      // 如果获取失败，返回原路径
+      return fs.realpathSync(dirPath)
+    }
+  }
+
+  /** 解析并校验仓库路径，确保用户位于 Git 仓库根目录（仅用于向后兼容） */
   private resolveTargetPath(repoPathArg: string | undefined, commandLabel: string): string {
     const candidatePath = path.resolve(repoPathArg ?? process.cwd())
 
@@ -213,12 +288,23 @@ export class CLIManager {
     console.log(`> 统计 Git 项目的 commit 时间分布，进而推导出项目的编码工作强度。
 
 ${chalk.bold('使用方法:')}
-  code996 [选项]
-  code996 multi [选项] [目录...]
+  code996 [路径...] [选项]
 
 ${chalk.bold('命令:')}
-  multi             分析多个Git仓库，汇总展示整体996指数和月度趋势
   help              显示帮助信息
+
+${chalk.bold('智能分析模式:')}
+  code996 会自动检测并选择最合适的分析模式：
+  
+  ${chalk.cyan('●')} ${chalk.bold('单仓库深度分析')}
+    • 在 Git 仓库中运行 code996
+    • 或指定单个仓库路径: code996 /path/to/repo
+    → 深度分析单个项目，包含月度趋势
+  
+  ${chalk.cyan('●')} ${chalk.bold('多仓库横向对比')}
+    • 传入多个路径: code996 /path1 /path2
+    • 或在有多个子仓库的目录运行
+    → 自动进入多仓库模式，汇总分析
 
 ${chalk.bold('全局选项:')}
   -v, --version     显示版本号
@@ -239,18 +325,17 @@ ${chalk.bold('默认策略:')}
   自动以最后一次提交为基准，回溯365天进行分析
 
 ${chalk.bold('示例:')}
-  ${chalk.gray('# 基础分析')}
-  code996                       # 分析最近一年
-  code996 --since 2024-01-01    # 从指定日期开始
+  ${chalk.gray('# 单仓库分析')}
+  code996                       # 分析当前仓库（最近一年）
+  code996 /path/to/repo         # 分析指定仓库
   code996 -y 2025               # 分析2025年整年
-  code996 -y 2023-2025          # 分析2023-2025年
-  code996 --all-time            # 分析所有时间
+  code996 --self                # 只统计当前用户的提交
+  code996 --ignore-author "bot" # 排除机器人提交
 
-  ${chalk.gray('# 多仓库分析（自动包含月度趋势）')}
-  code996 multi                 # 扫描当前目录的子目录，选择仓库进行汇总分析
-  code996 multi /path/to/dir1 /path/to/dir2  # 扫描指定目录
-  code996 multi -y 2024         # 分析2024年的数据和趋势
-  code996 multi --self          # 仅统计当前用户在所有仓库中的提交
+  ${chalk.gray('# 多仓库分析')}
+  code996 /proj1 /proj2         # 传入多个路径，自动分析多个仓库
+  code996 /workspace            # 子目录有多个仓库，自动进入多仓库模式
+  code996 -y 2024 --self        # 组合使用，分析2024年自己的提交
 
   ${chalk.gray('# 过滤噪音数据')}
   code996 --ignore-author "bot" # 排除所有包含 "bot" 的作者

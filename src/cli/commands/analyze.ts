@@ -2,6 +2,7 @@ import chalk from 'chalk'
 import ora from 'ora'
 import { GitCollector } from '../../git/git-collector'
 import { GitParser } from '../../git/git-parser'
+import { TrendAnalyzer } from '../../core/trend-analyzer'
 import { AnalyzeOptions } from '../index'
 import { calculateTimeRange } from '../../utils/terminal'
 import { GitLogData, GitLogOptions, ParsedGitData, Result996 } from '../../types/git-types'
@@ -15,6 +16,7 @@ import {
   printLateNightAnalysis,
   printRecommendation,
 } from './report'
+import { printTrendReport } from './report/trend-printer'
 import { ensureCommitSamples } from '../common/commit-guard'
 
 type TimeRangeMode = 'all-time' | 'custom' | 'auto-last-commit' | 'fallback'
@@ -126,10 +128,50 @@ export class AnalyzeExecutor {
       }
 
       printResults(result, parsedData, rawData, options, effectiveSince, effectiveUntil, rangeMode)
+
+      // ========== 步骤 4: 月度趋势分析 ==========
+      // 只有在分析时间跨度超过1个月时才显示趋势分析
+      if (effectiveSince && effectiveUntil && shouldShowTrendAnalysis(effectiveSince, effectiveUntil)) {
+        console.log()
+        const trendSpinner = ora('📈 正在进行月度趋势分析...').start()
+        try {
+          const trendResult = await TrendAnalyzer.analyzeTrend(
+            path,
+            effectiveSince,
+            effectiveUntil,
+            authorFilter?.pattern,
+            (current, total, month) => {
+              trendSpinner.text = `📈 正在分析月度趋势... (${current}/${total}: ${month})`
+            }
+          )
+          trendSpinner.succeed('趋势分析完成！')
+          printTrendReport(trendResult)
+        } catch (error) {
+          trendSpinner.fail('趋势分析失败')
+          console.error(chalk.red('⚠️  趋势分析错误:'), (error as Error).message)
+        }
+      }
     } catch (error) {
       console.error(chalk.red('❌ 分析失败:'), (error as Error).message)
       process.exit(1)
     }
+  }
+}
+
+/**
+ * 判断是否应该显示趋势分析
+ * 只有分析时间跨度超过1个月时才显示
+ */
+function shouldShowTrendAnalysis(since: string, until: string): boolean {
+  try {
+    const sinceDate = new Date(since)
+    const untilDate = new Date(until)
+    const diffTime = untilDate.getTime() - sinceDate.getTime()
+    const diffDays = diffTime / (1000 * 60 * 60 * 24)
+    // 超过45天（约1.5个月）才显示趋势分析，避免数据太少
+    return diffDays > 45
+  } catch {
+    return false
   }
 }
 

@@ -30,29 +30,38 @@ export class MultiExecutor {
    * 执行多仓库分析
    * @param inputDirs 用户指定的目录列表（为空则扫描当前目录的子目录）
    * @param options 分析选项
+   * @param preScannedRepos 可选：已经扫描好的仓库列表（智能模式使用）
    */
-  static async execute(inputDirs: string[], options: MultiOptions): Promise<void> {
+  static async execute(inputDirs: string[], options: MultiOptions, preScannedRepos?: RepoInfo[]): Promise<void> {
     try {
       // ========== 步骤 1: 扫描仓库 ==========
-      const spinner = ora('🔍 正在扫描 Git 仓库...').start()
+      let repos: RepoInfo[]
 
-      let repos
-      try {
-        if (inputDirs.length === 0) {
-          repos = await RepoScanner.scanSubdirectories(process.cwd())
-        } else {
-          repos = await RepoScanner.scan(inputDirs)
+      if (preScannedRepos && preScannedRepos.length > 0) {
+        // 使用已扫描的仓库列表（来自智能模式）
+        repos = preScannedRepos
+        console.log(chalk.green(`✔ 已检测到 ${repos.length} 个候选仓库`))
+      } else {
+        // 重新扫描
+        const spinner = ora('🔍 正在扫描 Git 仓库...').start()
+
+        try {
+          if (inputDirs.length === 0) {
+            repos = await RepoScanner.scanSubdirectories(process.cwd())
+          } else {
+            repos = await RepoScanner.scan(inputDirs)
+          }
+          spinner.succeed(`扫描完成，发现 ${repos.length} 个候选仓库`)
+        } catch (error) {
+          spinner.fail('扫描失败')
+          console.error(chalk.red('❌ 扫描失败:'), (error as Error).message)
+          return
         }
-        spinner.succeed(`扫描完成，发现 ${repos.length} 个候选仓库`)
-      } catch (error) {
-        spinner.fail('扫描失败')
-        console.error(chalk.red('❌ 扫描失败:'), (error as Error).message)
-        return
-      }
 
-      if (repos.length === 0) {
-        console.log(chalk.yellow('⚠️ 未在提供的目录中找到 Git 仓库。'))
-        return
+        if (repos.length === 0) {
+          console.log(chalk.yellow('⚠️ 未在提供的目录中找到 Git 仓库。'))
+          return
+        }
       }
 
       console.log(chalk.gray(`可选择的仓库总数: ${repos.length} 个`))
