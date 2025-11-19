@@ -8,7 +8,9 @@ export interface GitLogOptions {
   since?: string
   until?: string
   silent?: boolean // 静默模式，不打印日志
-  authorPattern?: string // 作者过滤正则
+  authorPattern?: string // 作者过滤正则（包含特定作者）
+  ignoreAuthor?: string // 排除作者正则（排除特定作者，如 bot|jenkins）
+  ignoreMsg?: string // 排除提交消息正则（排除特定消息，如 merge|lint）
 }
 
 export interface GitLogData {
@@ -235,4 +237,6 @@ export interface AnalyzeOptions {
   hours?: string
   halfHour?: boolean // 是否以半小时粒度展示
   trend?: boolean // 是否显示月度趋势分析
+  ignoreAuthor?: string // 排除作者正则
+  ignoreMsg?: string // 排除提交消息正则
 }

@@ -63,7 +63,7 @@ export class BaseCollector {
   }
 
   /**
-   * 为 git 命令附加通用过滤条件（时间范围与作者）
+   * 为 git 命令附加通用过滤条件（时间范围、作者包含、消息排除）
    */
   protected applyCommonFilters(args: string[], options: GitLogOptions): void {
     if (options.since) {
@@ -76,6 +76,13 @@ export class BaseCollector {
       args.push('--regexp-ignore-case')
       args.push('--extended-regexp')
       args.push(`--author=${options.authorPattern}`)
+    }
+    // 排除特定提交消息（使用 Git 原生的 --grep + --invert-grep）
+    if (options.ignoreMsg) {
+      args.push('--regexp-ignore-case')
+      args.push('--extended-regexp')
+      args.push(`--grep=${options.ignoreMsg}`)
+      args.push('--invert-grep')
     }
   }
 
@@ -144,6 +151,27 @@ export class BaseCollector {
     return {
       pattern,
       displayLabel,
+    }
+  }
+
+  /**
+   * 检查作者是否应该被排除（用于后处理过滤）
+   * @param authorLine git log 输出的作者行，格式: "Author Name <email@example.com>"
+   * @param ignorePattern 排除作者的正则表达式
+   * @returns true 表示应该排除，false 表示保留
+   */
+  protected shouldIgnoreAuthor(authorLine: string, ignorePattern?: string): boolean {
+    if (!ignorePattern) {
+      return false
+    }
+
+    try {
+      const regex = new RegExp(ignorePattern, 'i') // 不区分大小写
+      return regex.test(authorLine)
+    } catch (error) {
+      // 如果正则表达式无效，打印警告并不排除
+      console.warn(`警告: 无效的作者排除正则表达式 "${ignorePattern}": ${(error as Error).message}`)
+      return false
     }
   }
 }

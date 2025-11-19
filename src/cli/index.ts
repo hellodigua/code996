@@ -46,6 +46,8 @@ export class CLIManager {
       .option('--self', '仅统计当前 Git 用户的提交')
       .option('-H, --hours <range>', '手动指定标准工作时间 (例如: 9-18 或 9.5-18.5)')
       .option('--half-hour', '以半小时粒度展示时间分布（默认按小时展示）')
+      .option('--ignore-author <regex>', '排除匹配的作者 (例如: bot|jenkins)')
+      .option('--ignore-msg <regex>', '排除匹配的提交消息 (例如: merge|lint)')
       .action(async (repoPath: string | undefined, options: AnalyzeOptions, command: Command) => {
         const processedArgs = typeof repoPath === 'string' ? 1 : 0
         const extraArgs = (command.args ?? []).slice(processedArgs)
@@ -74,6 +76,8 @@ export class CLIManager {
       .option('--self', '仅统计当前 Git 用户的提交')
       .option('-H, --hours <range>', '手动指定标准工作时间 (例如: 9-18 或 9.5-18.5)')
       .option('--half-hour', '以半小时粒度展示时间分布（默认按小时展示）')
+      .option('--ignore-author <regex>', '排除匹配的作者 (例如: bot|jenkins)')
+      .option('--ignore-msg <regex>', '排除匹配的提交消息 (例如: merge|lint)')
       .argument('[dirs...]', '要扫描的目录列表（默认当前目录的子目录）')
       .action(async (dirs: string[], options: MultiOptions) => {
         await this.handleMulti(dirs, options)
@@ -136,6 +140,8 @@ export class CLIManager {
       year: options.year ?? globalOpts.year,
       hours: options.hours ?? globalOpts.hours,
       halfHour: options.halfHour ?? globalOpts.halfHour,
+      ignoreAuthor: options.ignoreAuthor ?? globalOpts.ignoreAuthor,
+      ignoreMsg: options.ignoreMsg ?? globalOpts.ignoreMsg,
     }
   }
 
@@ -226,6 +232,8 @@ ${chalk.bold('分析选项:')}
   --self                  仅统计当前 Git 用户的提交
   -H, --hours <range>     手动指定标准工作时间 (例如: 9-18 或 9.5-18.5)
   --half-hour             以半小时粒度展示时间分布（默认按小时展示）
+  --ignore-author <regex> 排除匹配的作者 (例如: bot|jenkins)
+  --ignore-msg <regex>    排除匹配的提交消息 (例如: merge|lint)
 
 ${chalk.bold('默认策略:')}
   自动以最后一次提交为基准，回溯365天进行分析
@@ -243,6 +251,20 @@ ${chalk.bold('示例:')}
   code996 multi /path/to/dir1 /path/to/dir2  # 扫描指定目录
   code996 multi -y 2024         # 分析2024年的数据和趋势
   code996 multi --self          # 仅统计当前用户在所有仓库中的提交
+
+  ${chalk.gray('# 过滤噪音数据')}
+  code996 --ignore-author "bot" # 排除所有包含 "bot" 的作者
+  code996 --ignore-author "bot|jenkins|github-actions"  # 排除多个作者（使用 | 分隔）
+  code996 --ignore-msg "^Merge" # 排除所有以 "Merge" 开头的提交消息
+  code996 --ignore-msg "merge|lint|format"  # 排除多个关键词
+  code996 --self --ignore-author "bot"  # 可以组合使用多个过滤条件
+
+${chalk.bold('正则表达式语法说明:')}
+  - 使用 | 分隔多个模式 (例如: bot|jenkins)
+  - 使用 ^ 匹配开头 (例如: ^Merge)
+  - 使用 $ 匹配结尾 (例如: fix$)
+  - 使用 .* 匹配任意字符 (例如: bot.*)
+  - 默认不区分大小写
 
 ${chalk.bold('更多详情请访问:')} https://github.com/code996/code996
     `)

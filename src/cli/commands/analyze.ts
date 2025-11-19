@@ -72,6 +72,8 @@ export class AnalyzeExecutor {
         since: effectiveSince,
         until: effectiveUntil,
         authorPattern: authorFilter?.pattern,
+        ignoreAuthor: options.ignoreAuthor,
+        ignoreMsg: options.ignoreMsg,
       }
 
       // 在正式分析前，先检查 commit 样本量是否达到最低要求

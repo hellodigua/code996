@@ -12,12 +12,13 @@ export class TimeCollector extends BaseCollector {
   async getCommitsByHour(options: GitLogOptions): Promise<TimeCount[]> {
     const { path } = options
 
-    // 采集分钟级数据：%H:%M 格式
-    const args = ['log', '--format=%cd', `--date=format-local:%H:%M`]
+    // 采集分钟级数据：同时获取作者和时间用于过滤
+    // 格式: "Author Name <email@example.com>|HH:MM"
+    const args = ['log', '--format=%an <%ae>|%cd', `--date=format-local:%H:%M`]
     this.applyCommonFilters(args, options)
 
     const output = await this.execGitCommand(args, path)
-    return this.parseTimeData(output, 'half-hour')
+    return this.parseTimeData(output, 'half-hour', options.ignoreAuthor)
   }
 
   /**
@@ -26,49 +27,62 @@ export class TimeCollector extends BaseCollector {
   async getCommitsByDay(options: GitLogOptions): Promise<TimeCount[]> {
     const { path } = options
 
-    const args = ['log', '--format=%cd', `--date=format-local:%u`]
+    // 格式: "Author Name <email@example.com>|D" (D为星期几，1-7)
+    const args = ['log', '--format=%an <%ae>|%cd', `--date=format-local:%u`]
     this.applyCommonFilters(args, options)
 
     const output = await this.execGitCommand(args, path)
-    return this.parseTimeData(output, 'day')
+    return this.parseTimeData(output, 'day', options.ignoreAuthor)
   }
 
   /**
-   * 解析时间数据
+   * 解析时间数据（支持作者过滤）
+   * @param output git log 输出，格式: "Author Name <email@example.com>|TIME"
+   * @param type 时间类型
+   * @param ignoreAuthor 排除作者的正则表达式
    */
-  private parseTimeData(output: string, type: 'half-hour' | 'day'): TimeCount[] {
+  private parseTimeData(output: string, type: 'half-hour' | 'day', ignoreAuthor?: string): TimeCount[] {
     const lines = output.split('\n').filter((line) => line.trim())
     const timeCounts: TimeCount[] = []
 
     for (const line of lines) {
       const trimmedLine = line.trim()
-      const parts = trimmedLine.split(/\s+/)
+      
+      // 分离作者和时间：格式 "Author Name <email@example.com>|TIME"
+      const pipeIndex = trimmedLine.lastIndexOf('|')
+      if (pipeIndex === -1) {
+        continue // 格式不正确，跳过
+      }
 
-      if (parts.length === 1) {
-        let time = parts[0]
+      const author = trimmedLine.substring(0, pipeIndex)
+      let time = trimmedLine.substring(pipeIndex + 1)
 
-        // 如果是半小时模式，需要将分钟归类到半小时
-        if (type === 'half-hour' && time) {
-          const match = time.match(/^(\d{2}):(\d{2})$/)
-          if (match) {
-            const hour = match[1]
-            const minute = parseInt(match[2], 10)
-            // 0-29分钟归到 :00，30-59分钟归到 :30
-            time = minute < 30 ? `${hour}:00` : `${hour}:30`
-          }
+      // 检查是否应该排除此作者
+      if (this.shouldIgnoreAuthor(author, ignoreAuthor)) {
+        continue
+      }
+
+      // 如果是半小时模式，需要将分钟归类到半小时
+      if (type === 'half-hour' && time) {
+        const match = time.match(/^(\d{2}):(\d{2})$/)
+        if (match) {
+          const hour = match[1]
+          const minute = parseInt(match[2], 10)
+          // 0-29分钟归到 :00，30-59分钟归到 :30
+          time = minute < 30 ? `${hour}:00` : `${hour}:30`
         }
+      }
 
-        if (time) {
-          // 查找是否已存在该时间点的计数
-          const existingIndex = timeCounts.findIndex((item) => item.time === time)
-          if (existingIndex >= 0) {
-            timeCounts[existingIndex].count++
-          } else {
-            timeCounts.push({
-              time,
-              count: 1,
-            })
-          }
+      if (time) {
+        // 查找是否已存在该时间点的计数
+        const existingIndex = timeCounts.findIndex((item) => item.time === time)
+        if (existingIndex >= 0) {
+          timeCounts[existingIndex].count++
+        } else {
+          timeCounts.push({
+            time,
+            count: 1,
+          })
         }
       }
     }

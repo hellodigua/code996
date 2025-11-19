@@ -16,6 +16,8 @@ code996 是一个分析工具，它可以统计 Git 项目的 commit 时间分�
 
 当你入职新公司，跑一下 `npx code996`，就可以看到数据背后的真相，从而判断这家公司的真实加班文化。
 
+与其痛苦三个月，不如早点看清真相！别等到试用期结束才后悔。
+
 ## 预览
 
 ### 查看核心结果
@@ -74,6 +76,8 @@ code996
 - `--self`：仅统计当前 Git 用户的提交记录
 - `-H, --hours <range>`：手动指定标准工作时间（例如：9-18 或 9.5-18.5）
 - `--half-hour`：以半小时粒度展示时间分布（默认按小时展示）
+- `--ignore-author <regex>`：排除匹配特定正则表达式的作者（例如：排除 bot 或 jenkins）
+- `--ignore-msg <regex>`：排除 Commit Message 中包含特定关键词的提交（例如：排除 merge 或 lint）
 
 ### 使用示例
 
@@ -110,6 +114,40 @@ code996 multi /path/to/repo1 /path/to/repo2  # 指定具体仓库路径
 code996 --half-hour            # 以半小时粒度展示时间分布
 code996 -y 2025 --half-hour    # 结合年份分析，精细展示
 code996 multi --half-hour      # 多仓库分析，半小时粒度展示
+
+# 过滤噪音数据（排除 CI/CD 机器人、合并提交等）
+code996 --ignore-author "bot"                    # 排除所有包含 "bot" 的作者
+code996 --ignore-author "bot|jenkins|github-actions"  # 排除多个作者（使用 | 分隔）
+code996 --ignore-msg "^Merge"                    # 排除所有以 "Merge" 开头的提交消息
+code996 --ignore-msg "merge|lint|format"         # 排除多个关键词
+code996 --self --ignore-author "bot"             # 可以组合使用多个过滤条件
+code996 -y 2025 --ignore-author "renovate|dependabot" --ignore-msg "^Merge" # 综合过滤
+```
+
+### 正则表达式语法说明
+
+`--ignore-author` 和 `--ignore-msg` 参数支持 JavaScript 正则表达式语法（不区分大小写）：
+
+- **基础匹配**：直接输入文本即可匹配，如 `bot` 会匹配所有包含 "bot" 的内容
+- **多个模式**：使用 `|` 分隔，如 `bot|jenkins|ci` 匹配任意一个
+- **开头匹配**：使用 `^`，如 `^Merge` 匹配以 "Merge" 开头的内容
+- **结尾匹配**：使用 `$`，如 `fix$` 匹配以 "fix" 结尾的内容
+- **任意字符**：使用 `.*`，如 `bot.*` 匹配 "bot" 后跟任意字符
+
+**常见使用场景**：
+
+```bash
+# 排除所有 CI/CD 机器人
+--ignore-author "bot|jenkins|github-actions|gitlab-ci|circleci|travis"
+
+# 排除依赖更新机器人
+--ignore-author "renovate|dependabot|greenkeeper"
+
+# 排除合并和格式化提交
+--ignore-msg "^Merge|^merge|lint|format|prettier"
+
+# 排除自动生成的提交
+--ignore-msg "^chore|^build|^ci|auto"
 ```
 
 > 💡 **半小时粒度功能说明**：

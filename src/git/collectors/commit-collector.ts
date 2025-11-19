@@ -18,8 +18,8 @@ export class CommitCollector extends BaseCollector {
   async getCommitsByDayAndHour(options: GitLogOptions): Promise<DayHourCommit[]> {
     const { path } = options
 
-    // 使用 --date=format 同时获取星期几和小时
-    const args = ['log', '--format=%cd', '--date=format-local:%u %H']
+    // 格式: "Author Name <email@example.com>|D H" (D=星期几，H=小时)
+    const args = ['log', '--format=%an <%ae>|%cd', '--date=format-local:%u %H']
     this.applyCommonFilters(args, options)
 
     const output = await this.execGitCommand(args, path)
@@ -30,7 +30,22 @@ export class CommitCollector extends BaseCollector {
 
     for (const line of lines) {
       const trimmed = line.trim()
-      const parts = trimmed.split(/\s+/)
+      
+      // 分离作者和时间数据
+      const pipeIndex = trimmed.lastIndexOf('|')
+      if (pipeIndex === -1) {
+        continue
+      }
+
+      const author = trimmed.substring(0, pipeIndex)
+      const timeData = trimmed.substring(pipeIndex + 1)
+
+      // 检查是否应该排除此作者
+      if (this.shouldIgnoreAuthor(author, options.ignoreAuthor)) {
+        continue
+      }
+
+      const parts = timeData.trim().split(/\s+/)
 
       if (parts.length >= 2) {
         const weekday = parseInt(parts[0], 10)
@@ -59,7 +74,8 @@ export class CommitCollector extends BaseCollector {
   async getDailyFirstCommits(options: GitLogOptions): Promise<DailyFirstCommit[]> {
     const { path } = options
 
-    const args = ['log', '--format=%cd', '--date=format-local:%Y-%m-%dT%H:%M:%S']
+    // 格式: "Author Name <email@example.com>|YYYY-MM-DDTHH:MM:SS"
+    const args = ['log', '--format=%an <%ae>|%cd', '--date=format-local:%Y-%m-%dT%H:%M:%S']
     this.applyCommonFilters(args, options)
 
     const output = await this.execGitCommand(args, path)
@@ -73,7 +89,21 @@ export class CommitCollector extends BaseCollector {
         continue
       }
 
-      const parsed = this.parseLocalTimestamp(trimmed)
+      // 分离作者和时间
+      const pipeIndex = trimmed.lastIndexOf('|')
+      if (pipeIndex === -1) {
+        continue
+      }
+
+      const author = trimmed.substring(0, pipeIndex)
+      const timestamp = trimmed.substring(pipeIndex + 1)
+
+      // 检查是否应该排除此作者
+      if (this.shouldIgnoreAuthor(author, options.ignoreAuthor)) {
+        continue
+      }
+
+      const parsed = this.parseLocalTimestamp(timestamp)
       if (!parsed) {
         continue
       }
@@ -101,7 +131,8 @@ export class CommitCollector extends BaseCollector {
   async getDailyLatestCommits(options: GitLogOptions): Promise<DailyLatestCommit[]> {
     const { path } = options
 
-    const args = ['log', '--format=%cd', '--date=format-local:%Y-%m-%dT%H:%M:%S']
+    // 格式: "Author Name <email@example.com>|YYYY-MM-DDTHH:MM:SS"
+    const args = ['log', '--format=%an <%ae>|%cd', '--date=format-local:%Y-%m-%dT%H:%M:%S']
     this.applyCommonFilters(args, options)
 
     const output = await this.execGitCommand(args, path)
@@ -115,7 +146,21 @@ export class CommitCollector extends BaseCollector {
         continue
       }
 
-      const parsed = this.parseLocalTimestamp(trimmed)
+      // 分离作者和时间
+      const pipeIndex = trimmed.lastIndexOf('|')
+      if (pipeIndex === -1) {
+        continue
+      }
+
+      const author = trimmed.substring(0, pipeIndex)
+      const timestamp = trimmed.substring(pipeIndex + 1)
+
+      // 检查是否应该排除此作者
+      if (this.shouldIgnoreAuthor(author, options.ignoreAuthor)) {
+        continue
+      }
+
+      const parsed = this.parseLocalTimestamp(timestamp)
       if (!parsed) {
         continue
       }
@@ -165,7 +210,8 @@ export class CommitCollector extends BaseCollector {
   async getDailyCommitHours(options: GitLogOptions): Promise<DailyCommitHours[]> {
     const { path } = options
 
-    const args = ['log', '--format=%cd', '--date=format-local:%Y-%m-%dT%H:%M:%S']
+    // 格式: "Author Name <email@example.com>|YYYY-MM-DDTHH:MM:SS"
+    const args = ['log', '--format=%an <%ae>|%cd', '--date=format-local:%Y-%m-%dT%H:%M:%S']
     this.applyCommonFilters(args, options)
 
     const output = await this.execGitCommand(args, path)
@@ -179,7 +225,21 @@ export class CommitCollector extends BaseCollector {
         continue
       }
 
-      const parsed = this.parseLocalTimestamp(trimmed)
+      // 分离作者和时间
+      const pipeIndex = trimmed.lastIndexOf('|')
+      if (pipeIndex === -1) {
+        continue
+      }
+
+      const author = trimmed.substring(0, pipeIndex)
+      const timestamp = trimmed.substring(pipeIndex + 1)
+
+      // 检查是否应该排除此作者
+      if (this.shouldIgnoreAuthor(author, options.ignoreAuthor)) {
+        continue
+      }
+
+      const parsed = this.parseLocalTimestamp(timestamp)
       if (!parsed) {
         continue
       }

@@ -21,6 +21,7 @@
     "cli"
   ],
   "author": "hellodigua",
+  "repository": "hellodigua/code996",
   "license": "MIT",
   "devDependencies": {
     "@types/jest": "^29.5.12",
