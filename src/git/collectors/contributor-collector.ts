@@ -54,7 +54,7 @@ export class ContributorCollector extends BaseCollector {
 
     const output = await this.execGitCommand(args, path)
     const lines = output.split('\n').filter((line) => line.trim())
-    
+
     const uniqueAuthors = new Set<string>()
     for (const line of lines) {
       // 检查是否应该排除此作者
@@ -66,7 +66,7 @@ export class ContributorCollector extends BaseCollector {
         }
       }
     }
-    
+
     return uniqueAuthors.size
   }
 
@@ -82,22 +82,22 @@ export class ContributorCollector extends BaseCollector {
 
     const output = await this.execGitCommand(args, path)
     const lines = output.split('\n').filter((line) => line.trim())
-    
+
     // 找到第一个未被排除的提交
     for (const line of lines) {
       const pipeIndex = line.lastIndexOf('|')
       if (pipeIndex === -1) {
         continue
       }
-      
+
       const author = line.substring(0, pipeIndex)
       const date = line.substring(pipeIndex + 1)
-      
+
       if (!this.shouldIgnoreAuthor(author, options.ignoreAuthor)) {
         return date.trim()
       }
     }
-    
+
     return ''
   }
 
@@ -114,22 +114,22 @@ export class ContributorCollector extends BaseCollector {
 
     const output = await this.execGitCommand(args, path)
     const lines = output.split('\n').filter((line) => line.trim())
-    
+
     // 找到第一个未被排除的提交（因为 log 默认按时间倒序）
     for (const line of lines) {
       const pipeIndex = line.lastIndexOf('|')
       if (pipeIndex === -1) {
         continue
       }
-      
+
       const author = line.substring(0, pipeIndex)
       const date = line.substring(pipeIndex + 1)
-      
+
       if (!this.shouldIgnoreAuthor(author, options.ignoreAuthor)) {
         return date.trim()
       }
     }
-    
+
     return ''
   }
 }

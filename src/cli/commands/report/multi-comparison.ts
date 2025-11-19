@@ -15,6 +15,23 @@ export class MultiComparisonPrinter {
       return
     }
 
+    // 过滤掉提交数为 0 的项目
+    const filteredRecords = records.filter((record) => {
+      // 保留失败的记录（显示错误状态）
+      if (record.status === 'failed') {
+        return true
+      }
+      // 只过滤掉成功但没有提交的项目
+      return record.data.totalCommits > 0
+    })
+
+    // 如果过滤后没有记录，不显示表格
+    if (filteredRecords.length === 0) {
+      console.log(chalk.yellow('⚠️ 所有仓库的提交数均为 0，无法生成对比表'))
+      console.log()
+      return
+    }
+
     console.log(chalk.bgCyan.white(' 📊 各仓库996指数对比 '))
     console.log()
 
@@ -38,7 +55,7 @@ export class MultiComparisonPrinter {
     })
 
     // 按 996 指数降序排序
-    const sortedRecords = [...records].sort((a, b) => {
+    const sortedRecords = [...filteredRecords].sort((a, b) => {
       if (a.status === 'failed' && b.status === 'success') return 1
       if (a.status === 'success' && b.status === 'failed') return -1
       if (a.status === 'failed' && b.status === 'failed') return 0
@@ -80,17 +97,21 @@ export class MultiComparisonPrinter {
     console.log()
 
     // 统计信息
-    const successCount = records.filter((r) => r.status === 'success').length
-    const failedCount = records.length - successCount
+    const successCount = filteredRecords.filter((r) => r.status === 'success').length
+    const failedCount = filteredRecords.length - successCount
+    const filteredOutCount = records.length - filteredRecords.length
 
     console.log(chalk.blue('统计信息:'))
     console.log(`  成功分析: ${chalk.green(successCount)} 个仓库`)
     if (failedCount > 0) {
       console.log(`  分析失败: ${chalk.red(failedCount)} 个仓库`)
     }
+    if (filteredOutCount > 0) {
+      console.log(`  已过滤（提交数为0）: ${chalk.gray(filteredOutCount)} 个仓库`)
+    }
 
     // 找出加班最严重和最轻松的仓库
-    const successfulRecords = records.filter((r) => r.status === 'success')
+    const successfulRecords = filteredRecords.filter((r) => r.status === 'success')
     if (successfulRecords.length > 1) {
       const maxRecord = successfulRecords.reduce((max, r) => (r.result.index996 > max.result.index996 ? r : max))
       const minRecord = successfulRecords.reduce((min, r) => (r.result.index996 < min.result.index996 ? r : min))

@@ -30,7 +30,7 @@ export class CommitCollector extends BaseCollector {
 
     for (const line of lines) {
       const trimmed = line.trim()
-      
+
       // 分离作者和时间数据
       const pipeIndex = trimmed.lastIndexOf('|')
       if (pipeIndex === -1) {

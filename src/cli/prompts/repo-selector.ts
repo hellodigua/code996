@@ -1,4 +1,5 @@
 import chalk from 'chalk'
+import path from 'path'
 import { RepoInfo } from '../../types/git-types'
 
 /**
@@ -19,10 +20,29 @@ export async function promptRepoSelection(repos: RepoInfo[]): Promise<RepoInfo[]
   // 动态导入 @inquirer/prompts
   const { checkbox } = await import('@inquirer/prompts')
 
-  const choices = repos.map((repo) => ({
-    name: `${repo.name} (${repo.path})`,
-    value: repo,
-  }))
+  // 获取当前工作目录，用于计算相对路径
+  const cwd = process.cwd()
+
+  const choices = repos.map((repo) => {
+    // 计算相对路径，如果无法计算则使用原路径
+    let displayPath: string
+    try {
+      const relativePath = path.relative(cwd, repo.path)
+      // 如果相对路径比绝对路径短，则使用相对路径，否则使用绝对路径
+      displayPath = relativePath.length < repo.path.length ? relativePath : repo.path
+      // 如果相对路径是空字符串，表示就是当前目录
+      if (displayPath === '') {
+        displayPath = '.'
+      }
+    } catch {
+      displayPath = repo.path
+    }
+
+    return {
+      name: `${chalk.bold(repo.name)} ${chalk.gray(`(${displayPath})`)}`,
+      value: repo,
+    }
+  })
 
   const selected = await checkbox({
     message: '请选择需要分析的仓库（空格选择，回车确认）',

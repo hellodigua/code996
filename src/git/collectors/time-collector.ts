@@ -47,7 +47,7 @@ export class TimeCollector extends BaseCollector {
 
     for (const line of lines) {
       const trimmedLine = line.trim()
-      
+
       // 分离作者和时间：格式 "Author Name <email@example.com>|TIME"
       const pipeIndex = trimmedLine.lastIndexOf('|')
       if (pipeIndex === -1) {

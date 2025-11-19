@@ -26,6 +26,12 @@ export function printWorkTimeSummary(parsedData: ParsedGitData): void {
     return
   }
 
+  // 如果可信度低于40%，不显示工作时间推测（但仍然显示加班说明）
+  if (detection.confidence < 40) {
+    printWorkHourCapNotice(detection)
+    return
+  }
+
   // 只在自动推断场景展示该模块，因此固定输出自动提示
   const titleSuffix = chalk.gray('（自动推断）')
   console.log(chalk.blue('⌛ 工作时间推测:') + ' ' + titleSuffix)
