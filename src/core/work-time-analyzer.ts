@@ -163,7 +163,7 @@ export class WorkTimeAnalyzer {
   }
 
   /**
-   * 根据样本数量估算可信度（百分比）
+   * 根据样本数量估算置信度（百分比）
    * 使用渐近函数，无限趋近90%但永不达到
    */
   private static estimateConfidence(sampleDays: number): number {

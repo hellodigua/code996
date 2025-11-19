@@ -143,7 +143,7 @@ export class AnalyzeExecutor {
               trendSpinner.text = `📈 正在分析月度趋势... (${current}/${total}: ${month})`
             }
           )
-          trendSpinner.succeed('趋势分析完成！')
+          trendSpinner.succeed()
           printTrendReport(trendResult)
         } catch (error) {
           trendSpinner.fail('趋势分析失败')

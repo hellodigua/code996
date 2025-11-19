@@ -208,7 +208,7 @@ export class MultiExecutor {
       console.log()
 
       // ========== 步骤 6: 输出汇总结果 ==========
-      console.log(chalk.bgBlue.white(' 📊 多仓库汇总分析报告 '))
+      console.log(chalk.blue('📊 多仓库汇总分析报告:'))
       console.log()
 
       printCoreResults(result, mergedData, options, effectiveSince, effectiveUntil)
@@ -246,7 +246,7 @@ export class MultiExecutor {
                 trendSpinner.text = `📈 正在分析月度趋势... (${current}/${total}: ${month})`
               }
             )
-            trendSpinner.succeed(`趋势分析完成！(汇总了 ${successfulRepoPaths.length} 个仓库)`)
+            trendSpinner.succeed()
             printTrendReport(trendResult)
           }
         } catch (error) {

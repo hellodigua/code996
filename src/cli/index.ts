@@ -350,7 +350,7 @@ ${chalk.bold('正则表达式语法说明:')}
   - 使用 .* 匹配任意字符 (例如: bot.*)
   - 默认不区分大小写
 
-${chalk.bold('更多详情请访问:')} https://github.com/code996/code996
+${chalk.bold('更多详情请访问:')} https://github.com/hellodigua/code996
     `)
   }
 

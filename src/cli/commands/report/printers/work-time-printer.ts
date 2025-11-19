@@ -26,7 +26,7 @@ export function printWorkTimeSummary(parsedData: ParsedGitData): void {
     return
   }
 
-  // 如果可信度低于40%，不显示工作时间推测（但仍然显示加班说明）
+  // 如果置信度低于40%，不显示工作时间推测（但仍然显示加班说明）
   if (detection.confidence < 40) {
     printWorkHourCapNotice(detection)
     return
@@ -52,7 +52,7 @@ export function printWorkTimeSummary(parsedData: ParsedGitData): void {
       { content: endClock, colSpan: 1 },
     ],
     [
-      { content: chalk.bold('可信度'), colSpan: 1 },
+      { content: chalk.bold('置信度'), colSpan: 1 },
       {
         content: `${detection.confidence}%（样本天数: ${detection.sampleCount >= 0 ? detection.sampleCount : '手动'}）`,
         colSpan: 1,

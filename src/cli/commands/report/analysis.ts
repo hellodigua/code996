@@ -81,4 +81,3 @@ export function printDetailedAnalysis(result: Result996, parsedData: ParsedGitDa
 
   console.log()
 }
-

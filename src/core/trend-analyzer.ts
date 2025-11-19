@@ -479,17 +479,17 @@ export class TrendAnalyzer {
    * 综合考虑提交数和工作天数两个维度
    */
   private static calculateConfidence(commits: number, workDays: number): 'high' | 'medium' | 'low' {
-    // 高可信：提交数≥100 且 工作天数≥10
+    // 高置信：提交数≥100 且 工作天数≥10
     if (commits >= 100 && workDays >= 10) {
       return 'high'
     }
 
-    // 中可信：提交数≥50 或 工作天数≥5
+    // 中置信：提交数≥50 或 工作天数≥5
     if (commits >= 50 || workDays >= 5) {
       return 'medium'
     }
 
-    // 低可信：提交数<50 且 工作天数<5
+    // 低置信：提交数<50 且 工作天数<5
     return 'low'
   }
 }

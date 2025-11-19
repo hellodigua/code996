@@ -93,7 +93,7 @@ export class GitParser {
       isReliable: true,
       sampleCount: -1, // -1 表示手动指定
       detectionMethod: 'manual',
-      confidence: 100, // 手动指定视为最高可信度
+      confidence: 100, // 手动指定视为最高置信度
       startHourRange: {
         startHour,
         endHour: Math.min(endHour, startHour + 1),

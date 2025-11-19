@@ -39,13 +39,13 @@ export function calculateTimeRange(allTime: boolean = false): { since: string; u
 }
 
 /**
- * 计算趋势报告表格列宽（11列表头），根据终端宽度自适应
+ * 计算趋势报告表格列宽（10列表头），根据终端宽度自适应
  * @param terminalWidth 终端宽度
- * @returns 11列宽度数组
+ * @returns 10列宽度数组
  */
 export function calculateTrendTableWidths(terminalWidth: number): number[] {
-  const columnCount = 11
-  const baseWidths = [9, 10, 12, 10, 10, 10, 10, 8, 10, 12, 10] // 月份、指数、平均工时、稳定性、平均开始、平均结束、最晚结束、提交数、参与人数、工作天数、置信度
+  const columnCount = 10
+  const baseWidths = [9, 10, 10, 10, 10, 10, 8, 10, 12, 10] // 月份、指数、平均工时、平均开始、平均结束、最晚结束、提交数、参与人数、工作天数、置信度
   const minColumnWidth = 3
 
   // 估算边框和分隔线占用：列间分隔线(columnCount-1) + 左右边框2，共 columnCount 个字符
@@ -53,33 +53,30 @@ export function calculateTrendTableWidths(terminalWidth: number): number[] {
   const availableWidth = Math.max(terminalWidth - borderOverhead, columnCount)
 
   const baseTotal = baseWidths.reduce((sum, width) => sum + width, 0)
-  const scale = availableWidth / baseTotal
 
-  let widths = baseWidths.map((width) => Math.max(minColumnWidth, Math.floor(width * scale)))
-  let currentSum = widths.reduce((sum, width) => sum + width, 0)
+  // 如果基础宽度总和超过可用宽度，需要压缩
+  if (baseTotal > availableWidth) {
+    const scale = availableWidth / baseTotal
+    let widths = baseWidths.map((width) => Math.max(minColumnWidth, Math.floor(width * scale)))
+    let currentSum = widths.reduce((sum, width) => sum + width, 0)
 
-  // 如果总宽度小于可用宽度，按顺序补齐
-  let index = 0
-  while (currentSum < availableWidth) {
-    widths[index % columnCount]++
-    currentSum++
-    index++
-  }
-
-  // 如果超过可用宽度，则在不低于最小值的前提下依次回收
-  index = 0
-  let safetyGuard = columnCount * 10 // 防止极端情况下死循环
-  while (currentSum > availableWidth && safetyGuard > 0) {
-    const col = index % columnCount
-    if (widths[col] > minColumnWidth) {
-      widths[col]--
-      currentSum--
+    // 如果超过可用宽度，则在不低于最小值的前提下依次回收
+    let index = 0
+    let safetyGuard = columnCount * 10 // 防止极端情况下死循环
+    while (currentSum > availableWidth && safetyGuard > 0) {
+      const col = index % columnCount
+      if (widths[col] > minColumnWidth) {
+        widths[col]--
+        currentSum--
+      }
+      index++
+      safetyGuard--
     }
-    index++
-    safetyGuard--
+    return widths
   }
 
-  return widths
+  // 基础宽度适合，直接使用，不再扩展填满
+  return baseWidths
 }
 
 /**

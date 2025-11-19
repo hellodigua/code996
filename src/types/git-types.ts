@@ -38,7 +38,7 @@ export interface WorkTimeDetectionResult {
   isReliable: boolean
   sampleCount: number
   detectionMethod: 'quantile-window' | 'default' | 'manual'
-  confidence: number // 可信度百分比 (0-100)
+  confidence: number // 置信度百分比 (0-100)
   startHourRange?: {
     startHour: number
     endHour: number
