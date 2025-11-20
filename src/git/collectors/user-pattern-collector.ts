@@ -193,8 +193,8 @@ export class UserPatternCollector extends BaseCollector {
     nMonthsAgo.setMonth(nMonthsAgo.getMonth() - monthsBack)
     const sinceDate = nMonthsAgo.toISOString().split('T')[0]
 
-    // 格式: "YYYY-MM-DD HH:MM u" (u是星期几，1=周一到7=周日)
-    const args = ['log', '--format=%cd', '--date=format-local:%Y-%m-%d %H:%M %u', `--author=${email}`, `--since=${sinceDate}`]
+    // 格式: "YYYY-MM-DD HH:MM" (使用更兼容的格式)
+    const args = ['log', '--format=%cd', `--date=format-local:%Y-%m-%d %H:%M`, `--author=${email}`, `--since=${sinceDate}`]
     this.applyCommonFilters(args, options)
 
     const output = await this.execGitCommand(args, path)
@@ -204,15 +204,22 @@ export class UserPatternCollector extends BaseCollector {
     const dailyCommits = new Map<string, number[]>()
 
     for (const line of lines) {
-      const match = line.trim().match(/^(\d{4}-\d{2}-\d{2})\s+(\d{2}):(\d{2})\s+(\d)$/)
+      const match = line.trim().match(/^(\d{4})-(\d{2})-(\d{2})\s+(\d{2}):(\d{2})$/)
       if (match) {
-        const date = match[1]
-        const hour = parseInt(match[2], 10)
-        const minute = parseInt(match[3], 10)
-        const dayOfWeek = parseInt(match[4], 10)
+        const year = parseInt(match[1], 10)
+        const month = parseInt(match[2], 10)
+        const day = parseInt(match[3], 10)
+        const hour = parseInt(match[4], 10)
+        const minute = parseInt(match[5], 10)
 
-        // 排除周末（6=周六，7=周日）
-        if (dayOfWeek === 6 || dayOfWeek === 7) continue
+        const date = `${match[1]}-${match[2]}-${match[3]}`
+
+        // 计算星期几（0=周日, 1=周一, ..., 6=周六）
+        const dateObj = new Date(year, month - 1, day)
+        const dayOfWeek = dateObj.getDay()
+
+        // 排除周末（0=周日，6=周六）
+        if (dayOfWeek === 0 || dayOfWeek === 6) continue
 
         // 上班时间范围：08:00-12:00
         if (hour < 8 || hour >= 12) continue
@@ -250,8 +257,8 @@ export class UserPatternCollector extends BaseCollector {
     nMonthsAgo.setMonth(nMonthsAgo.getMonth() - monthsBack)
     const sinceDate = nMonthsAgo.toISOString().split('T')[0]
 
-    // 格式: "YYYY-MM-DD HH:MM u"
-    const args = ['log', '--format=%cd', '--date=format-local:%Y-%m-%d %H:%M %u', `--author=${email}`, `--since=${sinceDate}`]
+    // 格式: "YYYY-MM-DD HH:MM" (使用更兼容的格式)
+    const args = ['log', '--format=%cd', `--date=format-local:%Y-%m-%d %H:%M`, `--author=${email}`, `--since=${sinceDate}`]
     this.applyCommonFilters(args, options)
 
     const output = await this.execGitCommand(args, path)
@@ -261,15 +268,22 @@ export class UserPatternCollector extends BaseCollector {
     const dailyCommits = new Map<string, number[]>()
 
     for (const line of lines) {
-      const match = line.trim().match(/^(\d{4}-\d{2}-\d{2})\s+(\d{2}):(\d{2})\s+(\d)$/)
+      const match = line.trim().match(/^(\d{4})-(\d{2})-(\d{2})\s+(\d{2}):(\d{2})$/)
       if (match) {
-        const date = match[1]
-        const hour = parseInt(match[2], 10)
-        const minute = parseInt(match[3], 10)
-        const dayOfWeek = parseInt(match[4], 10)
+        const year = parseInt(match[1], 10)
+        const month = parseInt(match[2], 10)
+        const day = parseInt(match[3], 10)
+        const hour = parseInt(match[4], 10)
+        const minute = parseInt(match[5], 10)
 
-        // 排除周末
-        if (dayOfWeek === 6 || dayOfWeek === 7) continue
+        const date = `${match[1]}-${match[2]}-${match[3]}`
+
+        // 计算星期几（0=周日, 1=周一, ..., 6=周六）
+        const dateObj = new Date(year, month - 1, day)
+        const dayOfWeek = dateObj.getDay()
+
+        // 排除周末（0=周日，6=周六）
+        if (dayOfWeek === 0 || dayOfWeek === 6) continue
 
         const minutesFromMidnight = hour * 60 + minute
 
