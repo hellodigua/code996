@@ -8,7 +8,7 @@ import { getIndexColor } from '../../../utils/formatter'
  */
 export function printTrendReport(result: TrendAnalysisResult): void {
   console.log()
-  console.log(chalk.blue.bold('📈 月度趋势分析报告'))
+  console.log(chalk.cyan.bold('📈 月度趋势分析报告'))
   console.log()
 
   // 打印时间范围
@@ -86,7 +86,7 @@ function printMonthlyTable(monthlyData: MonthlyTrendData[]): void {
  * 打印趋势摘要
  */
 function printTrendSummary(result: TrendAnalysisResult): void {
-  console.log(chalk.blue('📊 整体趋势:'))
+  console.log(chalk.cyan.bold('📊 整体趋势:'))
   console.log()
 
   const terminalWidth = Math.min(getTerminalWidth(), 80)

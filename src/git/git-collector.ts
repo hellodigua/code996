@@ -4,6 +4,7 @@ import { BaseCollector } from './collectors/base-collector'
 import { TimeCollector } from './collectors/time-collector'
 import { CommitCollector } from './collectors/commit-collector'
 import { ContributorCollector } from './collectors/contributor-collector'
+import { TimezoneCollector } from './collectors/timezone-collector'
 
 /**
  * Git数据采集主类
@@ -13,12 +14,14 @@ export class GitCollector extends BaseCollector {
   private timeCollector: TimeCollector
   private commitCollector: CommitCollector
   private contributorCollector: ContributorCollector
+  private timezoneCollector: TimezoneCollector
 
   constructor() {
     super()
     this.timeCollector = new TimeCollector()
     this.commitCollector = new CommitCollector()
     this.contributorCollector = new ContributorCollector()
+    this.timezoneCollector = new TimezoneCollector()
   }
 
   /**
@@ -69,6 +72,7 @@ export class GitCollector extends BaseCollector {
         contributors,
         firstCommitDate,
         lastCommitDate,
+        timezoneData,
       ] = await Promise.all([
         this.timeCollector.getCommitsByHour(options),
         this.timeCollector.getCommitsByDay(options),
@@ -80,6 +84,7 @@ export class GitCollector extends BaseCollector {
         this.contributorCollector.getContributorCount(options),
         this.contributorCollector.getFirstCommitDate(options),
         this.contributorCollector.getLastCommitDate(options),
+        this.timezoneCollector.collectTimezones(options),
       ])
 
       if (!options.silent) {
@@ -98,6 +103,7 @@ export class GitCollector extends BaseCollector {
         firstCommitDate: firstCommitDate || undefined,
         lastCommitDate: lastCommitDate || undefined,
         granularity: 'half-hour', // 标识数据为半小时粒度
+        timezoneData,
       }
     } catch (error) {
       if (!options.silent) {

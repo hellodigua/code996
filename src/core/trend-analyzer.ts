@@ -103,8 +103,10 @@ export class TrendAnalyzer {
 
       const validDates = dates.filter((d) => d !== null) as { firstCommit: string; lastCommit: string }[]
       if (validDates.length > 0) {
-        since = since || validDates.reduce((min, d) => (d.firstCommit < min ? d.firstCommit : min), validDates[0].firstCommit)
-        until = until || validDates.reduce((max, d) => (d.lastCommit > max ? d.lastCommit : max), validDates[0].lastCommit)
+        since =
+          since || validDates.reduce((min, d) => (d.firstCommit < min ? d.firstCommit : min), validDates[0].firstCommit)
+        until =
+          until || validDates.reduce((max, d) => (d.lastCommit > max ? d.lastCommit : max), validDates[0].lastCommit)
       }
     }
 

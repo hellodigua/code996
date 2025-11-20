@@ -3,7 +3,7 @@ import { ParsedGitData, Result996 } from '../../../types/git-types'
 
 /** 打印详细分析和建议 */
 export function printDetailedAnalysis(result: Result996, parsedData: ParsedGitData): void {
-  console.log(chalk.blue('📋 详细分析:'))
+  console.log(chalk.cyan.bold('📋 详细分析:'))
   console.log()
 
   const analysis: string[] = []

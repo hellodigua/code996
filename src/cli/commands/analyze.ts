@@ -3,6 +3,8 @@ import ora from 'ora'
 import { GitCollector } from '../../git/git-collector'
 import { GitParser } from '../../git/git-parser'
 import { TrendAnalyzer } from '../../core/trend-analyzer'
+import { TimezoneAnalyzer } from '../../core/timezone-analyzer'
+import { TimezoneFilter } from '../../utils/timezone-filter'
 import { AnalyzeOptions } from '../index'
 import { calculateTimeRange } from '../../utils/terminal'
 import { GitLogData, GitLogOptions, ParsedGitData, Result996 } from '../../types/git-types'
@@ -87,9 +89,34 @@ export class AnalyzeExecutor {
       const spinner = ora('📦 开始分析').start()
 
       // 步骤1: 数据采集
-      const rawData = await collector.collect(collectOptions)
+      let rawData = await collector.collect(collectOptions)
       spinner.text = '⚙️ 正在解析数据...'
       spinner.render()
+
+      // 步骤1.5: 按时区过滤（如果指定了 --timezone）
+      let timezoneFilterInfo: { warning: string; filteredCommits: number } | undefined
+      if (options.timezone) {
+        try {
+          const filterResult = TimezoneFilter.filterByTimezone(rawData, options.timezone)
+          rawData = filterResult.filteredData
+          timezoneFilterInfo = {
+            warning: filterResult.warning,
+            filteredCommits: filterResult.filteredCommits,
+          }
+          spinner.text = `⚙️ 已按时区 ${options.timezone} 过滤数据...`
+          spinner.render()
+        } catch (error) {
+          spinner.fail('时区过滤失败')
+          console.error(chalk.red('❌'), (error as Error).message)
+          console.log()
+          if (rawData.timezoneData) {
+            console.log(chalk.blue('可用时区:'))
+            const available = TimezoneFilter.getAvailableTimezones(rawData.timezoneData)
+            available.forEach((tz) => console.log(chalk.gray(`  • ${tz}`)))
+          }
+          process.exit(1)
+        }
+      }
 
       // 步骤2: 数据解析与验证
       const parsedData = GitParser.parseGitData(rawData, options.hours, effectiveSince, effectiveUntil)
@@ -112,6 +139,12 @@ export class AnalyzeExecutor {
 
       spinner.succeed('分析完成！')
       console.log()
+
+      // 显示时区过滤警告（如果有）
+      if (timezoneFilterInfo) {
+        console.log(timezoneFilterInfo.warning)
+        console.log()
+      }
 
       // 若未指定时间范围，尝试回填实际的首尾提交时间
       let actualSince: string | undefined
@@ -148,6 +181,16 @@ export class AnalyzeExecutor {
         } catch (error) {
           trendSpinner.fail('趋势分析失败')
           console.error(chalk.red('⚠️  趋势分析错误:'), (error as Error).message)
+        }
+      }
+
+      // ========== 步骤 5: 检测跨时区并显示警告（如果未使用 --timezone 过滤）==========
+      if (rawData.timezoneData && !options.timezone) {
+        const tzAnalysis = TimezoneAnalyzer.analyzeTimezone(rawData.timezoneData, rawData.byHour)
+        if (tzAnalysis.isCrossTimezone) {
+          console.log()
+          const warningMessage = TimezoneAnalyzer.generateWarningMessage(tzAnalysis)
+          console.log(chalk.yellow(warningMessage))
         }
       }
     } catch (error) {

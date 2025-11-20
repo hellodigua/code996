@@ -32,7 +32,7 @@ export class MultiComparisonPrinter {
       return
     }
 
-    console.log(chalk.blue('📊 各仓库996指数对比:'))
+    console.log(chalk.cyan.bold('📊 各仓库996指数对比:'))
     console.log()
 
     const table = new Table({

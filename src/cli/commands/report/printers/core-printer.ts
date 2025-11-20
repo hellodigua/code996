@@ -19,7 +19,7 @@ export function printCoreResults(
   until?: string,
   rangeMode: TimeRangeMode = 'custom'
 ): void {
-  console.log(chalk.blue('📊 核心结果:'))
+  console.log(chalk.cyan.bold('📊 核心结果:'))
   console.log()
 
   const terminalWidth = Math.min(getTerminalWidth(), 80)

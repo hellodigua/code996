@@ -17,7 +17,7 @@ export function printTimeDistribution(parsedData: ParsedGitData, halfHourMode = 
     : TimeAggregator.aggregateToHour(parsedData.hourData) // 聚合为24点
 
   const title = halfHourMode ? '🕐 24小时分布（半小时粒度）:' : '🕐 24小时分布:'
-  console.log(chalk.blue(title))
+  console.log(chalk.cyan.bold(title))
 
   const maxCount = Math.max(0, ...displayData.map((item: TimeCount) => item.count))
 
@@ -43,7 +43,7 @@ export function printTimeDistribution(parsedData: ParsedGitData, halfHourMode = 
     console.log()
   }
 
-  console.log(chalk.blue('📅 星期分布:'))
+  console.log(chalk.cyan.bold('📅 星期分布:'))
 
   const weekDayNames = ['周一', '周二', '周三', '周四', '周五', '周六', '周日']
   const maxDayCount = Math.max(0, ...parsedData.dayData.map((item) => item.count))

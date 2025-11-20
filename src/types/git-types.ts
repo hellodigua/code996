@@ -25,6 +25,7 @@ export interface GitLogData {
   firstCommitDate?: string // 第一次提交日期
   lastCommitDate?: string // 最后一次提交日期
   granularity?: TimeGranularity // 时间粒度标识（默认 'half-hour'）
+  timezoneData?: TimezoneData // 时区分布数据
 }
 
 export interface TimeCount {
@@ -221,12 +222,7 @@ export interface RepoAnalysisRecord {
 }
 
 /**
- * Multi 命令的选项
- */
-export interface MultiOptions extends AnalyzeOptions {}
-
-/**
- * Analyze 命令的选项
+ * Analyze 命令的选项（同时用于多仓库分析）
  */
 export interface AnalyzeOptions {
   since?: string
@@ -239,4 +235,27 @@ export interface AnalyzeOptions {
   trend?: boolean // 是否显示月度趋势分析
   ignoreAuthor?: string // 排除作者正则
   ignoreMsg?: string // 排除提交消息正则
+  timezone?: string // 指定时区进行分析 (例如: +0800, -0700)
+}
+
+/**
+ * 时区数据
+ */
+export interface TimezoneData {
+  totalCommits: number
+  timezones: Array<{ offset: string; count: number }>
+}
+
+/**
+ * 跨时区分析结果
+ */
+export interface TimezoneAnalysisResult {
+  isCrossTimezone: boolean // 是否为跨时区项目
+  crossTimezoneRatio: number // 非主导时区的占比 (0-1)
+  dominantTimezone: string | null // 主导时区，如 "+0800"
+  dominantRatio: number // 主导时区占比 (0-1)
+  sleepPeriodRatio: number // 睡眠时段（连续5小时最少）的提交占比 (0-1)
+  confidence: number // 检测置信度 (0-100)
+  warning?: string // 警告信息
+  timezoneGroups?: Array<{ offset: string; count: number; ratio: number }> // 时区分组详情
 }

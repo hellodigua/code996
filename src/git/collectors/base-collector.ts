@@ -66,6 +66,9 @@ export class BaseCollector {
    * 为 git 命令附加通用过滤条件（时间范围、作者包含、消息排除）
    */
   protected applyCommonFilters(args: string[], options: GitLogOptions): void {
+    // 默认忽略合并提交
+    args.push('--no-merges')
+
     if (options.since) {
       args.push(`--since=${options.since}`)
     }

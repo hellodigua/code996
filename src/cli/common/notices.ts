@@ -3,7 +3,7 @@ import chalk from 'chalk'
 /** 输出全局提示信息 */
 export function printGlobalNotices(): void {
   console.log()
-  console.log(chalk.blue('ℹ️  使用提示:'))
+  console.log(chalk.cyan.bold('ℹ️  使用提示:'))
   console.log()
   console.log('  ● 隐私保护：所有对 Git 数据的分析均在本地进行，不会上传任何结果或日志。')
   console.log(

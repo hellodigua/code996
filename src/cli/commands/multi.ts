@@ -6,7 +6,9 @@ import { GitCollector } from '../../git/git-collector'
 import { GitParser } from '../../git/git-parser'
 import { GitDataMerger } from '../../git/git-data-merger'
 import { TrendAnalyzer } from '../../core/trend-analyzer'
-import { MultiOptions, GitLogData, RepoAnalysisRecord, RepoInfo } from '../../types/git-types'
+import { TimezoneAnalyzer } from '../../core/timezone-analyzer'
+import { TimezoneFilter } from '../../utils/timezone-filter'
+import { AnalyzeOptions, GitLogData, RepoAnalysisRecord, RepoInfo } from '../../types/git-types'
 import { calculateTimeRange } from '../../utils/terminal'
 import {
   printCoreResults,
@@ -21,8 +23,8 @@ import {
 import { printTrendReport } from './report/trend-printer'
 
 /**
- * Multi 命令执行器
- * 负责多仓库分析的整体流程
+ * 多仓库分析执行器
+ * 负责多仓库分析的整体流程（智能模式的一部分）
  */
 export class MultiExecutor {
   /**
@@ -31,7 +33,7 @@ export class MultiExecutor {
    * @param options 分析选项
    * @param preScannedRepos 可选：已经扫描好的仓库列表（智能模式使用）
    */
-  static async execute(inputDirs: string[], options: MultiOptions, preScannedRepos?: RepoInfo[]): Promise<void> {
+  static async execute(inputDirs: string[], options: AnalyzeOptions, preScannedRepos?: RepoInfo[]): Promise<void> {
     try {
       // ========== 步骤 1: 扫描仓库 ==========
       let repos: RepoInfo[]
@@ -196,9 +198,33 @@ export class MultiExecutor {
 
       // ========== 步骤 4: 合并数据 ==========
       const spinner2 = ora('📊 正在合并数据...').start()
-      const mergedData = GitDataMerger.merge(successfulData)
+      let mergedData = GitDataMerger.merge(successfulData)
       spinner2.succeed('数据合并完成')
       console.log()
+
+      // ========== 步骤 4.5: 按时区过滤（如果指定了 --timezone）==========
+      let timezoneFilterInfo: { warning: string; filteredCommits: number } | undefined
+      if (options.timezone) {
+        try {
+          const filterResult = TimezoneFilter.filterByTimezone(mergedData, options.timezone)
+          mergedData = filterResult.filteredData
+          timezoneFilterInfo = {
+            warning: filterResult.warning,
+            filteredCommits: filterResult.filteredCommits,
+          }
+          console.log(chalk.blue(`⚙️ 已按时区 ${options.timezone} 过滤数据`))
+          console.log()
+        } catch (error) {
+          console.error(chalk.red('❌ 时区过滤失败:'), (error as Error).message)
+          console.log()
+          if (mergedData.timezoneData) {
+            console.log(chalk.blue('可用时区:'))
+            const available = TimezoneFilter.getAvailableTimezones(mergedData.timezoneData)
+            available.forEach((tz) => console.log(chalk.gray(`  • ${tz}`)))
+          }
+          process.exit(1)
+        }
+      }
 
       // ========== 步骤 5: 分析合并后的数据 ==========
       const spinner3 = ora('📈 正在计算996指数...').start()
@@ -208,8 +234,14 @@ export class MultiExecutor {
       console.log()
 
       // ========== 步骤 6: 输出汇总结果 ==========
-      console.log(chalk.blue('📊 多仓库汇总分析报告:'))
+      console.log(chalk.cyan.bold('📊 多仓库汇总分析报告:'))
       console.log()
+
+      // 显示时区过滤警告（如果有）
+      if (timezoneFilterInfo) {
+        console.log(timezoneFilterInfo.warning)
+        console.log()
+      }
 
       printCoreResults(result, mergedData, options, effectiveSince, effectiveUntil)
       printDetailedAnalysis(result, parsedData)
@@ -254,6 +286,16 @@ export class MultiExecutor {
           console.error(chalk.red('⚠️  趋势分析错误:'), (error as Error).message)
         }
       }
+
+      // ========== 步骤 9: 检测跨时区并显示警告（如果未使用 --timezone 过滤）==========
+      if (mergedData.timezoneData && !options.timezone) {
+        const tzAnalysis = TimezoneAnalyzer.analyzeTimezone(mergedData.timezoneData, mergedData.byHour)
+        if (tzAnalysis.isCrossTimezone) {
+          console.log()
+          const warningMessage = TimezoneAnalyzer.generateWarningMessage(tzAnalysis)
+          console.log(chalk.yellow(warningMessage))
+        }
+      }
     } catch (error) {
       console.error(chalk.red('❌ 多仓库分析失败:'), (error as Error).message)
       process.exit(1)
@@ -293,7 +335,7 @@ export class MultiExecutor {
   /**
    * 解析时间范围（用于用户明确指定时）
    */
-  private static resolveTimeRange(options: MultiOptions): { since?: string; until?: string } {
+  private static resolveTimeRange(options: AnalyzeOptions): { since?: string; until?: string } {
     // 如果明确指定了 --all-time
     if (options.allTime) {
       return {}

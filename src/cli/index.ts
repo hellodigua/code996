@@ -5,10 +5,10 @@ import path from 'path'
 import { execSync } from 'child_process'
 import { getPackageVersion } from '../utils/version'
 import { printGlobalNotices } from './common/notices'
-import { AnalyzeOptions, MultiOptions } from '../types/git-types'
+import { AnalyzeOptions } from '../types/git-types'
 
 // Re-export types for convenience
-export { AnalyzeOptions, MultiOptions }
+export { AnalyzeOptions }
 
 export class CLIManager {
   private program: Command
@@ -47,6 +47,7 @@ export class CLIManager {
       .option('--half-hour', '以半小时粒度展示时间分布（默认按小时展示）')
       .option('--ignore-author <regex>', '排除匹配的作者 (例如: bot|jenkins)')
       .option('--ignore-msg <regex>', '排除匹配的提交消息 (例如: merge|lint)')
+      .option('--timezone <offset>', '指定时区进行分析 (例如: +0800, -0700)')
       .action(async (paths: string[], options: AnalyzeOptions, command: Command) => {
         const mergedOptions = this.mergeGlobalOptions(options)
 
@@ -154,15 +155,15 @@ export class CLIManager {
   }
 
   /** 处理多仓库分析流程的执行逻辑 */
-  private async handleMulti(dirs: string[], options: MultiOptions, preScannedRepos?: any[]): Promise<void> {
-    const mergedOptions = this.mergeGlobalOptions(options) as MultiOptions
+  private async handleMulti(dirs: string[], options: AnalyzeOptions, preScannedRepos?: any[]): Promise<void> {
+    const mergedOptions = this.mergeGlobalOptions(options)
     const { MultiExecutor } = await import('./commands/multi')
     await MultiExecutor.execute(dirs, mergedOptions, preScannedRepos)
     printGlobalNotices()
   }
 
   /** 合并全局选项（解决子命令无法直接读取根命令参数的问题） */
-  private mergeGlobalOptions(options: AnalyzeOptions | MultiOptions): AnalyzeOptions | MultiOptions {
+  private mergeGlobalOptions(options: AnalyzeOptions): AnalyzeOptions {
     const globalOpts = this.program.opts<AnalyzeOptions>()
     return {
       ...options,
@@ -175,6 +176,7 @@ export class CLIManager {
       halfHour: options.halfHour ?? globalOpts.halfHour,
       ignoreAuthor: options.ignoreAuthor ?? globalOpts.ignoreAuthor,
       ignoreMsg: options.ignoreMsg ?? globalOpts.ignoreMsg,
+      timezone: options.timezone ?? globalOpts.timezone,
     }
   }
 

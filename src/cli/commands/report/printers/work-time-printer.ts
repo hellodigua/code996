@@ -14,7 +14,7 @@ const MAX_STANDARD_WORK_HOURS = 9
 export function printWorkTimeSummary(parsedData: ParsedGitData): void {
   const detection = parsedData.detectedWorkTime
   if (!detection) {
-    console.log(chalk.blue('⌛ 工作时间推测:'))
+    console.log(chalk.cyan.bold('⌛ 工作时间推测:'))
     console.log('暂无可用的工作时间推测数据')
     console.log()
     return
@@ -34,7 +34,7 @@ export function printWorkTimeSummary(parsedData: ParsedGitData): void {
 
   // 只在自动推断场景展示该模块，因此固定输出自动提示
   const titleSuffix = chalk.gray('（自动推断）')
-  console.log(chalk.blue('⌛ 工作时间推测:') + ' ' + titleSuffix)
+  console.log(chalk.cyan.bold('⌛ 工作时间推测:') + ' ' + titleSuffix)
 
   const startClock = formatStartClock(detection)
   const endClock = formatEndClock(detection)

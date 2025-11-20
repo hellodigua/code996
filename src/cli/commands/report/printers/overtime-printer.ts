@@ -12,7 +12,7 @@ export function printWeekdayOvertime(parsedData: ParsedGitData): void {
     return
   }
 
-  console.log(chalk.blue('💼 工作日加班分布:'))
+  console.log(chalk.cyan.bold('💼 工作日加班分布:'))
   console.log()
 
   const overtime = parsedData.weekdayOvertime
@@ -69,7 +69,7 @@ export function printWeekendOvertime(parsedData: ParsedGitData): void {
     return
   }
 
-  console.log(chalk.blue('📅 周末加班分析:'))
+  console.log(chalk.cyan.bold('📅 周末加班分析:'))
   console.log()
 
   const weekendDays = [
@@ -114,7 +114,7 @@ export function printLateNightAnalysis(parsedData: ParsedGitData): void {
     return
   }
 
-  console.log(chalk.blue('🌙 深夜加班分析:'))
+  console.log(chalk.cyan.bold('🌙 深夜加班分析:'))
   console.log()
 
   const analysis = parsedData.lateNightAnalysis
