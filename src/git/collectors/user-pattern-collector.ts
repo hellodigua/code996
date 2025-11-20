@@ -150,8 +150,8 @@ export class UserPatternCollector extends BaseCollector {
     const { path } = options
 
     // 使用 --author 参数过滤特定用户
-    // 格式: "D" (1-7, 周一到周日)
-    const args = ['log', '--format=%cd', `--date=format-local:%u`, `--author=${email}`]
+    // 格式: "D" (0-6, 周日到周六，使用 %w 而非 %u 以兼容 Windows)
+    const args = ['log', '--format=%cd', `--date=format-local:%w`, `--author=${email}`]
     this.applyCommonFilters(args, options)
 
     const output = await this.execGitCommand(args, path)
@@ -161,8 +161,10 @@ export class UserPatternCollector extends BaseCollector {
     const dayCounts = new Map<number, number>()
 
     for (const line of lines) {
-      const day = parseInt(line.trim(), 10)
-      if (day >= 1 && day <= 7) {
+      const dayW = parseInt(line.trim(), 10)
+      if (dayW >= 0 && dayW <= 6) {
+        // 转换：%w 的 0(周日) -> 7, 1-6 -> 1-6
+        const day = dayW === 0 ? 7 : dayW
         dayCounts.set(day, (dayCounts.get(day) || 0) + 1)
       }
     }

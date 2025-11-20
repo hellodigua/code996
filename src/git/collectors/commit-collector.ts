@@ -18,8 +18,8 @@ export class CommitCollector extends BaseCollector {
   async getCommitsByDayAndHour(options: GitLogOptions): Promise<DayHourCommit[]> {
     const { path } = options
 
-    // 格式: "Author Name <email@example.com>|D H" (D=星期几，H=小时)
-    const args = ['log', '--format=%an <%ae>|%cd', '--date=format-local:%u %H']
+    // 格式: "Author Name <email@example.com>|D H" (D=星期几 0-6，H=小时，使用 %w 而非 %u 以兼容 Windows)
+    const args = ['log', '--format=%an <%ae>|%cd', '--date=format-local:%w %H']
     this.applyCommonFilters(args, options)
 
     const output = await this.execGitCommand(args, path)
@@ -48,10 +48,12 @@ export class CommitCollector extends BaseCollector {
       const parts = timeData.trim().split(/\s+/)
 
       if (parts.length >= 2) {
-        const weekday = parseInt(parts[0], 10)
+        const dayW = parseInt(parts[0], 10)
         const hour = parseInt(parts[1], 10)
 
-        if (!isNaN(weekday) && !isNaN(hour) && weekday >= 1 && weekday <= 7 && hour >= 0 && hour <= 23) {
+        if (!isNaN(dayW) && !isNaN(hour) && dayW >= 0 && dayW <= 6 && hour >= 0 && hour <= 23) {
+          // 转换：%w 的 0(周日) -> 7, 1-6 -> 1-6
+          const weekday = dayW === 0 ? 7 : dayW
           const key = `${weekday}-${hour}`
           commitMap.set(key, (commitMap.get(key) || 0) + 1)
         }

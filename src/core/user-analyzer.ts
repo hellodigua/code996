@@ -8,6 +8,7 @@ import {
 } from '../types/git-types'
 import { UserPatternData } from '../git/collectors/user-pattern-collector'
 import { WorkTimeAnalyzer } from './work-time-analyzer'
+import { calculatePercentile } from '../utils/statistics'
 import { calculate996Index } from './calculator'
 
 /**
@@ -20,11 +21,7 @@ export class UserAnalyzer {
    * 分析单个用户的工作模式
    * @param baselineEndHour 团队基准下班时间（可选，用于分类）
    */
-  static analyzeUser(
-    userData: UserPatternData,
-    totalCommits: number,
-    baselineEndHour?: number
-  ): UserWorkPattern {
+  static analyzeUser(userData: UserPatternData, totalCommits: number, baselineEndHour?: number): UserWorkPattern {
     const { contributor, timeDistribution, dayDistribution, dailyFirstCommits, dailyLatestCommits } = userData
 
     // 计算工作时间（传入空数组作为dailyFirstCommits，因为我们没有单个用户的每日首提数据）
@@ -45,11 +42,7 @@ export class UserAnalyzer {
     const result996 = calculate996Index(workTimeData)
 
     // 计算加班统计（简化版）
-    const overtimeStats = this.calculateOvertimeStats(
-      timeDistribution,
-      workingHours.startHour,
-      workingHours.endHour
-    )
+    const overtimeStats = this.calculateOvertimeStats(timeDistribution, workingHours.startHour, workingHours.endHour)
 
     // 判断工作强度等级（使用基准下班时间，如果没有则使用默认值18）
     const intensityLevel = this.classifyIntensityLevel(workingHours.endHour, baselineEndHour)
@@ -252,7 +245,7 @@ export class UserAnalyzer {
       .map((u) => u.workingHours!.endHour)
       .sort((a, b) => a - b)
 
-    const baselineEndHour = endTimesForBaseline.length > 0 ? this.calculatePercentile(endTimesForBaseline, 50) : 18
+    const baselineEndHour = endTimesForBaseline.length > 0 ? calculatePercentile(endTimesForBaseline, 50) : 18
 
     // 根据基准下班时间重新分类工作强度
     userPatterns.forEach((u) => {
@@ -271,14 +264,14 @@ export class UserAnalyzer {
     // 统计分析
     const index996List = userPatterns.map((u) => u.index996 || 0).sort((a, b) => a - b)
     const statistics = {
-      median996: this.calculatePercentile(index996List, 50),
+      median996: calculatePercentile(index996List, 50),
       mean996: index996List.reduce((sum, val) => sum + val, 0) / index996List.length,
       range: [index996List[0], index996List[index996List.length - 1]] as [number, number],
       percentiles: {
-        p25: this.calculatePercentile(index996List, 25),
-        p50: this.calculatePercentile(index996List, 50),
-        p75: this.calculatePercentile(index996List, 75),
-        p90: this.calculatePercentile(index996List, 90),
+        p25: calculatePercentile(index996List, 25),
+        p50: calculatePercentile(index996List, 50),
+        p75: calculatePercentile(index996List, 75),
+        p90: calculatePercentile(index996List, 90),
       },
     }
 
@@ -300,19 +293,6 @@ export class UserAnalyzer {
   /**
    * 计算分位数
    */
-  private static calculatePercentile(sortedValues: number[], percentile: number): number {
-    if (sortedValues.length === 0) return 0
-    const index = (percentile / 100) * (sortedValues.length - 1)
-    const lower = Math.floor(index)
-    const upper = Math.ceil(index)
-    const weight = index - lower
-
-    if (lower === upper) {
-      return sortedValues[lower]
-    }
-
-    return sortedValues[lower] * (1 - weight) + sortedValues[upper] * weight
-  }
 
   /**
    * 团队健康度评估
@@ -362,4 +342,3 @@ export class UserAnalyzer {
     }
   }
 }
-

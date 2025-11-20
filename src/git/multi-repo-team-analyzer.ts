@@ -1,5 +1,10 @@
 import { GitLogOptions, TeamAnalysis } from '../types/git-types'
-import { UserPatternCollector, ContributorInfo, UserPatternData, DailyCommitTime } from './collectors/user-pattern-collector'
+import {
+  UserPatternCollector,
+  ContributorInfo,
+  UserPatternData,
+  DailyCommitTime,
+} from './collectors/user-pattern-collector'
 import { UserAnalyzer } from '../core/user-analyzer'
 
 /**
@@ -42,7 +47,7 @@ export class MultiRepoTeamAnalyzer {
       .slice(0, maxUsers)
 
     if (coreContributors.length < 2) {
-      console.log(`\nℹ 核心贡献者数量不足（${coreContributors.length}人），跳过团队分析\n`)
+      console.log(`\n  核心贡献者数量不足（${coreContributors.length}人），跳过团队分析\n`)
       return null
     }
 
@@ -173,4 +178,3 @@ export class MultiRepoTeamAnalyzer {
     return results
   }
 }
-

@@ -219,6 +219,7 @@ export interface RepoAnalysisRecord {
   result: Result996
   status: 'success' | 'failed'
   error?: string
+  classification?: any // 项目分类结果（ProjectClassificationResult）
 }
 
 /**

@@ -2,6 +2,7 @@ import chalk from 'chalk'
 import { TeamAnalysis } from '../../../../types/git-types'
 import { getTerminalWidth } from '../../../../utils/terminal'
 import { getIndexColor } from '../../../../utils/formatter'
+import { calculatePercentile } from '../../../../utils/statistics'
 
 /**
  * 团队工作模式分析打印器
@@ -231,16 +232,3 @@ function getIndexDescription(index: number): string {
 /**
  * 计算百分位数
  */
-function calculatePercentile(sortedValues: number[], percentile: number): number {
-  if (sortedValues.length === 0) return 0
-  const index = (percentile / 100) * (sortedValues.length - 1)
-  const lower = Math.floor(index)
-  const upper = Math.ceil(index)
-  const weight = index - lower
-
-  if (lower === upper) {
-    return sortedValues[lower]
-  }
-
-  return sortedValues[lower] * (1 - weight) + sortedValues[upper] * weight
-}

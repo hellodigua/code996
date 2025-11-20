@@ -6,8 +6,9 @@ import { TrendAnalyzer } from '../../core/trend-analyzer'
 import { TimezoneAnalyzer } from '../../core/timezone-analyzer'
 import { TimezoneFilter } from '../../utils/timezone-filter'
 import { GitTeamAnalyzer } from '../../git/git-team-analyzer'
+import { ProjectClassifier, ProjectType } from '../../core/project-classifier'
 import { AnalyzeOptions } from '../index'
-import { calculateTimeRange } from '../../utils/terminal'
+import { calculateTimeRange, getTerminalWidth, createAdaptiveTable } from '../../utils/terminal'
 import { GitLogData, GitLogOptions, ParsedGitData, Result996 } from '../../types/git-types'
 import {
   printCoreResults,
@@ -82,7 +83,7 @@ export class AnalyzeExecutor {
       }
 
       // 在正式分析前，先检查 commit 样本量是否达到最低要求
-      const hasEnoughCommits = await ensureCommitSamples(collector, collectOptions, 20, '分析')
+      const hasEnoughCommits = await ensureCommitSamples(collector, collectOptions, 50, '分析')
       if (!hasEnoughCommits) {
         return
       }
@@ -148,6 +149,13 @@ export class AnalyzeExecutor {
         console.log()
       }
 
+      // ========== 项目类型识别 ==========
+      const classification = ProjectClassifier.classify(rawData, parsedData)
+      if (classification.projectType === ProjectType.OPEN_SOURCE) {
+        printOpenSourceProjectWarning(classification)
+        console.log()
+      }
+
       // 若未指定时间范围，尝试回填实际的首尾提交时间
       let actualSince: string | undefined
       let actualUntil: string | undefined
@@ -161,7 +169,7 @@ export class AnalyzeExecutor {
         }
       }
 
-      printResults(result, parsedData, rawData, options, effectiveSince, effectiveUntil, rangeMode)
+      printResults(result, parsedData, rawData, options, effectiveSince, effectiveUntil, rangeMode, classification)
 
       // ========== 步骤 4: 月度趋势分析 ==========
       // 只有在分析时间跨度超过1个月时才显示趋势分析
@@ -383,6 +391,76 @@ function formatUTCDate(date: Date): string {
   return `${year}-${month}-${day}`
 }
 
+/** 打印开源项目警告（使用 cli-table3） */
+function printOpenSourceProjectWarning(classification: ReturnType<typeof ProjectClassifier.classify>): void {
+  const { dimensions, confidence, reasoning } = classification
+
+  console.log(chalk.yellow.bold('🌍 检测到开源项目特征'))
+  console.log()
+
+  const terminalWidth = Math.min(getTerminalWidth(), 80)
+  const warningTable = createAdaptiveTable(terminalWidth, 'stats')
+
+  // 工作时间规律性
+  const regularityEmoji = getRegularityEmoji(dimensions.workTimeRegularity.score)
+  const regularityText = `${dimensions.workTimeRegularity.score}/100 ${regularityEmoji} (${dimensions.workTimeRegularity.description})`
+
+  // 周末活跃度
+  const weekendPercent = (dimensions.weekendActivity.ratio * 100).toFixed(1)
+  const weekendEmoji = getWeekendEmoji(dimensions.weekendActivity.ratio)
+  const weekendText = `${weekendPercent}% ${weekendEmoji} (${dimensions.weekendActivity.description})`
+
+  // 月光族模式
+  const moonlightingText = dimensions.moonlightingPattern.isActive
+    ? `${dimensions.moonlightingPattern.description} 🌙`
+    : '未检测到'
+
+  warningTable.push(
+    [
+      { content: chalk.yellow(chalk.bold('工作时间规律性')), colSpan: 1 },
+      { content: chalk.yellow(regularityText), colSpan: 1 },
+    ],
+    [
+      { content: chalk.yellow(chalk.bold('周末活跃度')), colSpan: 1 },
+      { content: chalk.yellow(weekendText), colSpan: 1 },
+    ],
+    [
+      { content: chalk.yellow(chalk.bold('晚间活跃模式')), colSpan: 1 },
+      { content: chalk.yellow(moonlightingText), colSpan: 1 },
+    ],
+    [
+      { content: chalk.yellow(chalk.bold('判断理由')), colSpan: 1 },
+      { content: chalk.yellow(reasoning), colSpan: 1 },
+    ],
+    [
+      { content: chalk.yellow(chalk.bold('置信度')), colSpan: 1 },
+      { content: chalk.yellow(`${confidence}%`), colSpan: 1 },
+    ]
+  )
+
+  console.log(warningTable.toString())
+  console.log()
+
+  console.log(chalk.yellow('💡 提示：'))
+  console.log(chalk.yellow('   开源项目的周末和晚间提交是正常的社区贡献，不属于"加班"。'))
+  console.log(chalk.yellow('   以下分析不会显示"996指数"和"加班分析"等不适用的指标。'))
+  console.log()
+}
+
+/** 获取规律性 emoji */
+function getRegularityEmoji(score: number): string {
+  if (score >= 75) return '✅' // 高规律性
+  if (score >= 50) return '⚠️' // 中等规律性
+  return '❌' // 低规律性
+}
+
+/** 获取周末活跃度 emoji */
+function getWeekendEmoji(ratio: number): string {
+  if (ratio >= 0.35) return '🔥' // 高周末活跃度
+  if (ratio >= 0.25) return '⚠️' // 中等周末活跃度
+  return '✅' // 低周末活跃度
+}
+
 /** 输出核心结果、时间分布与统计信息 */
 function printResults(
   result: Result996,
@@ -391,10 +469,17 @@ function printResults(
   options: AnalyzeOptions,
   since?: string,
   until?: string,
-  rangeMode?: TimeRangeMode
+  rangeMode?: TimeRangeMode,
+  classification?: ReturnType<typeof ProjectClassifier.classify>
 ): void {
-  printCoreResults(result, rawData, options, since, until, rangeMode)
-  printDetailedAnalysis(result, parsedData) // 新增：详细分析
+  const isOpenSource = classification?.projectType === ProjectType.OPEN_SOURCE
+
+  // 如果是开源项目，隐藏核心结果和详细分析
+  if (!isOpenSource) {
+    printCoreResults(result, rawData, options, since, until, rangeMode)
+    printDetailedAnalysis(result, parsedData)
+  }
+
   printWorkTimeSummary(parsedData)
   printTimeDistribution(parsedData, options.halfHour) // 传递半小时模式参数
   printWeekdayOvertime(parsedData)

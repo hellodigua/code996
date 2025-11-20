@@ -10,8 +10,9 @@ import { MultiRepoTeamAnalyzer } from '../../git/multi-repo-team-analyzer'
 import { TrendAnalyzer } from '../../core/trend-analyzer'
 import { TimezoneAnalyzer } from '../../core/timezone-analyzer'
 import { TimezoneFilter } from '../../utils/timezone-filter'
+import { ProjectClassifier, ProjectType } from '../../core/project-classifier'
 import { AnalyzeOptions, GitLogData, RepoAnalysisRecord, RepoInfo, GitLogOptions } from '../../types/git-types'
-import { calculateTimeRange } from '../../utils/terminal'
+import { calculateTimeRange, getTerminalWidth, createAdaptiveTable } from '../../utils/terminal'
 import {
   printCoreResults,
   printDetailedAnalysis,
@@ -166,11 +167,15 @@ export class MultiExecutor {
           const parsedData = GitParser.parseGitData(data, options.hours, effectiveSince, effectiveUntil)
           const result = GitParser.calculate996Index(parsedData)
 
+          // 项目类型识别
+          const classification = ProjectClassifier.classify(data, parsedData)
+
           repoRecords.push({
             repo,
             data,
             result,
             status: 'success',
+            classification,
           })
 
           console.log(chalk.green(`    ✓ ${data.totalCommits} 个提交, 996指数: ${result.index996.toFixed(1)}`))
@@ -236,6 +241,16 @@ export class MultiExecutor {
       spinner3.succeed('分析完成！')
       console.log()
 
+      // ========== 步骤 5.5: 检查是否有开源项目 ==========
+      const hasOpenSourceProject = repoRecords.some(
+        (record) => record.classification && record.classification.projectType === ProjectType.OPEN_SOURCE
+      )
+
+      // 如果有任意一个开源项目，显示项目类型对比表
+      if (hasOpenSourceProject) {
+        this.printProjectTypeComparison(repoRecords)
+      }
+
       // ========== 步骤 6: 输出汇总结果 ==========
       console.log(chalk.cyan.bold('📊 多仓库汇总分析报告:'))
       console.log()
@@ -246,8 +261,12 @@ export class MultiExecutor {
         console.log()
       }
 
-      printCoreResults(result, mergedData, options, effectiveSince, effectiveUntil)
-      printDetailedAnalysis(result, parsedData)
+      // 如果有开源项目，隐藏核心结果和详细分析
+      if (!hasOpenSourceProject) {
+        printCoreResults(result, mergedData, options, effectiveSince, effectiveUntil)
+        printDetailedAnalysis(result, parsedData)
+      }
+
       printWorkTimeSummary(parsedData)
       printTimeDistribution(parsedData, options.halfHour) // 传递半小时模式参数
       printWeekdayOvertime(parsedData)
@@ -341,6 +360,63 @@ export class MultiExecutor {
     } catch (error) {
       console.error(chalk.red('❌ 多仓库分析失败:'), (error as Error).message)
       process.exit(1)
+    }
+  }
+
+  /**
+   * 打印项目类型对比表格
+   */
+  private static printProjectTypeComparison(repoRecords: RepoAnalysisRecord[]): void {
+    console.log(chalk.yellow.bold('🌍 项目类型检测结果'))
+    console.log()
+
+    const terminalWidth = Math.min(getTerminalWidth(), 120)
+    const typeTable = createAdaptiveTable(terminalWidth, 'stats', {}, [30, terminalWidth - 35])
+
+    // 表头
+    typeTable.push([
+      { content: chalk.yellow(chalk.bold('仓库名称')), colSpan: 1 },
+      { content: chalk.yellow(chalk.bold('项目类型')), colSpan: 1 },
+    ])
+
+    // 数据行
+    for (const record of repoRecords) {
+      if (record.status === 'success' && record.classification) {
+        const { projectType, confidence } = record.classification
+        let typeText = ''
+        let typeEmoji = ''
+
+        if (projectType === ProjectType.OPEN_SOURCE) {
+          typeEmoji = '🌍'
+          typeText = `开源项目 (置信度: ${confidence}%)`
+        } else if (projectType === ProjectType.CORPORATE) {
+          typeEmoji = '🏢'
+          typeText = `公司项目 (置信度: ${confidence}%)`
+        } else {
+          typeEmoji = '❓'
+          typeText = `不确定 (置信度: ${confidence}%)`
+        }
+
+        typeTable.push([
+          { content: chalk.yellow(`${typeEmoji} ${record.repo.name}`), colSpan: 1 },
+          { content: chalk.yellow(typeText), colSpan: 1 },
+        ])
+      }
+    }
+
+    console.log(typeTable.toString())
+    console.log()
+
+    // 如果有开源项目，显示提示
+    const openSourceCount = repoRecords.filter(
+      (r) => r.classification && r.classification.projectType === ProjectType.OPEN_SOURCE
+    ).length
+
+    if (openSourceCount > 0) {
+      console.log(chalk.yellow('💡 提示：'))
+      console.log(chalk.yellow(`   检测到 ${openSourceCount} 个开源项目。开源项目的周末和晚间提交是正常的社区贡献。`))
+      console.log(chalk.yellow('   汇总报告不会显示"996指数"和"加班分析"等不适用的指标。'))
+      console.log()
     }
   }
 

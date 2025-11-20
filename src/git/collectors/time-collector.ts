@@ -27,8 +27,8 @@ export class TimeCollector extends BaseCollector {
   async getCommitsByDay(options: GitLogOptions): Promise<TimeCount[]> {
     const { path } = options
 
-    // 格式: "Author Name <email@example.com>|D" (D为星期几，1-7)
-    const args = ['log', '--format=%an <%ae>|%cd', `--date=format-local:%u`]
+    // 格式: "Author Name <email@example.com>|D" (D为星期几，0-6，使用 %w 而非 %u 以兼容 Windows)
+    const args = ['log', '--format=%an <%ae>|%cd', `--date=format-local:%w`]
     this.applyCommonFilters(args, options)
 
     const output = await this.execGitCommand(args, path)
@@ -70,6 +70,15 @@ export class TimeCollector extends BaseCollector {
           const minute = parseInt(match[2], 10)
           // 0-29分钟归到 :00，30-59分钟归到 :30
           time = minute < 30 ? `${hour}:00` : `${hour}:30`
+        }
+      }
+
+      // 如果是星期模式，需要将 %w 格式(0-6)转换为 1-7 格式
+      if (type === 'day' && time) {
+        const dayW = parseInt(time, 10)
+        if (!isNaN(dayW) && dayW >= 0 && dayW <= 6) {
+          // 转换：%w 的 0(周日) -> 7, 1-6 -> 1-6
+          time = (dayW === 0 ? 7 : dayW).toString()
         }
       }
 
