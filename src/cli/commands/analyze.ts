@@ -171,6 +171,9 @@ export class AnalyzeExecutor {
 
       printResults(result, parsedData, rawData, options, effectiveSince, effectiveUntil, rangeMode, classification)
 
+      // 判断是否为开源项目
+      const isOpenSource = classification.projectType === ProjectType.OPEN_SOURCE
+
       // ========== 步骤 4: 月度趋势分析 ==========
       // 只有在分析时间跨度超过1个月时才显示趋势分析
       if (effectiveSince && effectiveUntil && shouldShowTrendAnalysis(effectiveSince, effectiveUntil)) {
@@ -195,7 +198,8 @@ export class AnalyzeExecutor {
       }
 
       // ========== 步骤 5: 团队工作模式分析 ==========
-      if (GitTeamAnalyzer.shouldAnalyzeTeam(options)) {
+      // 开源项目不显示团队工作模式分析
+      if (!isOpenSource && GitTeamAnalyzer.shouldAnalyzeTeam(options)) {
         try {
           const maxUsers = options.maxUsers ? parseInt(String(options.maxUsers), 10) : 30
           const teamAnalysis = await GitTeamAnalyzer.analyzeTeam(
@@ -415,10 +419,17 @@ function printOpenSourceProjectWarning(classification: ReturnType<typeof Project
     ? `${dimensions.moonlightingPattern.description} 🌙`
     : '未检测到'
 
+  // 贡献者数量
+  const contributorsText = dimensions.contributorsCount.description
+
   warningTable.push(
     [
       { content: chalk.yellow(chalk.bold('工作时间规律性')), colSpan: 1 },
       { content: chalk.yellow(regularityText), colSpan: 1 },
+    ],
+    [
+      { content: chalk.yellow(chalk.bold('贡献者数量')), colSpan: 1 },
+      { content: chalk.yellow(contributorsText), colSpan: 1 },
     ],
     [
       { content: chalk.yellow(chalk.bold('周末活跃度')), colSpan: 1 },
@@ -440,11 +451,6 @@ function printOpenSourceProjectWarning(classification: ReturnType<typeof Project
 
   console.log(warningTable.toString())
   console.log()
-
-  console.log(chalk.yellow('💡 提示：'))
-  console.log(chalk.yellow('   开源项目的周末和晚间提交是正常的社区贡献，不属于"加班"。'))
-  console.log(chalk.yellow('   以下分析不会显示"996指数"和"加班分析"等不适用的指标。'))
-  console.log()
 }
 
 /** 获取规律性 emoji */
@@ -456,8 +462,8 @@ function getRegularityEmoji(score: number): string {
 
 /** 获取周末活跃度 emoji */
 function getWeekendEmoji(ratio: number): string {
-  if (ratio >= 0.35) return '🔥' // 高周末活跃度
-  if (ratio >= 0.25) return '⚠️' // 中等周末活跃度
+  if (ratio >= 0.3) return '🔥' // 很高周末活跃度
+  if (ratio >= 0.15) return '⚠️' // 高周末活跃度
   return '✅' // 低周末活跃度
 }
 
@@ -474,13 +480,13 @@ function printResults(
 ): void {
   const isOpenSource = classification?.projectType === ProjectType.OPEN_SOURCE
 
-  // 如果是开源项目，隐藏核心结果和详细分析
+  // 如果是开源项目，隐藏核心结果、详细分析和工作时间推测
   if (!isOpenSource) {
     printCoreResults(result, rawData, options, since, until, rangeMode)
     printDetailedAnalysis(result, parsedData)
+    printWorkTimeSummary(parsedData)
   }
 
-  printWorkTimeSummary(parsedData)
   printTimeDistribution(parsedData, options.halfHour) // 传递半小时模式参数
   printWeekdayOvertime(parsedData)
   printWeekendOvertime(parsedData)

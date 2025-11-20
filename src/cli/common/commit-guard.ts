@@ -15,7 +15,7 @@ export async function ensureCommitSamples(
     return true
   }
 
-  console.log(chalk.bgYellow.black(' ⚠️ 样本不足 '))
+  console.log(chalk.yellow(' ⚠️ 样本不足 '))
   console.log(
     chalk.yellow(`当前${sceneLabel}范围内仅检测到 ${commitCount} 个 commit，低于可靠分析所需的 ${minCount} 个。`)
   )

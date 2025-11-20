@@ -31,9 +31,14 @@ export interface ProjectClassificationResult {
       description: string
     }
     moonlightingPattern: {
-      isActive: boolean // 是否为月光族模式
+      isActive: boolean // 是否晚间活跃
       eveningToMorningRatio: number // 晚上/白天比率
+      nightRatio: number // 晚间占比（晚上/总数）
       description: string
+    }
+    contributorsCount: {
+      count: number // 贡献者数量
+      description: string // 描述
     }
   }
   reasoning: string // 判断理由
@@ -51,20 +56,24 @@ export class ProjectClassifier {
    * @returns 分类结果
    */
   static classify(rawData: GitLogData, parsedData: ParsedGitData): ProjectClassificationResult {
-    // 维度1: 工作时间规律性（最重要）
-    const regularityResult = this.detectWorkTimeRegularity(rawData.byHour, rawData.byDay)
+    // 维度1: 工作时间规律性（最重要，可单独判定）
+    const regularityResult = this.detectWorkTimeRegularity(rawData.byHour, rawData.byDay, rawData.dayHourCommits)
 
     // 维度2: 周末活跃度
     const weekendResult = this.detectWeekendActivity(parsedData.workWeekPl)
 
     // 维度3: 月光族模式
-    const moonlightingResult = this.detectMoonlightingPattern(rawData.byHour, rawData.byDay)
+    const moonlightingResult = this.detectMoonlightingPattern(rawData.byHour, rawData.byDay, rawData.dayHourCommits)
+
+    // 维度4: 贡献者数量（强特征，可单独判定）
+    const contributorsCount = rawData.contributors || 0
 
     // 综合判断
     const { projectType, confidence, reasoning } = this.makeDecision(
       regularityResult,
       weekendResult,
-      moonlightingResult
+      moonlightingResult,
+      contributorsCount
     )
 
     return {
@@ -74,9 +83,24 @@ export class ProjectClassifier {
         workTimeRegularity: regularityResult,
         weekendActivity: weekendResult,
         moonlightingPattern: moonlightingResult,
+        contributorsCount: {
+          count: contributorsCount,
+          description: this.getContributorsDescription(contributorsCount),
+        },
       },
       reasoning,
     }
+  }
+
+  /**
+   * 获取贡献者数量的描述
+   */
+  private static getContributorsDescription(count: number): string {
+    if (count >= 100) return `${count} 人（大型开源项目）`
+    if (count >= 50) return `${count} 人（中型开源项目）`
+    if (count >= 20) return `${count} 人（小型开源项目）`
+    if (count >= 10) return `${count} 人（小团队）`
+    return `${count} 人`
   }
 
   /**
@@ -85,11 +109,12 @@ export class ProjectClassifier {
    */
   private static detectWorkTimeRegularity(
     byHour: TimeCount[],
-    byDay: TimeCount[]
+    byDay: TimeCount[],
+    dayHourCommits?: any[]
   ): ProjectClassificationResult['dimensions']['workTimeRegularity'] {
-    // 提取周一到周五的提交数据
-    const workdayCommits = this.extractWorkdayHourlyCommits(byHour, byDay)
-    if (workdayCommits.length === 0) {
+    // 提取周一到周五的提交数据（使用 dayHourCommits 如果可用）
+    const hourlyCommits = this.extractWorkdayHourlyData(byHour, byDay, dayHourCommits)
+    if (hourlyCommits.length === 0 || hourlyCommits.every((c) => c === 0)) {
       return {
         score: 50,
         description: '数据不足',
@@ -101,9 +126,6 @@ export class ProjectClassifier {
         },
       }
     }
-
-    // 聚合为24小时数组（处理可能的半小时粒度）
-    const hourlyCommits = this.aggregateToHourArray(workdayCommits)
 
     // 检查各个时段的特征
     const morningUptrend = this.checkMorningUptrend(hourlyCommits) // 6:00-12:00 上升
@@ -143,23 +165,56 @@ export class ProjectClassifier {
   }
 
   /**
-   * 提取周一到周五的小时级提交数据
+   * 提取周一到周五的小时级提交数据（更精确的版本）
+   * @param byHour 总的小时分布
+   * @param byDay 星期分布
+   * @param dayHourCommits 按星期和小时的详细分布（如果可用）
+   * @returns 24小时数组，只包含工作日的提交
    */
-  private static extractWorkdayHourlyCommits(byHour: TimeCount[], byDay: TimeCount[]): TimeCount[] {
-    // 计算周一到周五的总提交数
+  private static extractWorkdayHourlyData(
+    byHour: TimeCount[],
+    byDay: TimeCount[],
+    dayHourCommits?: any[]
+  ): number[] {
+    // 如果有 dayHourCommits，使用精确数据
+    if (dayHourCommits && dayHourCommits.length > 0) {
+      const hourCounts = new Array(24).fill(0)
+
+      for (const item of dayHourCommits) {
+        const weekday = item.weekday // 1-7 (周一到周日)
+        const hour = item.hour // 0-23
+        const count = item.count
+
+        // 只统计周一到周五（1-5）
+        if (weekday >= 1 && weekday <= 5) {
+          hourCounts[hour] += count
+        }
+      }
+
+      return hourCounts
+    }
+
+    // 降级方案：计算工作日占比，按比例分配
     let workdayTotal = 0
+    let totalCommits = 0
+
     for (const day of byDay) {
       const dayNum = parseInt(day.time, 10)
+      totalCommits += day.count
       if (dayNum >= 1 && dayNum <= 5) {
         workdayTotal += day.count
       }
     }
 
-    if (workdayTotal === 0) return []
+    if (workdayTotal === 0 || totalCommits === 0) {
+      return new Array(24).fill(0)
+    }
 
-    // 简化处理：假设 byHour 中的提交主要来自工作日
-    // （实际情况下，工作日通常占70-80%）
-    return byHour
+    const workdayRatio = workdayTotal / totalCommits
+
+    // 将 byHour 按工作日占比缩放
+    const hourCounts = this.aggregateToHourArray(byHour)
+    return hourCounts.map((count) => Math.round(count * workdayRatio))
   }
 
   /**
@@ -260,10 +315,10 @@ export class ProjectClassifier {
     const ratio = weekendCount / total
 
     let description = ''
-    if (ratio >= 0.35) {
+    if (ratio >= 0.30) {
+      description = `${(ratio * 100).toFixed(1)}% (很高周末活跃度)`
+    } else if (ratio >= 0.15) {
       description = `${(ratio * 100).toFixed(1)}% (高周末活跃度)`
-    } else if (ratio >= 0.25) {
-      description = `${(ratio * 100).toFixed(1)}% (中等周末活跃度)`
     } else {
       description = `${(ratio * 100).toFixed(1)}% (低周末活跃度)`
     }
@@ -279,10 +334,11 @@ export class ProjectClassifier {
    */
   private static detectMoonlightingPattern(
     byHour: TimeCount[],
-    byDay: TimeCount[]
+    byDay: TimeCount[],
+    dayHourCommits?: any[]
   ): ProjectClassificationResult['dimensions']['moonlightingPattern'] {
-    // 聚合为24小时数组
-    const hourCounts = this.aggregateToHourArray(byHour)
+    // 获取工作日的小时数据
+    const hourCounts = this.extractWorkdayHourlyData(byHour, byDay, dayHourCommits)
 
     // 白天时段：9:00-18:00
     const dayTimeCommits = hourCounts.slice(9, 18).reduce((sum, c) => sum + c, 0)
@@ -295,23 +351,32 @@ export class ProjectClassifier {
       return {
         isActive: false,
         eveningToMorningRatio: 0,
+        nightRatio: 0,
         description: '无数据',
       }
     }
 
-    const ratio = nightTimeCommits / dayTimeCommits
-    const isActive = nightTimeCommits > dayTimeCommits
+    const nightRatio = nightTimeCommits / total
+    const eveningToMorningRatio = nightTimeCommits / dayTimeCommits
+
+    // 判断标准：晚间提交占比 >= 25% 视为晚间活跃
+    const isActive = nightRatio >= 0.25
 
     let description = ''
-    if (isActive) {
-      description = `晚上提交 > 白天提交 (${ratio.toFixed(2)}x)`
+    if (nightRatio >= 0.40) {
+      description = `晚间高度活跃 (${(nightRatio * 100).toFixed(1)}%)`
+    } else if (nightRatio >= 0.30) {
+      description = `晚间活跃度较高 (${(nightRatio * 100).toFixed(1)}%)`
+    } else if (nightRatio >= 0.25) {
+      description = `晚间活跃 (${(nightRatio * 100).toFixed(1)}%)`
     } else {
-      description = `白天提交 > 晚上提交 (${(1 / ratio).toFixed(2)}x)`
+      description = `晚间活跃度低 (${(nightRatio * 100).toFixed(1)}%)`
     }
 
     return {
       isActive,
-      eveningToMorningRatio: ratio,
+      eveningToMorningRatio,
+      nightRatio,
       description,
     }
   }
@@ -322,34 +387,73 @@ export class ProjectClassifier {
   private static makeDecision(
     regularity: ProjectClassificationResult['dimensions']['workTimeRegularity'],
     weekend: ProjectClassificationResult['dimensions']['weekendActivity'],
-    moonlighting: ProjectClassificationResult['dimensions']['moonlightingPattern']
+    moonlighting: ProjectClassificationResult['dimensions']['moonlightingPattern'],
+    contributorsCount: number
   ): {
     projectType: ProjectType
     confidence: number
     reasoning: string
   } {
     const reasons: string[] = []
+
+    // ========== 强特征判断（单独满足即可判定为开源项目）==========
+
+    // 强特征1: 贡献者数量众多（>=50 人）
+    if (contributorsCount >= 50) {
+      return {
+        projectType: ProjectType.OPEN_SOURCE,
+        confidence: Math.min(95, 70 + Math.floor(contributorsCount / 10)),
+        reasoning: `贡献者数量众多 (${contributorsCount} 人)，典型的开源项目特征`,
+      }
+    }
+
+    // 强特征2: 工作时间规律性极低（<= 25 分）
+    if (regularity.score <= 25) {
+      return {
+        projectType: ProjectType.OPEN_SOURCE,
+        confidence: 90,
+        reasoning: `工作时间完全无规律 (${regularity.score}/100)，典型的开源项目特征`,
+      }
+    }
+
+    // ========== 组合判断（多个弱特征组合）==========
+
     let ossScore = 0 // 开源项目得分
 
-    // 规律性得分 < 50 是强烈的开源项目信号
-    if (regularity.score < 50) {
-      ossScore += 50
+    // 规律性得分分析
+    if (regularity.score < 30) {
+      ossScore += 60
+      reasons.push(`工作时间规律性极低 (${regularity.score}/100)`)
+    } else if (regularity.score < 50) {
+      ossScore += 40
       reasons.push(`工作时间规律性低 (${regularity.score}/100)`)
     } else if (regularity.score < 75) {
-      ossScore += 25
+      ossScore += 20
       reasons.push(`工作时间规律性中等 (${regularity.score}/100)`)
     }
 
-    // 周末活跃度 >= 35% 是开源项目信号
-    if (weekend.ratio >= 0.35) {
+    // 贡献者数量（20-49人给予适度加分）
+    if (contributorsCount >= 20 && contributorsCount < 50) {
+      ossScore += 20
+      reasons.push(`贡献者较多 (${contributorsCount} 人)`)
+    } else if (contributorsCount >= 10 && contributorsCount < 20) {
+      ossScore += 10
+      reasons.push(`贡献者数量中等 (${contributorsCount} 人)`)
+    }
+
+    // 周末活跃度分析
+    if (weekend.ratio >= 0.30) {
       ossScore += 30
       reasons.push(`周末活跃度高 (${(weekend.ratio * 100).toFixed(1)}%)`)
-    } else if (weekend.ratio >= 0.25) {
-      ossScore += 15
+    } else if (weekend.ratio >= 0.20) {
+      ossScore += 20
+      reasons.push(`周末活跃度较高 (${(weekend.ratio * 100).toFixed(1)}%)`)
+    } else if (weekend.ratio >= 0.15) {
+      ossScore += 10
       reasons.push(`周末活跃度中等 (${(weekend.ratio * 100).toFixed(1)}%)`)
     }
 
-    // 月光族模式是开源项目信号
+    // 月光族模式
     if (moonlighting.isActive) {
       ossScore += 20
       reasons.push('晚上提交量超过白天')

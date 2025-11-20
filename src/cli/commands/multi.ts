@@ -261,13 +261,13 @@ export class MultiExecutor {
         console.log()
       }
 
-      // 如果有开源项目，隐藏核心结果和详细分析
+      // 如果有开源项目，隐藏核心结果、详细分析和工作时间推测
       if (!hasOpenSourceProject) {
         printCoreResults(result, mergedData, options, effectiveSince, effectiveUntil)
         printDetailedAnalysis(result, parsedData)
+        printWorkTimeSummary(parsedData)
       }
 
-      printWorkTimeSummary(parsedData)
       printTimeDistribution(parsedData, options.halfHour) // 传递半小时模式参数
       printWeekdayOvertime(parsedData)
       printWeekendOvertime(parsedData)
@@ -310,7 +310,8 @@ export class MultiExecutor {
       }
 
       // ========== 步骤 9: 团队工作模式分析（聚合所有仓库的数据）==========
-      if (GitTeamAnalyzer.shouldAnalyzeTeam(options) && selectedRepos.length > 0) {
+      // 开源项目不显示团队工作模式分析
+      if (!hasOpenSourceProject && GitTeamAnalyzer.shouldAnalyzeTeam(options) && selectedRepos.length > 0) {
         // 收集所有成功分析的仓库路径
         const successfulRepoPaths = selectedRepos
           .filter((_, index) => repoRecords[index].status === 'success')
