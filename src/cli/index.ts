@@ -12,6 +12,7 @@ export interface AnalyzeOptions {
   allTime?: boolean
   year?: string
   self?: boolean
+  format?: 'txt' | 'md' | 'html' | 'svg' | 'png'
 }
 
 export class CLIManager {
@@ -48,6 +49,7 @@ export class CLIManager {
       .option('-y, --year <year>', '指定年份或年份范围 (例如: 2025 或 2023-2025)')
       .option('--all-time', '查询所有时间的数据（默认为最近一年）')
       .option('--self', '仅统计当前 Git 用户的提交')
+      .option('-f, --format <format>', '输出格式: txt | md | html | svg | png (默认 txt)', 'txt')
       .action(async (repoPath: string | undefined, options: AnalyzeOptions, command: Command) => {
         const processedArgs = typeof repoPath === 'string' ? 1 : 0
         const extraArgs = (command.args ?? []).slice(processedArgs)
@@ -145,6 +147,7 @@ export class CLIManager {
       since: options.since ?? globalOpts.since,
       until: options.until ?? globalOpts.until,
       year: options.year ?? globalOpts.year,
+      format: options.format ?? globalOpts.format ?? 'txt',
     }
   }
 

@@ -16,6 +16,7 @@ import {
   printRecommendation,
 } from './report'
 import { ensureCommitSamples } from '../common/commit-guard'
+import { exportReport } from './report/exporter'
 
 type TimeRangeMode = 'all-time' | 'custom' | 'auto-last-commit' | 'fallback'
 
@@ -124,6 +125,21 @@ export class AnalyzeExecutor {
       }
 
       printResults(result, parsedData, rawData, options, effectiveSince, effectiveUntil, rangeMode)
+
+      const displaySince = actualSince ?? effectiveSince
+      const displayUntil = actualUntil ?? effectiveUntil
+
+      await exportReport(options.format, {
+        result,
+        parsedData,
+        rawData,
+        options,
+        timeRange: {
+          since: displaySince,
+          until: displayUntil,
+          mode: rangeMode,
+        },
+      })
     } catch (error) {
       console.error(chalk.red('❌ 分析失败:'), (error as Error).message)
       process.exit(1)
