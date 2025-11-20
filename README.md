@@ -36,6 +36,26 @@ code996 是一个分析工具，它可以统计 Git 项目的 commit 时间分�
 
 <img src="https://raw.githubusercontent.com/hellodigua/code996/dev/public/images/demo4.png" alt="月度趋势分析图" style="width:600px; max-width:100%; height:auto;"/>
 
+### 导出报告（新功能） ✨
+
+支持将分析结果导出为多种精美格式：
+
+| 格式 | 特点 | 适用场景 |
+|------|------|----------|
+| 📄 TXT | Unicode 艺术边框 | 终端查看、日志记录 |
+| 📝 Markdown | 表格和徽章 | GitHub/文档分享 |
+| 🎨 HTML | 渐变背景、交互卡片 | 浏览器查看、邮件 |
+| 🖼️ SVG | 矢量图、可缩放 | 高质量图片 |
+| 📸 PNG | 1200x800 位图 | 演示文稿、社交媒体 |
+
+```bash
+# 导出精美的 HTML 报告
+code996 -f html
+
+# 导出并自动在浏览器中打开
+code996 -f html --open
+```
+
 ## 🚀 快速开始
 
 无需安装，快速使用：
@@ -94,6 +114,16 @@ code996 /workspace         # 自动扫描子目录
 - `--ignore-author <regex>`：排除匹配特定正则表达式的作者（例如：排除 bot 或 jenkins）
 - `--ignore-msg <regex>`：排除 Commit Message 中包含特定关键词的提交（例如：排除 merge 或 lint）
 
+#### 导出与分享选项 ✨ 新功能
+
+- `-f, --format <format>`：导出报告为指定格式
+  - `txt`：纯文本格式（默认）
+  - `md`：Markdown 格式，适合文档平台
+  - `html`：HTML 网页格式，美观的可视化报告
+  - `svg`：SVG 矢量图，可缩放
+  - `png`：PNG 图片，适合演示文稿
+- `-o, --open`：自动在浏览器中打开可视化分析链接
+
 ### 使用示例
 
 ```bash
@@ -129,6 +159,14 @@ code996 --ignore-author "bot|jenkins|github-actions"  # 排除多个作者（使
 code996 --ignore-msg "^Merge"                    # 排除所有以 "Merge" 开头的提交消息
 code996 --ignore-msg "merge|lint|format"         # 排除多个关键词
 code996 -y 2025 --ignore-author "renovate|dependabot" --ignore-msg "^Merge" # 综合过滤
+
+# ===== 导出报告（新功能） =====
+code996 -f html                    # 导出为精美的 HTML 报告
+code996 -f md                      # 导出为 Markdown 格式
+code996 -f png                     # 导出为 PNG 图片
+code996 -y 2024 -f html -o         # 分析2024年，导出 HTML 并在浏览器打开
+code996 trend -f html              # 趋势分析导出为 HTML
+code996 --self -f md -o            # 分析自己的数据，导出 Markdown 并打开浏览器
 ```
 
 **常见排除场景**：

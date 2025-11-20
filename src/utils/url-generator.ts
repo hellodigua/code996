@@ -1,9 +1,6 @@
 import chalk from 'chalk'
-import { exec } from 'child_process'
-import { promisify } from 'util'
+import openBrowser from 'open-web-browser'
 import { ParsedGitData, GitLogData } from '../types/git-types'
-
-const execAsync = promisify(exec)
 
 interface UrlData {
   timeRange: {
@@ -35,24 +32,8 @@ export function generateVercelUrl(data: UrlData): string {
 }
 
 export async function openUrlInBrowser(url: string): Promise<void> {
-  const platform = process.platform
-
-  let command: string
-
-  switch (platform) {
-    case 'darwin':
-      command = `open "${url}"`
-      break
-    case 'win32':
-      command = `start "" "${url}"`
-      break
-    default:
-      command = `xdg-open "${url}"`
-      break
-  }
-
   try {
-    await execAsync(command)
+    await openBrowser(url)
     console.log(chalk.green('✓ 已在浏览器中打开'))
   } catch (error) {
     console.error(chalk.yellow('⚠️  无法自动打开浏览器，请手动复制链接访问'))
