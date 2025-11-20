@@ -13,6 +13,7 @@ export interface AnalyzeOptions {
   year?: string
   self?: boolean
   format?: 'txt' | 'md' | 'html' | 'svg' | 'png'
+  open?: boolean
 }
 
 export class CLIManager {
@@ -50,6 +51,7 @@ export class CLIManager {
       .option('--all-time', '查询所有时间的数据（默认为最近一年）')
       .option('--self', '仅统计当前 Git 用户的提交')
       .option('-f, --format <format>', '输出格式: txt | md | html | svg | png (默认 txt)', 'txt')
+      .option('-o, --open', '生成 URL 后自动在浏览器中打开')
       .action(async (repoPath: string | undefined, options: AnalyzeOptions, command: Command) => {
         const processedArgs = typeof repoPath === 'string' ? 1 : 0
         const extraArgs = (command.args ?? []).slice(processedArgs)
@@ -76,6 +78,8 @@ export class CLIManager {
       .option('-y, --year <year>', '指定年份或年份范围 (例如: 2025 或 2023-2025)')
       .option('--all-time', '查询所有时间的数据')
       .option('--self', '仅统计当前 Git 用户的提交')
+      .option('-f, --format <format>', '输出格式: txt | md | html | svg | png (默认 txt)', 'txt')
+      .option('-o, --open', '生成 URL 后自动在浏览器中打开')
       .argument('[repoPath]', 'Git 仓库根目录路径（默认当前目录）')
       .action(async (repoPath: string | undefined, options: AnalyzeOptions, command: Command) => {
         const processedArgs = typeof repoPath === 'string' ? 1 : 0
@@ -148,6 +152,7 @@ export class CLIManager {
       until: options.until ?? globalOpts.until,
       year: options.year ?? globalOpts.year,
       format: options.format ?? globalOpts.format ?? 'txt',
+      open: options.open ?? globalOpts.open,
     }
   }
 
@@ -252,6 +257,11 @@ ${chalk.bold('示例:')}
   code996 trend                 # 分析最近一年的月度趋势
   code996 trend -y 2024         # 分析2024年各月趋势
   code996 trend --all-time      # 分析所有时间的月度趋势
+
+  ${chalk.gray('# 导出报告')}
+  code996 -f html               # 导出为 HTML 报告
+  code996 -f md -o              # 导出为 Markdown 并打开
+  code996 trend -f png          # 趋势分析导出为 PNG 图片
 
 ${chalk.bold('更多详情请访问:')} https://github.com/code996/code996
     `)

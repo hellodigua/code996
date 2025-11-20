@@ -17,6 +17,7 @@ import {
 } from './report'
 import { ensureCommitSamples } from '../common/commit-guard'
 import { exportReport } from './report/exporter'
+import { generateVercelUrl, openUrlInBrowser, printVercelUrl } from '../../utils/url-generator'
 
 type TimeRangeMode = 'all-time' | 'custom' | 'auto-last-commit' | 'fallback'
 
@@ -140,6 +141,21 @@ export class AnalyzeExecutor {
           mode: rangeMode,
         },
       })
+
+      const vercelUrl = generateVercelUrl({
+        timeRange: {
+          since: displaySince,
+          until: displayUntil,
+        },
+        rawData,
+        format: options.format,
+      })
+
+      printVercelUrl(vercelUrl)
+
+      if (options.open) {
+        await openUrlInBrowser(vercelUrl)
+      }
     } catch (error) {
       console.error(chalk.red('❌ 分析失败:'), (error as Error).message)
       process.exit(1)
