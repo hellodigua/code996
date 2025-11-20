@@ -34,7 +34,7 @@ code996 是一个分析工具，它可以统计 Git 项目的 commit 时间分�
 
 ### 月度趋势分析
 
-<img src="https://raw.githubusercontent.com/hellodigua/code996/main/public/images/demo4.png" alt="月度趋势分析图" style="width:600px; max-width:100%; height:auto;"/>
+<img src="https://raw.githubusercontent.com/hellodigua/code996/dev/public/images/demo4.png" alt="月度趋势分析图" style="width:600px; max-width:100%; height:auto;"/>
 
 ## 🚀 快速开始
 
@@ -128,7 +128,6 @@ code996 --ignore-author "bot"                    # 排除所有包含 "bot" 的�
 code996 --ignore-author "bot|jenkins|github-actions"  # 排除多个作者（使用 | 分隔）
 code996 --ignore-msg "^Merge"                    # 排除所有以 "Merge" 开头的提交消息
 code996 --ignore-msg "merge|lint|format"         # 排除多个关键词
-code996 --self --ignore-author "bot"             # 可以组合使用多个过滤条件
 code996 -y 2025 --ignore-author "renovate|dependabot" --ignore-msg "^Merge" # 综合过滤
 ```
 

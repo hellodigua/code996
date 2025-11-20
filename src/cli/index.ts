@@ -48,6 +48,8 @@ export class CLIManager {
       .option('--ignore-author <regex>', '排除匹配的作者 (例如: bot|jenkins)')
       .option('--ignore-msg <regex>', '排除匹配的提交消息 (例如: merge|lint)')
       .option('--timezone <offset>', '指定时区进行分析 (例如: +0800, -0700)')
+      .option('--skip-user-analysis', '跳过团队工作模式分析')
+      .option('--max-users <number>', '最大分析用户数（默认30）', '30')
       .action(async (paths: string[], options: AnalyzeOptions, command: Command) => {
         const mergedOptions = this.mergeGlobalOptions(options)
 
@@ -343,7 +345,6 @@ ${chalk.bold('示例:')}
   code996 --ignore-author "bot|jenkins|github-actions"  # 排除多个作者（使用 | 分隔）
   code996 --ignore-msg "^Merge" # 排除所有以 "Merge" 开头的提交消息
   code996 --ignore-msg "merge|lint|format"  # 排除多个关键词
-  code996 --self --ignore-author "bot"  # 可以组合使用多个过滤条件
 
 ${chalk.bold('正则表达式语法说明:')}
   - 使用 | 分隔多个模式 (例如: bot|jenkins)

@@ -236,6 +236,8 @@ export interface AnalyzeOptions {
   ignoreAuthor?: string // 排除作者正则
   ignoreMsg?: string // 排除提交消息正则
   timezone?: string // 指定时区进行分析 (例如: +0800, -0700)
+  skipUserAnalysis?: boolean // 是否跳过团队工作模式分析
+  maxUsers?: number // 最大分析用户数（默认30）
 }
 
 /**
@@ -258,4 +260,75 @@ export interface TimezoneAnalysisResult {
   confidence: number // 检测置信度 (0-100)
   warning?: string // 警告信息
   timezoneGroups?: Array<{ offset: string; count: number; ratio: number }> // 时区分组详情
+}
+
+// ====== 以下是团队工作模式分析的新增类型 ======
+
+/**
+ * 工作强度等级
+ */
+export type WorkIntensityLevel = 'normal' | 'moderate' | 'heavy'
+
+/**
+ * 个人工作模式
+ */
+export interface UserWorkPattern {
+  author: string // 作者名
+  email: string // 邮箱
+  totalCommits: number // 提交数
+  commitPercentage: number // 占比（百分比）
+  timeDistribution: TimeCount[] // 个人的时间分布（24小时）
+  workingHours?: WorkTimeDetectionResult // 个人的上下班时间（算法识别）
+  // 基于每日首末commit的平均值
+  avgStartTimeMean?: number // 平均上班时间（算术平均，小时数）
+  avgStartTimeMedian?: number // 平均上班时间（中位数，小时数）
+  avgEndTimeMean?: number // 平均下班时间（算术平均，小时数）
+  avgEndTimeMedian?: number // 平均下班时间（中位数，小时数）
+  validDays?: number // 有效天数（用于判断数据可靠性）
+  index996?: number // 个人的996指数
+  overtimeStats?: {
+    workdayOvertime: number // 工作日加班提交数
+    weekendOvertime: number // 周末加班提交数
+    totalOvertime: number // 总加班提交数
+  }
+  intensityLevel?: WorkIntensityLevel // 工作强度等级
+}
+
+/**
+ * 团队分析结果
+ */
+export interface TeamAnalysis {
+  coreContributors: UserWorkPattern[] // 核心贡献者（过滤后）
+  totalAnalyzed: number // 实际分析的用户数
+  totalContributors: number // 总贡献者数
+  filterThreshold: number // 过滤阈值（提交数）
+  baselineEndHour: number // 团队基准下班时间（P50中位数）
+
+  // 工作强度分布
+  distribution: {
+    normal: UserWorkPattern[] // 正常作息（基准下班时间之前）
+    moderate: UserWorkPattern[] // 适度加班（基准+0到+2小时）
+    heavy: UserWorkPattern[] // 严重加班（基准+2小时之后）
+  }
+
+  // 统计指标
+  statistics: {
+    median996: number // 中位数996指数
+    mean996: number // 平均996指数
+    range: [number, number] // 996指数范围 [最小, 最大]
+    percentiles: {
+      p25: number // 25%分位数
+      p50: number // 50%分位数（中位数）
+      p75: number // 75%分位数
+      p90: number // 90%分位数
+    }
+  }
+
+  // 健康度评估
+  healthAssessment: {
+    overallIndex: number // 项目整体996指数
+    teamMedianIndex: number // 团队中位数996指数
+    conclusion: string // 结论文本
+    warning?: string // 警告信息
+  }
 }

@@ -5,10 +5,12 @@ import { promptRepoSelection } from '../prompts/repo-selector'
 import { GitCollector } from '../../git/git-collector'
 import { GitParser } from '../../git/git-parser'
 import { GitDataMerger } from '../../git/git-data-merger'
+import { GitTeamAnalyzer } from '../../git/git-team-analyzer'
+import { MultiRepoTeamAnalyzer } from '../../git/multi-repo-team-analyzer'
 import { TrendAnalyzer } from '../../core/trend-analyzer'
 import { TimezoneAnalyzer } from '../../core/timezone-analyzer'
 import { TimezoneFilter } from '../../utils/timezone-filter'
-import { AnalyzeOptions, GitLogData, RepoAnalysisRecord, RepoInfo } from '../../types/git-types'
+import { AnalyzeOptions, GitLogData, RepoAnalysisRecord, RepoInfo, GitLogOptions } from '../../types/git-types'
 import { calculateTimeRange } from '../../utils/terminal'
 import {
   printCoreResults,
@@ -21,6 +23,7 @@ import {
   MultiComparisonPrinter,
 } from './report'
 import { printTrendReport } from './report/trend-printer'
+import { printTeamAnalysis } from './report/printers/user-analysis-printer'
 
 /**
  * 多仓库分析执行器
@@ -287,7 +290,46 @@ export class MultiExecutor {
         }
       }
 
-      // ========== 步骤 9: 检测跨时区并显示警告（如果未使用 --timezone 过滤）==========
+      // ========== 步骤 9: 团队工作模式分析（聚合所有仓库的数据）==========
+      if (GitTeamAnalyzer.shouldAnalyzeTeam(options) && selectedRepos.length > 0) {
+        // 收集所有成功分析的仓库路径
+        const successfulRepoPaths = selectedRepos
+          .filter((_, index) => repoRecords[index].status === 'success')
+          .map((repo) => repo.path)
+
+        if (successfulRepoPaths.length > 0) {
+          console.log()
+          console.log(chalk.gray(`💡 聚合 ${successfulRepoPaths.length} 个仓库的数据进行团队工作模式分析`))
+
+          try {
+            const collectOptions: GitLogOptions = {
+              path: '', // 多仓库模式下不需要单个path
+              since: effectiveSince,
+              until: effectiveUntil,
+              authorPattern,
+              ignoreAuthor: options.ignoreAuthor,
+              ignoreMsg: options.ignoreMsg,
+            }
+
+            const maxUsers = options.maxUsers ? parseInt(String(options.maxUsers), 10) : 30
+            const teamAnalysis = await MultiRepoTeamAnalyzer.analyzeAggregatedTeam(
+              successfulRepoPaths,
+              collectOptions,
+              20, // minCommits（所有仓库总计≥20）
+              maxUsers,
+              result.index996 // 整体996指数
+            )
+
+            if (teamAnalysis) {
+              printTeamAnalysis(teamAnalysis)
+            }
+          } catch (error) {
+            console.log(chalk.yellow('⚠️  团队分析失败:'), (error as Error).message)
+          }
+        }
+      }
+
+      // ========== 步骤 10: 检测跨时区并显示警告（如果未使用 --timezone 过滤）==========
       if (mergedData.timezoneData && !options.timezone) {
         const tzAnalysis = TimezoneAnalyzer.analyzeTimezone(mergedData.timezoneData, mergedData.byHour)
         if (tzAnalysis.isCrossTimezone) {

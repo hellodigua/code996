@@ -1,7 +1,7 @@
 {
   "name": "code996",
   "version": "1.0.0",
-  "description": "通过分析 Git commit 的时间分布，计算出项目的'996指数'",
+  "description": "统计 Git commit 的时间分布，进而推导出项目的编码工作强度",
   "main": "dist/index.js",
   "bin": {
     "code996": "./dist/index.js"
@@ -34,10 +34,13 @@
     "typescript": "^5.5.2"
   },
   "dependencies": {
-    "@inquirer/prompts": "^7.10.1",
+    "@inquirer/prompts": "^6.0.1",
     "chalk": "^4.1.2",
     "cli-table3": "^0.6.3",
     "commander": "^11.1.0",
     "ora": "^5.4.1"
+  },
+  "engines": {
+    "node": ">=16.0.0"
   }
 }

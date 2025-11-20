@@ -5,6 +5,7 @@ import { GitParser } from '../../git/git-parser'
 import { TrendAnalyzer } from '../../core/trend-analyzer'
 import { TimezoneAnalyzer } from '../../core/timezone-analyzer'
 import { TimezoneFilter } from '../../utils/timezone-filter'
+import { GitTeamAnalyzer } from '../../git/git-team-analyzer'
 import { AnalyzeOptions } from '../index'
 import { calculateTimeRange } from '../../utils/terminal'
 import { GitLogData, GitLogOptions, ParsedGitData, Result996 } from '../../types/git-types'
@@ -18,6 +19,7 @@ import {
   printLateNightAnalysis,
 } from './report'
 import { printTrendReport } from './report/trend-printer'
+import { printTeamAnalysis } from './report/printers/user-analysis-printer'
 import { ensureCommitSamples } from '../common/commit-guard'
 
 type TimeRangeMode = 'all-time' | 'custom' | 'auto-last-commit' | 'fallback'
@@ -184,7 +186,27 @@ export class AnalyzeExecutor {
         }
       }
 
-      // ========== 步骤 5: 检测跨时区并显示警告（如果未使用 --timezone 过滤）==========
+      // ========== 步骤 5: 团队工作模式分析 ==========
+      if (GitTeamAnalyzer.shouldAnalyzeTeam(options)) {
+        try {
+          const maxUsers = options.maxUsers ? parseInt(String(options.maxUsers), 10) : 30
+          const teamAnalysis = await GitTeamAnalyzer.analyzeTeam(
+            collectOptions,
+            result.index996,
+            20, // minCommits
+            maxUsers,
+            false // silent
+          )
+
+          if (teamAnalysis) {
+            printTeamAnalysis(teamAnalysis)
+          }
+        } catch (error) {
+          console.log(chalk.yellow('⚠️  团队分析失败:'), (error as Error).message)
+        }
+      }
+
+      // ========== 步骤 6: 检测跨时区并显示警告（如果未使用 --timezone 过滤）==========
       if (rawData.timezoneData && !options.timezone) {
         const tzAnalysis = TimezoneAnalyzer.analyzeTimezone(rawData.timezoneData, rawData.byHour)
         if (tzAnalysis.isCrossTimezone) {
