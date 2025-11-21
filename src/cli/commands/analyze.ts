@@ -496,10 +496,7 @@ function printResults(
  * @param options 用户选项
  * @returns 是否启用及原因
  */
-function shouldEnableHolidayMode(
-  rawData: GitLogData,
-  options: AnalyzeOptions
-): { enabled: boolean; reason: string } {
+function shouldEnableHolidayMode(rawData: GitLogData, options: AnalyzeOptions): { enabled: boolean; reason: string } {
   // 如果用户强制开启，直接启用
   if (options.cn) {
     return {

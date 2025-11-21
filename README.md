@@ -24,6 +24,11 @@ code996 是一个分析工具，它可以统计 Git 项目的 commit 时间分�
 
 <img src="https://raw.githubusercontent.com/hellodigua/code996/main/public/images/demo1.png" alt="核心结果预览" style="width:600px; max-width:100%; height:auto;"/>
 
+<details>
+<summary>
+### 其他结果模块预览 →
+</summary>
+
 ### 查看提交时间分布
 
 <img src="https://raw.githubusercontent.com/hellodigua/code996/main/public/images/demo2.png" alt="提交时间分布图" style="width:400px; max-width:100%; height:auto;"/>
@@ -34,7 +39,9 @@ code996 是一个分析工具，它可以统计 Git 项目的 commit 时间分�
 
 ### 月度趋势分析
 
-<img src="https://raw.githubusercontent.com/hellodigua/code996/dev/public/images/demo4.png" alt="月度趋势分析图" style="width:600px; max-width:100%; height:auto;"/>
+<img src="https://raw.githubusercontent.com/hellodigua/code996/main/public/images/demo4.png" alt="月度趋势分析图" style="width:600px; max-width:100%; height:auto;"/>
+
+</details>
 
 ## 🚀 快速开始
 
@@ -90,6 +97,7 @@ code996 /workspace         # 自动扫描子目录
 - `-H, --hours <range>`：手动指定标准工作时间（例如：9-18 或 9.5-18.5）**重要：建议使用该参数，以获取更正确的评价结果**
 - `--half-hour`：以半小时粒度展示时间分布（默认按小时展示）**统计更精确**
 - `--timezone <offset>`：指定时区进行分析（例如：+0800、-0700）**适用于跨时区团队项目**
+- `--cn`：强制开启中国节假日调休模式**（系统会自动检测 +0800 时区并启用，其他时区也可手动开启）**
 - `--self`：仅统计当前 Git 用户的提交记录
 - `--ignore-author <regex>`：排除匹配特定正则表达式的作者（例如：排除 bot 或 jenkins）
 - `--ignore-msg <regex>`：排除 Commit Message 中包含特定关键词的提交（例如：排除 merge 或 lint）
@@ -122,6 +130,11 @@ code996 /proj1 /proj2 --half-hour  # 多仓库分析，半小时粒度展示
 code996 --timezone="+0800"     # 只分析东八区（中国）的提交
 code996 --timezone="-0700"     # 只分析西七区（美国西海岸）的提交
 code996 -y 2025 --timezone="+0800"  # 分析2025年特定时区的提交
+
+# 中国节假日调休分析
+code996                        # 系统自动检测主要时区为 +0800 时，会自动启用节假日调休
+code996 --cn                   # 手动强制开启节假日调休模式（适用于非 +0800 时区项目）
+code996 --timezone="-0700" --cn # 分析非中国时区项目，但需要按中国节假日调休判断
 
 # 过滤噪音数据（排除 CI/CD 机器人、合并提交等）
 code996 --ignore-author "bot"                    # 排除所有包含 "bot" 的作者
@@ -172,8 +185,9 @@ Git 仓库 → git log 采集 → 日级首提 + 小时分布 → 分位数推�
    - 对于开源项目，自动隐藏"996指数"和"加班分析"等不适用的指标
    - 多仓库模式下，显示项目类型对比表格
 5. **跨时区协作检测**：通过时区离散度和"睡眠时段"提交比例识别跨时区项目（阈值：非主导时区 >1%），并提供时区过滤建议
-6. **数据验证**：检验统计数据是否与总提交数一致，避免缺失导致的偏差
-7. **算法优势**：新版本采用分位数与拐点估算，能更智能地排除深夜零星提交的干扰，精准定位真实的工作时间窗口
+6. **节假日调休识别**：当主要时区为 +0800 且占比超过 50% 时，自动启用中国节假日调休判断（工作日/周末会考虑法定节假日和调休），其他时区可通过 `--cn` 参数手动开启
+7. **数据验证**：检验统计数据是否与总提交数一致，避免缺失导致的偏差
+8. **算法优势**：新版本采用分位数与拐点估算，能更智能地排除深夜零星提交的干扰，精准定位真实的工作时间窗口
 
 ## 使用提示
 
