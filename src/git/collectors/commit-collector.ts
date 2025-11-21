@@ -19,8 +19,8 @@ export class CommitCollector extends BaseCollector {
   async getCommitsByDayAndHour(options: GitLogOptions): Promise<DayHourCommit[]> {
     const { path } = options
 
-    // 格式: "Author Name <email@example.com>|D H" (D=星期几 0-6，H=小时，使用 %w 而非 %u 以兼容 Windows)
-    const args = ['log', '--format=%an <%ae>|%cd', '--date=format-local:%w %H']
+    // 格式: "Author Name <email@example.com>|D H|ISO_TIMESTAMP" (D=星期几 0-6，H=小时)
+    const args = ['log', '--format=%an <%ae>|%cd|%ai', '--date=format-local:%w %H']
     this.applyCommonFilters(args, options)
 
     const output = await this.execGitCommand(args, path)
@@ -32,25 +32,34 @@ export class CommitCollector extends BaseCollector {
     for (const line of lines) {
       const trimmed = line.trim()
 
-      // 分离作者和时间数据
-      const pipeIndex = trimmed.lastIndexOf('|')
-      if (pipeIndex === -1) {
+      // 分离作者、时间数据和ISO时间戳
+      const parts = trimmed.split('|')
+      if (parts.length < 3) {
         continue
       }
 
-      const author = trimmed.substring(0, pipeIndex)
-      const timeData = trimmed.substring(pipeIndex + 1)
+      const author = parts[0]
+      const timeData = parts[1]
+      const isoTimestamp = parts[2]
 
       // 检查是否应该排除此作者
       if (this.shouldIgnoreAuthor(author, options.ignoreAuthor)) {
         continue
       }
 
-      const parts = timeData.trim().split(/\s+/)
+      // 时区过滤
+      if (options.timezone) {
+        const timezoneMatch = isoTimestamp.match(/([+-]\d{4})$/)
+        if (!timezoneMatch || timezoneMatch[1] !== options.timezone) {
+          continue
+        }
+      }
 
-      if (parts.length >= 2) {
-        const dayW = parseInt(parts[0], 10)
-        const hour = parseInt(parts[1], 10)
+      const timeParts = timeData.trim().split(/\s+/)
+
+      if (timeParts.length >= 2) {
+        const dayW = parseInt(timeParts[0], 10)
+        const hour = parseInt(timeParts[1], 10)
 
         if (!isNaN(dayW) && !isNaN(hour) && dayW >= 0 && dayW <= 6 && hour >= 0 && hour <= 23) {
           // 转换：%w 的 0(周日) -> 7, 1-6 -> 1-6
@@ -77,8 +86,8 @@ export class CommitCollector extends BaseCollector {
   async getDailyFirstCommits(options: GitLogOptions): Promise<DailyFirstCommit[]> {
     const { path } = options
 
-    // 格式: "Author Name <email@example.com>|YYYY-MM-DDTHH:MM:SS"
-    const args = ['log', '--format=%an <%ae>|%cd', '--date=format-local:%Y-%m-%dT%H:%M:%S']
+    // 格式: "Author Name <email@example.com>|YYYY-MM-DDTHH:MM:SS|ISO_TIMESTAMP"
+    const args = ['log', '--format=%an <%ae>|%cd|%ai', '--date=format-local:%Y-%m-%dT%H:%M:%S']
     this.applyCommonFilters(args, options)
 
     const output = await this.execGitCommand(args, path)
@@ -92,18 +101,27 @@ export class CommitCollector extends BaseCollector {
         continue
       }
 
-      // 分离作者和时间
-      const pipeIndex = trimmed.lastIndexOf('|')
-      if (pipeIndex === -1) {
+      // 分离作者、时间和ISO时间戳
+      const parts = trimmed.split('|')
+      if (parts.length < 3) {
         continue
       }
 
-      const author = trimmed.substring(0, pipeIndex)
-      const timestamp = trimmed.substring(pipeIndex + 1)
+      const author = parts[0]
+      const timestamp = parts[1]
+      const isoTimestamp = parts[2]
 
       // 检查是否应该排除此作者
       if (this.shouldIgnoreAuthor(author, options.ignoreAuthor)) {
         continue
+      }
+
+      // 时区过滤
+      if (options.timezone) {
+        const timezoneMatch = isoTimestamp.match(/([+-]\d{4})$/)
+        if (!timezoneMatch || timezoneMatch[1] !== options.timezone) {
+          continue
+        }
       }
 
       const parsed = this.parseLocalTimestamp(timestamp)
@@ -134,8 +152,8 @@ export class CommitCollector extends BaseCollector {
   async getDailyLatestCommits(options: GitLogOptions): Promise<DailyLatestCommit[]> {
     const { path } = options
 
-    // 格式: "Author Name <email@example.com>|YYYY-MM-DDTHH:MM:SS"
-    const args = ['log', '--format=%an <%ae>|%cd', '--date=format-local:%Y-%m-%dT%H:%M:%S']
+    // 格式: "Author Name <email@example.com>|YYYY-MM-DDTHH:MM:SS|ISO_TIMESTAMP"
+    const args = ['log', '--format=%an <%ae>|%cd|%ai', '--date=format-local:%Y-%m-%dT%H:%M:%S']
     this.applyCommonFilters(args, options)
 
     const output = await this.execGitCommand(args, path)
@@ -149,18 +167,27 @@ export class CommitCollector extends BaseCollector {
         continue
       }
 
-      // 分离作者和时间
-      const pipeIndex = trimmed.lastIndexOf('|')
-      if (pipeIndex === -1) {
+      // 分离作者、时间和ISO时间戳
+      const parts = trimmed.split('|')
+      if (parts.length < 3) {
         continue
       }
 
-      const author = trimmed.substring(0, pipeIndex)
-      const timestamp = trimmed.substring(pipeIndex + 1)
+      const author = parts[0]
+      const timestamp = parts[1]
+      const isoTimestamp = parts[2]
 
       // 检查是否应该排除此作者
       if (this.shouldIgnoreAuthor(author, options.ignoreAuthor)) {
         continue
+      }
+
+      // 时区过滤
+      if (options.timezone) {
+        const timezoneMatch = isoTimestamp.match(/([+-]\d{4})$/)
+        if (!timezoneMatch || timezoneMatch[1] !== options.timezone) {
+          continue
+        }
       }
 
       const parsed = this.parseLocalTimestamp(timestamp)
@@ -213,8 +240,8 @@ export class CommitCollector extends BaseCollector {
   async getDailyCommitHours(options: GitLogOptions): Promise<DailyCommitHours[]> {
     const { path } = options
 
-    // 格式: "Author Name <email@example.com>|YYYY-MM-DDTHH:MM:SS"
-    const args = ['log', '--format=%an <%ae>|%cd', '--date=format-local:%Y-%m-%dT%H:%M:%S']
+    // 格式: "Author Name <email@example.com>|YYYY-MM-DDTHH:MM:SS|ISO_TIMESTAMP"
+    const args = ['log', '--format=%an <%ae>|%cd|%ai', '--date=format-local:%Y-%m-%dT%H:%M:%S']
     this.applyCommonFilters(args, options)
 
     const output = await this.execGitCommand(args, path)
@@ -228,18 +255,27 @@ export class CommitCollector extends BaseCollector {
         continue
       }
 
-      // 分离作者和时间
-      const pipeIndex = trimmed.lastIndexOf('|')
-      if (pipeIndex === -1) {
+      // 分离作者、时间和ISO时间戳
+      const parts = trimmed.split('|')
+      if (parts.length < 3) {
         continue
       }
 
-      const author = trimmed.substring(0, pipeIndex)
-      const timestamp = trimmed.substring(pipeIndex + 1)
+      const author = parts[0]
+      const timestamp = parts[1]
+      const isoTimestamp = parts[2]
 
       // 检查是否应该排除此作者
       if (this.shouldIgnoreAuthor(author, options.ignoreAuthor)) {
         continue
+      }
+
+      // 时区过滤
+      if (options.timezone) {
+        const timezoneMatch = isoTimestamp.match(/([+-]\d{4})$/)
+        if (!timezoneMatch || timezoneMatch[1] !== options.timezone) {
+          continue
+        }
       }
 
       const parsed = this.parseLocalTimestamp(timestamp)
@@ -268,8 +304,8 @@ export class CommitCollector extends BaseCollector {
   async getDailyCommitCounts(options: GitLogOptions): Promise<DailyCommitCount[]> {
     const { path } = options
 
-    // 格式: "Author Name <email@example.com>|YYYY-MM-DD"
-    const args = ['log', '--format=%an <%ae>|%cd', '--date=format-local:%Y-%m-%d']
+    // 格式: "Author Name <email@example.com>|YYYY-MM-DD|ISO_TIMESTAMP"
+    const args = ['log', '--format=%an <%ae>|%cd|%ai', '--date=format-local:%Y-%m-%d']
     this.applyCommonFilters(args, options)
 
     const output = await this.execGitCommand(args, path)
@@ -283,18 +319,27 @@ export class CommitCollector extends BaseCollector {
         continue
       }
 
-      // 分离作者和日期
-      const pipeIndex = trimmed.lastIndexOf('|')
-      if (pipeIndex === -1) {
+      // 分离作者、日期和ISO时间戳
+      const parts = trimmed.split('|')
+      if (parts.length < 3) {
         continue
       }
 
-      const author = trimmed.substring(0, pipeIndex)
-      const date = trimmed.substring(pipeIndex + 1).trim()
+      const author = parts[0]
+      const date = parts[1].trim()
+      const isoTimestamp = parts[2]
 
       // 检查是否应该排除此作者
       if (this.shouldIgnoreAuthor(author, options.ignoreAuthor)) {
         continue
+      }
+
+      // 时区过滤
+      if (options.timezone) {
+        const timezoneMatch = isoTimestamp.match(/([+-]\d{4})$/)
+        if (!timezoneMatch || timezoneMatch[1] !== options.timezone) {
+          continue
+        }
       }
 
       // 验证日期格式 (YYYY-MM-DD)

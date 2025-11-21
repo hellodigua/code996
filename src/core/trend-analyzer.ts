@@ -24,6 +24,7 @@ export class TrendAnalyzer {
    * @param until 结束日期 (YYYY-MM-DD)
    * @param authorPattern 作者过滤正则（仅统计指定作者）
    * @param progressCallback 进度回调函数 (当前月份, 总月数, 月份名称)
+   * @param timezone 时区过滤（例如: +0800）
    * @returns 趋势分析结果
    */
   static async analyzeTrend(
@@ -31,7 +32,8 @@ export class TrendAnalyzer {
     since: string | null,
     until: string | null,
     authorPattern?: string,
-    progressCallback?: (current: number, total: number, month: string) => void
+    progressCallback?: (current: number, total: number, month: string) => void,
+    timezone?: string
   ): Promise<TrendAnalysisResult> {
     const collector = new GitCollector()
 
@@ -52,7 +54,7 @@ export class TrendAnalyzer {
       if (progressCallback) {
         progressCallback(i + 1, months.length, months[i])
       }
-      const data = await this.analyzeMonth(collector, path, months[i], authorPattern)
+      const data = await this.analyzeMonth(collector, path, months[i], authorPattern, timezone)
       monthlyData.push(data)
     }
 
@@ -76,6 +78,7 @@ export class TrendAnalyzer {
    * @param until 结束日期 (YYYY-MM-DD)
    * @param authorPattern 作者过滤正则（仅统计指定作者）
    * @param progressCallback 进度回调函数 (当前月份, 总月数, 月份名称)
+   * @param timezone 时区过滤（例如: +0800）
    * @returns 趋势分析结果
    */
   static async analyzeMultiRepoTrend(
@@ -83,7 +86,8 @@ export class TrendAnalyzer {
     since: string | null,
     until: string | null,
     authorPattern: string | undefined,
-    progressCallback?: (current: number, total: number, month: string) => void
+    progressCallback?: (current: number, total: number, month: string) => void,
+    timezone?: string
   ): Promise<TrendAnalysisResult> {
     const collector = new GitCollector()
 
@@ -123,7 +127,7 @@ export class TrendAnalyzer {
       if (progressCallback) {
         progressCallback(i + 1, months.length, months[i])
       }
-      const data = await this.analyzeMonthMultiRepo(collector, paths, months[i], authorPattern)
+      const data = await this.analyzeMonthMultiRepo(collector, paths, months[i], authorPattern, timezone)
       monthlyData.push(data)
     }
 
@@ -147,7 +151,8 @@ export class TrendAnalyzer {
     collector: GitCollector,
     paths: string[],
     month: string,
-    authorPattern?: string
+    authorPattern?: string,
+    timezone?: string
   ): Promise<MonthlyTrendData | null> {
     try {
       // 计算该月的起止日期
@@ -159,7 +164,7 @@ export class TrendAnalyzer {
 
       for (const path of paths) {
         try {
-          const gitLogData = await collector.collect({ path, since, until, authorPattern, silent: true })
+          const gitLogData = await collector.collect({ path, since, until, authorPattern, timezone, silent: true })
           if (gitLogData.totalCommits > 0) {
             monthDataList.push(gitLogData)
             // 收集参与者（如果有的话）
@@ -247,19 +252,21 @@ export class TrendAnalyzer {
   /**
    * 分析单个月份的数据（单仓库）
    * @param authorPattern 作者过滤正则
+   * @param timezone 时区过滤
    */
   private static async analyzeMonth(
     collector: GitCollector,
     path: string,
     month: string,
-    authorPattern?: string
+    authorPattern?: string,
+    timezone?: string
   ): Promise<MonthlyTrendData | null> {
     try {
       // 计算该月的起止日期
       const { since, until } = this.getMonthRange(month)
 
       // 收集该月的 Git 数据（静默模式，不打印日志）
-      const gitLogData = await collector.collect({ path, since, until, silent: true, authorPattern })
+      const gitLogData = await collector.collect({ path, since, until, silent: true, authorPattern, timezone })
 
       // 如果该月没有提交，返回空数据
       if (gitLogData.totalCommits === 0) {

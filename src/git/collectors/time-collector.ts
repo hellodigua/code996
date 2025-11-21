@@ -12,13 +12,13 @@ export class TimeCollector extends BaseCollector {
   async getCommitsByHour(options: GitLogOptions): Promise<TimeCount[]> {
     const { path } = options
 
-    // 采集分钟级数据：同时获取作者和时间用于过滤
-    // 格式: "Author Name <email@example.com>|HH:MM"
-    const args = ['log', '--format=%an <%ae>|%cd', `--date=format-local:%H:%M`]
+    // 采集分钟级数据：同时获取作者、本地时间和时区信息用于过滤
+    // 格式: "Author Name <email@example.com>|HH:MM|2025-01-01 12:30:00 +0800"
+    const args = ['log', '--format=%an <%ae>|%cd|%ai', `--date=format-local:%H:%M`]
     this.applyCommonFilters(args, options)
 
     const output = await this.execGitCommand(args, path)
-    return this.parseTimeData(output, 'half-hour', options.ignoreAuthor)
+    return this.parseTimeData(output, 'half-hour', options.ignoreAuthor, options.timezone)
   }
 
   /**
@@ -27,39 +27,58 @@ export class TimeCollector extends BaseCollector {
   async getCommitsByDay(options: GitLogOptions): Promise<TimeCount[]> {
     const { path } = options
 
-    // 格式: "Author Name <email@example.com>|D" (D为星期几，0-6，使用 %w 而非 %u 以兼容 Windows)
-    const args = ['log', '--format=%an <%ae>|%cd', `--date=format-local:%w`]
+    // 格式: "Author Name <email@example.com>|D|2025-01-01 12:30:00 +0800" (D为星期几，0-6)
+    const args = ['log', '--format=%an <%ae>|%cd|%ai', `--date=format-local:%w`]
     this.applyCommonFilters(args, options)
 
     const output = await this.execGitCommand(args, path)
-    return this.parseTimeData(output, 'day', options.ignoreAuthor)
+    return this.parseTimeData(output, 'day', options.ignoreAuthor, options.timezone)
   }
 
   /**
-   * 解析时间数据（支持作者过滤）
-   * @param output git log 输出，格式: "Author Name <email@example.com>|TIME"
+   * 解析时间数据（支持作者过滤和时区过滤）
+   * @param output git log 输出，格式: "Author Name <email@example.com>|TIME|ISO_TIMESTAMP"
    * @param type 时间类型
    * @param ignoreAuthor 排除作者的正则表达式
+   * @param timezone 指定时区过滤（例如: +0800）
    */
-  private parseTimeData(output: string, type: 'half-hour' | 'day', ignoreAuthor?: string): TimeCount[] {
+  private parseTimeData(
+    output: string,
+    type: 'half-hour' | 'day',
+    ignoreAuthor?: string,
+    timezone?: string
+  ): TimeCount[] {
     const lines = output.split('\n').filter((line) => line.trim())
     const timeCounts: TimeCount[] = []
 
     for (const line of lines) {
       const trimmedLine = line.trim()
 
-      // 分离作者和时间：格式 "Author Name <email@example.com>|TIME"
-      const pipeIndex = trimmedLine.lastIndexOf('|')
-      if (pipeIndex === -1) {
+      // 分离作者、时间和ISO时间戳：格式 "Author Name <email@example.com>|TIME|ISO_TIMESTAMP"
+      const parts = trimmedLine.split('|')
+      if (parts.length < 3) {
         continue // 格式不正确，跳过
       }
 
-      const author = trimmedLine.substring(0, pipeIndex)
-      let time = trimmedLine.substring(pipeIndex + 1)
+      const author = parts[0]
+      let time = parts[1]
+      const isoTimestamp = parts[2] // 例如: "2025-01-01 12:30:00 +0800"
 
       // 检查是否应该排除此作者
       if (this.shouldIgnoreAuthor(author, ignoreAuthor)) {
         continue
+      }
+
+      // 时区过滤：从ISO时间戳中提取时区信息
+      if (timezone) {
+        const timezoneMatch = isoTimestamp.match(/([+-]\d{4})$/)
+        if (!timezoneMatch) {
+          continue // 无法解析时区，跳过
+        }
+        const commitTimezone = timezoneMatch[1]
+        if (commitTimezone !== timezone) {
+          continue // 不匹配目标时区，跳过
+        }
       }
 
       // 如果是半小时模式，需要将分钟归类到半小时

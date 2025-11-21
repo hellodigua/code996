@@ -11,6 +11,7 @@ export interface GitLogOptions {
   authorPattern?: string // 作者过滤正则（包含特定作者）
   ignoreAuthor?: string // 排除作者正则（排除特定作者，如 bot|jenkins）
   ignoreMsg?: string // 排除提交消息正则（排除特定消息，如 merge|lint）
+  timezone?: string // 时区过滤（例如: +0800, -0700），只采集指定时区的提交
 }
 
 export interface GitLogData {

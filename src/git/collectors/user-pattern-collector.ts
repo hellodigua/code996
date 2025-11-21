@@ -41,8 +41,8 @@ export class UserPatternCollector extends BaseCollector {
   async getAllContributors(options: GitLogOptions): Promise<ContributorInfo[]> {
     const { path } = options
 
-    // 格式: "Author Name <email@example.com>"
-    const args = ['log', '--format=%an <%ae>']
+    // 格式: "Author Name <email@example.com>|ISO_TIMESTAMP"
+    const args = ['log', '--format=%an <%ae>|%ai']
     this.applyCommonFilters(args, options)
 
     const output = await this.execGitCommand(args, path)
@@ -53,13 +53,29 @@ export class UserPatternCollector extends BaseCollector {
     const authorInfoMap = new Map<string, { name: string; email: string }>()
 
     for (const line of lines) {
-      // 检查是否应该排除此作者
-      if (this.shouldIgnoreAuthor(line, options.ignoreAuthor)) {
+      const parts = line.split('|')
+      if (parts.length < 2) {
         continue
       }
 
+      const author = parts[0]
+      const isoTimestamp = parts[1]
+
+      // 检查是否应该排除此作者
+      if (this.shouldIgnoreAuthor(author, options.ignoreAuthor)) {
+        continue
+      }
+
+      // 时区过滤
+      if (options.timezone) {
+        const timezoneMatch = isoTimestamp.match(/([+-]\d{4})$/)
+        if (!timezoneMatch || timezoneMatch[1] !== options.timezone) {
+          continue
+        }
+      }
+
       // 提取姓名和邮箱
-      const match = line.match(/^(.+?)\s*<(.+?)>$/)
+      const match = author.match(/^(.+?)\s*<(.+?)>$/)
       if (match) {
         const name = match[1].trim()
         const email = match[2].trim()
@@ -113,8 +129,8 @@ export class UserPatternCollector extends BaseCollector {
     const { path } = options
 
     // 使用 --author 参数过滤特定用户
-    // 格式: "HH:MM"
-    const args = ['log', '--format=%cd', `--date=format-local:%H:%M`, `--author=${email}`]
+    // 格式: "HH:MM|ISO_TIMESTAMP"
+    const args = ['log', '--format=%cd|%ai', `--date=format-local:%H:%M`, `--author=${email}`]
     this.applyCommonFilters(args, options)
 
     const output = await this.execGitCommand(args, path)
@@ -124,7 +140,23 @@ export class UserPatternCollector extends BaseCollector {
     const hourCounts = new Map<number, number>()
 
     for (const line of lines) {
-      const match = line.trim().match(/^(\d{2}):(\d{2})$/)
+      const parts = line.split('|')
+      if (parts.length < 2) {
+        continue
+      }
+
+      const time = parts[0]
+      const isoTimestamp = parts[1]
+
+      // 时区过滤
+      if (options.timezone) {
+        const timezoneMatch = isoTimestamp.match(/([+-]\d{4})$/)
+        if (!timezoneMatch || timezoneMatch[1] !== options.timezone) {
+          continue
+        }
+      }
+
+      const match = time.trim().match(/^(\d{2}):(\d{2})$/)
       if (match) {
         const hour = parseInt(match[1], 10)
         hourCounts.set(hour, (hourCounts.get(hour) || 0) + 1)
@@ -150,8 +182,8 @@ export class UserPatternCollector extends BaseCollector {
     const { path } = options
 
     // 使用 --author 参数过滤特定用户
-    // 格式: "D" (0-6, 周日到周六，使用 %w 而非 %u 以兼容 Windows)
-    const args = ['log', '--format=%cd', `--date=format-local:%w`, `--author=${email}`]
+    // 格式: "D|ISO_TIMESTAMP" (0-6, 周日到周六)
+    const args = ['log', '--format=%cd|%ai', `--date=format-local:%w`, `--author=${email}`]
     this.applyCommonFilters(args, options)
 
     const output = await this.execGitCommand(args, path)
@@ -161,7 +193,23 @@ export class UserPatternCollector extends BaseCollector {
     const dayCounts = new Map<number, number>()
 
     for (const line of lines) {
-      const dayW = parseInt(line.trim(), 10)
+      const parts = line.split('|')
+      if (parts.length < 2) {
+        continue
+      }
+
+      const dayStr = parts[0]
+      const isoTimestamp = parts[1]
+
+      // 时区过滤
+      if (options.timezone) {
+        const timezoneMatch = isoTimestamp.match(/([+-]\d{4})$/)
+        if (!timezoneMatch || timezoneMatch[1] !== options.timezone) {
+          continue
+        }
+      }
+
+      const dayW = parseInt(dayStr.trim(), 10)
       if (dayW >= 0 && dayW <= 6) {
         // 转换：%w 的 0(周日) -> 7, 1-6 -> 1-6
         const day = dayW === 0 ? 7 : dayW
@@ -195,8 +243,8 @@ export class UserPatternCollector extends BaseCollector {
     nMonthsAgo.setMonth(nMonthsAgo.getMonth() - monthsBack)
     const sinceDate = nMonthsAgo.toISOString().split('T')[0]
 
-    // 格式: "YYYY-MM-DD HH:MM" (使用更兼容的格式)
-    const args = ['log', '--format=%cd', `--date=format-local:%Y-%m-%d %H:%M`, `--author=${email}`, `--since=${sinceDate}`]
+    // 格式: "YYYY-MM-DD HH:MM|ISO_TIMESTAMP"
+    const args = ['log', '--format=%cd|%ai', `--date=format-local:%Y-%m-%d %H:%M`, `--author=${email}`, `--since=${sinceDate}`]
     this.applyCommonFilters(args, options)
 
     const output = await this.execGitCommand(args, path)
@@ -206,7 +254,23 @@ export class UserPatternCollector extends BaseCollector {
     const dailyCommits = new Map<string, number[]>()
 
     for (const line of lines) {
-      const match = line.trim().match(/^(\d{4})-(\d{2})-(\d{2})\s+(\d{2}):(\d{2})$/)
+      const parts = line.split('|')
+      if (parts.length < 2) {
+        continue
+      }
+
+      const timestamp = parts[0]
+      const isoTimestamp = parts[1]
+
+      // 时区过滤
+      if (options.timezone) {
+        const timezoneMatch = isoTimestamp.match(/([+-]\d{4})$/)
+        if (!timezoneMatch || timezoneMatch[1] !== options.timezone) {
+          continue
+        }
+      }
+
+      const match = timestamp.trim().match(/^(\d{4})-(\d{2})-(\d{2})\s+(\d{2}):(\d{2})$/)
       if (match) {
         const year = parseInt(match[1], 10)
         const month = parseInt(match[2], 10)
@@ -259,8 +323,8 @@ export class UserPatternCollector extends BaseCollector {
     nMonthsAgo.setMonth(nMonthsAgo.getMonth() - monthsBack)
     const sinceDate = nMonthsAgo.toISOString().split('T')[0]
 
-    // 格式: "YYYY-MM-DD HH:MM" (使用更兼容的格式)
-    const args = ['log', '--format=%cd', `--date=format-local:%Y-%m-%d %H:%M`, `--author=${email}`, `--since=${sinceDate}`]
+    // 格式: "YYYY-MM-DD HH:MM|ISO_TIMESTAMP"
+    const args = ['log', '--format=%cd|%ai', `--date=format-local:%Y-%m-%d %H:%M`, `--author=${email}`, `--since=${sinceDate}`]
     this.applyCommonFilters(args, options)
 
     const output = await this.execGitCommand(args, path)
@@ -270,7 +334,23 @@ export class UserPatternCollector extends BaseCollector {
     const dailyCommits = new Map<string, number[]>()
 
     for (const line of lines) {
-      const match = line.trim().match(/^(\d{4})-(\d{2})-(\d{2})\s+(\d{2}):(\d{2})$/)
+      const parts = line.split('|')
+      if (parts.length < 2) {
+        continue
+      }
+
+      const timestamp = parts[0]
+      const isoTimestamp = parts[1]
+
+      // 时区过滤
+      if (options.timezone) {
+        const timezoneMatch = isoTimestamp.match(/([+-]\d{4})$/)
+        if (!timezoneMatch || timezoneMatch[1] !== options.timezone) {
+          continue
+        }
+      }
+
+      const match = timestamp.trim().match(/^(\d{4})-(\d{2})-(\d{2})\s+(\d{2}):(\d{2})$/)
       if (match) {
         const year = parseInt(match[1], 10)
         const month = parseInt(match[2], 10)

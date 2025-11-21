@@ -4,7 +4,6 @@ import { GitCollector } from '../../git/git-collector'
 import { GitParser } from '../../git/git-parser'
 import { TrendAnalyzer } from '../../core/trend-analyzer'
 import { TimezoneAnalyzer } from '../../core/timezone-analyzer'
-import { TimezoneFilter } from '../../utils/timezone-filter'
 import { GitTeamAnalyzer } from '../../git/git-team-analyzer'
 import { ProjectClassifier, ProjectType } from '../../core/project-classifier'
 import { AnalyzeOptions } from '../index'
@@ -80,6 +79,7 @@ export class AnalyzeExecutor {
         authorPattern: authorFilter?.pattern,
         ignoreAuthor: options.ignoreAuthor,
         ignoreMsg: options.ignoreMsg,
+        timezone: options.timezone, // 添加时区过滤参数
       }
 
       // 在正式分析前，先检查 commit 样本量是否达到最低要求
@@ -91,35 +91,10 @@ export class AnalyzeExecutor {
       // 创建进度指示器
       const spinner = ora('📦 开始分析').start()
 
-      // 步骤1: 数据采集
-      let rawData = await collector.collect(collectOptions)
+      // 步骤1: 数据采集（时区过滤已在采集阶段完成）
+      const rawData = await collector.collect(collectOptions)
       spinner.text = '⚙️ 正在解析数据...'
       spinner.render()
-
-      // 步骤1.5: 按时区过滤（如果指定了 --timezone）
-      let timezoneFilterInfo: { warning: string; filteredCommits: number } | undefined
-      if (options.timezone) {
-        try {
-          const filterResult = TimezoneFilter.filterByTimezone(rawData, options.timezone)
-          rawData = filterResult.filteredData
-          timezoneFilterInfo = {
-            warning: filterResult.warning,
-            filteredCommits: filterResult.filteredCommits,
-          }
-          spinner.text = `⚙️ 已按时区 ${options.timezone} 过滤数据...`
-          spinner.render()
-        } catch (error) {
-          spinner.fail('时区过滤失败')
-          console.error(chalk.red('❌'), (error as Error).message)
-          console.log()
-          if (rawData.timezoneData) {
-            console.log(chalk.blue('可用时区:'))
-            const available = TimezoneFilter.getAvailableTimezones(rawData.timezoneData)
-            available.forEach((tz) => console.log(chalk.gray(`  • ${tz}`)))
-          }
-          process.exit(1)
-        }
-      }
 
       // 步骤2: 数据解析与验证
       const parsedData = await GitParser.parseGitData(rawData, options.hours, effectiveSince, effectiveUntil)
@@ -143,9 +118,11 @@ export class AnalyzeExecutor {
       spinner.succeed('分析完成！')
       console.log()
 
-      // 显示时区过滤警告（如果有）
-      if (timezoneFilterInfo) {
-        console.log(timezoneFilterInfo.warning)
+      // 显示时区过滤提示（如果有）
+      if (options.timezone) {
+        console.log(chalk.blue('⚙️  时区过滤已启用'))
+        console.log(chalk.gray(`目标时区: ${options.timezone}`))
+        console.log(chalk.gray(`过滤后提交数: ${rawData.totalCommits}`))
         console.log()
       }
 
@@ -187,7 +164,8 @@ export class AnalyzeExecutor {
             authorFilter?.pattern,
             (current, total, month) => {
               trendSpinner.text = `📈 正在分析月度趋势... (${current}/${total}: ${month})`
-            }
+            },
+            options.timezone // 传递时区过滤参数
           )
           trendSpinner.succeed()
           printTrendReport(trendResult)

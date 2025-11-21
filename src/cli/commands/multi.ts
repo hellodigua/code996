@@ -9,7 +9,6 @@ import { GitTeamAnalyzer } from '../../git/git-team-analyzer'
 import { MultiRepoTeamAnalyzer } from '../../git/multi-repo-team-analyzer'
 import { TrendAnalyzer } from '../../core/trend-analyzer'
 import { TimezoneAnalyzer } from '../../core/timezone-analyzer'
-import { TimezoneFilter } from '../../utils/timezone-filter'
 import { ProjectClassifier, ProjectType } from '../../core/project-classifier'
 import { AnalyzeOptions, GitLogData, RepoAnalysisRecord, RepoInfo, GitLogOptions } from '../../types/git-types'
 import { calculateTimeRange, getTerminalWidth, createAdaptiveTable } from '../../utils/terminal'
@@ -158,6 +157,7 @@ export class MultiExecutor {
             since: effectiveSince,
             until: effectiveUntil,
             authorPattern,
+            timezone: options.timezone, // 添加时区过滤参数
             silent: true,
           })
 
@@ -206,32 +206,16 @@ export class MultiExecutor {
 
       // ========== 步骤 4: 合并数据 ==========
       const spinner2 = ora('📊 正在合并数据...').start()
-      let mergedData = GitDataMerger.merge(successfulData)
+      const mergedData = GitDataMerger.merge(successfulData)
       spinner2.succeed('数据合并完成')
       console.log()
 
-      // ========== 步骤 4.5: 按时区过滤（如果指定了 --timezone）==========
-      let timezoneFilterInfo: { warning: string; filteredCommits: number } | undefined
+      // 显示时区过滤提示（如果有）
       if (options.timezone) {
-        try {
-          const filterResult = TimezoneFilter.filterByTimezone(mergedData, options.timezone)
-          mergedData = filterResult.filteredData
-          timezoneFilterInfo = {
-            warning: filterResult.warning,
-            filteredCommits: filterResult.filteredCommits,
-          }
-          console.log(chalk.blue(`⚙️ 已按时区 ${options.timezone} 过滤数据`))
-          console.log()
-        } catch (error) {
-          console.error(chalk.red('❌ 时区过滤失败:'), (error as Error).message)
-          console.log()
-          if (mergedData.timezoneData) {
-            console.log(chalk.blue('可用时区:'))
-            const available = TimezoneFilter.getAvailableTimezones(mergedData.timezoneData)
-            available.forEach((tz) => console.log(chalk.gray(`  • ${tz}`)))
-          }
-          process.exit(1)
-        }
+        console.log(chalk.blue('⚙️  时区过滤已启用'))
+        console.log(chalk.gray(`目标时区: ${options.timezone}`))
+        console.log(chalk.gray(`过滤后总提交数: ${mergedData.totalCommits}`))
+        console.log()
       }
 
       // ========== 步骤 5: 分析合并后的数据 ==========
@@ -254,12 +238,6 @@ export class MultiExecutor {
       // ========== 步骤 6: 输出汇总结果 ==========
       console.log(chalk.cyan.bold('📊 多仓库汇总分析报告:'))
       console.log()
-
-      // 显示时区过滤警告（如果有）
-      if (timezoneFilterInfo) {
-        console.log(timezoneFilterInfo.warning)
-        console.log()
-      }
 
       // 如果有开源项目，隐藏核心结果、详细分析和工作时间推测
       if (!hasOpenSourceProject) {
@@ -298,7 +276,8 @@ export class MultiExecutor {
               (current, total, month) => {
                 // 实时更新进度
                 trendSpinner.text = `📈 正在分析月度趋势... (${current}/${total}: ${month})`
-              }
+              },
+              options.timezone // 传递时区过滤参数
             )
             trendSpinner.succeed()
             printTrendReport(trendResult)
