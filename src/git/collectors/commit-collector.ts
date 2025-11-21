@@ -4,6 +4,7 @@ import {
   DayHourCommit,
   DailyLatestCommit,
   DailyCommitHours,
+  DailyCommitCount,
 } from '../../types/git-types'
 import { BaseCollector } from './base-collector'
 
@@ -256,6 +257,58 @@ export class CommitCollector extends BaseCollector {
       .map(([date, hours]) => ({
         date,
         hours,
+      }))
+      .sort((a, b) => a.date.localeCompare(b.date))
+  }
+
+  /**
+   * 获取每日提交数
+   * @returns 每天的提交数列表（date: YYYY-MM-DD, count: 提交数）
+   */
+  async getDailyCommitCounts(options: GitLogOptions): Promise<DailyCommitCount[]> {
+    const { path } = options
+
+    // 格式: "Author Name <email@example.com>|YYYY-MM-DD"
+    const args = ['log', '--format=%an <%ae>|%cd', '--date=format-local:%Y-%m-%d']
+    this.applyCommonFilters(args, options)
+
+    const output = await this.execGitCommand(args, path)
+    const lines = output.split('\n').filter((line) => line.trim())
+
+    const dailyCounts = new Map<string, number>()
+
+    for (const line of lines) {
+      const trimmed = line.trim()
+      if (!trimmed) {
+        continue
+      }
+
+      // 分离作者和日期
+      const pipeIndex = trimmed.lastIndexOf('|')
+      if (pipeIndex === -1) {
+        continue
+      }
+
+      const author = trimmed.substring(0, pipeIndex)
+      const date = trimmed.substring(pipeIndex + 1).trim()
+
+      // 检查是否应该排除此作者
+      if (this.shouldIgnoreAuthor(author, options.ignoreAuthor)) {
+        continue
+      }
+
+      // 验证日期格式 (YYYY-MM-DD)
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+        continue
+      }
+
+      dailyCounts.set(date, (dailyCounts.get(date) || 0) + 1)
+    }
+
+    return Array.from(dailyCounts.entries())
+      .map(([date, count]) => ({
+        date,
+        count,
       }))
       .sort((a, b) => a.date.localeCompare(b.date))
   }

@@ -164,7 +164,7 @@ export class MultiExecutor {
           dataList.push(data)
 
           // 为每个仓库计算 996 指数（用于后续对比表）
-          const parsedData = GitParser.parseGitData(data, options.hours, effectiveSince, effectiveUntil)
+          const parsedData = await GitParser.parseGitData(data, options.hours, effectiveSince, effectiveUntil)
           const result = GitParser.calculate996Index(parsedData)
 
           // 项目类型识别
@@ -236,7 +236,7 @@ export class MultiExecutor {
 
       // ========== 步骤 5: 分析合并后的数据 ==========
       const spinner3 = ora('📈 正在计算996指数...').start()
-      const parsedData = GitParser.parseGitData(mergedData, options.hours, effectiveSince, effectiveUntil)
+      const parsedData = await GitParser.parseGitData(mergedData, options.hours, effectiveSince, effectiveUntil)
       const result = GitParser.calculate996Index(parsedData)
       spinner3.succeed('分析完成！')
       console.log()

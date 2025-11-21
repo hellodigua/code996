@@ -9,6 +9,7 @@ import {
   DailyLatestCommit,
   DailyCommitHours,
 } from '../types/git-types'
+import { getWorkdayChecker } from '../utils/workday-checker'
 
 /**
  * 加班分析器
@@ -71,9 +72,10 @@ export class OvertimeAnalyzer {
 
   /**
    * 计算周末加班分布（基于每天的提交小时数区分真正加班和临时修复）
+   * 支持中国调休制度：只统计实际假期的加班，调休工作日不计入
    * @param dailyCommitHours 每日提交小时列表
    */
-  static calculateWeekendOvertime(dailyCommitHours: DailyCommitHours[]): WeekendOvertimeDistribution {
+  static async calculateWeekendOvertime(dailyCommitHours: DailyCommitHours[]): Promise<WeekendOvertimeDistribution> {
     // 定义阈值：提交时间跨度 >= 3 小时才算真正加班
     const REAL_OVERTIME_THRESHOLD = 3
 
@@ -83,22 +85,95 @@ export class OvertimeAnalyzer {
     let casualFixDays = 0
     let realOvertimeDays = 0
 
+    try {
+      const checker = getWorkdayChecker()
+
+      // 批量判断所有日期是否为假期（考虑调休）
+      const dates = dailyCommitHours.map((item) => item.date)
+      const isHolidayResults = await checker.isHolidayBatch(dates)
+
+      for (let i = 0; i < dailyCommitHours.length; i++) {
+        const { date, hours } = dailyCommitHours[i]
+        const isHoliday = isHolidayResults[i]
+
+        // 只统计假期（包括周末和法定节假日，排除调休工作日）
+        if (!isHoliday) {
+          continue
+        }
+
+        const commitDate = new Date(date)
+        const dayOfWeek = commitDate.getDay() // 0=Sunday, 6=Saturday
+        const commitHours = hours.size
+
+        // 根据提交的小时数判断是否为真正加班
+        const isRealOvertime = commitHours >= REAL_OVERTIME_THRESHOLD
+
+        if (dayOfWeek === 6) {
+          // 周六
+          saturdayDays++
+          if (isRealOvertime) {
+            realOvertimeDays++
+          } else {
+            casualFixDays++
+          }
+        } else if (dayOfWeek === 0) {
+          // 周日
+          sundayDays++
+          if (isRealOvertime) {
+            realOvertimeDays++
+          } else {
+            casualFixDays++
+          }
+        } else {
+          // 法定节假日（非周末）
+          // 按照周六的逻辑处理
+          saturdayDays++
+          if (isRealOvertime) {
+            realOvertimeDays++
+          } else {
+            casualFixDays++
+          }
+        }
+      }
+    } catch (error) {
+      // 如果 holiday-calendar 查询失败，回退到基础判断
+      console.warn('使用 holiday-calendar 失败，周末加班分析回退到基础判断:', error)
+      return this.calculateWeekendOvertimeBasic(dailyCommitHours)
+    }
+
+    return {
+      saturdayDays,
+      sundayDays,
+      casualFixDays,
+      realOvertimeDays,
+    }
+  }
+
+  /**
+   * 基础的周末加班分布计算（不考虑调休）
+   * 当 holiday-calendar 不可用时使用
+   */
+  private static calculateWeekendOvertimeBasic(dailyCommitHours: DailyCommitHours[]): WeekendOvertimeDistribution {
+    const REAL_OVERTIME_THRESHOLD = 3
+
+    let saturdayDays = 0
+    let sundayDays = 0
+    let casualFixDays = 0
+    let realOvertimeDays = 0
+
     for (const { date, hours } of dailyCommitHours) {
       const commitDate = new Date(date)
-      const dayOfWeek = commitDate.getDay() // 0=Sunday, 6=Saturday
+      const dayOfWeek = commitDate.getDay()
 
-      // 只统计周末
+      // 只统计周末（基础判断：周六、周日）
       if (dayOfWeek !== 0 && dayOfWeek !== 6) {
         continue
       }
 
       const commitHours = hours.size
-
-      // 根据提交的小时数判断是否为真正加班
       const isRealOvertime = commitHours >= REAL_OVERTIME_THRESHOLD
 
       if (dayOfWeek === 6) {
-        // 周六
         saturdayDays++
         if (isRealOvertime) {
           realOvertimeDays++
@@ -106,7 +181,6 @@ export class OvertimeAnalyzer {
           casualFixDays++
         }
       } else if (dayOfWeek === 0) {
-        // 周日
         sundayDays++
         if (isRealOvertime) {
           realOvertimeDays++
@@ -132,13 +206,13 @@ export class OvertimeAnalyzer {
    * @param since 开始日期
    * @param until 结束日期
    */
-  static calculateLateNightAnalysis(
+  static async calculateLateNightAnalysis(
     dailyLatestCommits: DailyLatestCommit[],
     dailyFirstCommits: DailyFirstCommit[],
     workTime: WorkTimeDetectionResult,
     since?: string,
     until?: string
-  ): LateNightAnalysis {
+  ): Promise<LateNightAnalysis> {
     const endHour = Math.ceil(workTime.endHour)
 
     // 统计不同时段的天数（而不是提交数）
@@ -171,14 +245,26 @@ export class OvertimeAnalyzer {
     }
 
     // 从 dailyFirstCommits 统计总工作日天数
-    // 排除周末（需要解析日期）
+    // 使用 holiday-calendar 判断工作日（考虑中国调休）
     const workDaysSet = new Set<string>()
-    for (const commit of dailyFirstCommits) {
-      const date = new Date(commit.date)
-      const dayOfWeek = date.getDay() // 0=Sunday, 1=Monday, ..., 6=Saturday
-      // 只统计周一到周五
-      if (dayOfWeek >= 1 && dayOfWeek <= 5) {
-        workDaysSet.add(commit.date)
+    try {
+      const checker = getWorkdayChecker()
+      const dates = dailyFirstCommits.map((c) => c.date)
+      const isWorkdayResults = await checker.isWorkdayBatch(dates)
+
+      for (let i = 0; i < dailyFirstCommits.length; i++) {
+        if (isWorkdayResults[i]) {
+          workDaysSet.add(dailyFirstCommits[i].date)
+        }
+      }
+    } catch (error) {
+      // 回退到基础判断
+      for (const commit of dailyFirstCommits) {
+        const date = new Date(commit.date)
+        const dayOfWeek = date.getDay()
+        if (dayOfWeek >= 1 && dayOfWeek <= 5) {
+          workDaysSet.add(commit.date)
+        }
       }
     }
 

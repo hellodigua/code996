@@ -7,10 +7,12 @@ import {
   Result996,
   WorkWeekPl,
   WorkTimeDetectionResult,
+  DailyCommitCount,
 } from '../types/git-types'
 import { calculate996Index } from '../core/calculator'
 import { WorkTimeAnalyzer } from '../core/work-time-analyzer'
 import { OvertimeAnalyzer } from '../core/overtime-analyzer'
+import { getWorkdayChecker } from '../utils/workday-checker'
 
 export class GitParser {
   /**
@@ -20,7 +22,12 @@ export class GitParser {
    * @param since 开始日期
    * @param until 结束日期
    */
-  static parseGitData(rawData: GitLogData, customWorkHours?: string, since?: string, until?: string): ParsedGitData {
+  static async parseGitData(
+    rawData: GitLogData,
+    customWorkHours?: string,
+    since?: string,
+    until?: string
+  ): Promise<ParsedGitData> {
     // 智能识别或使用自定义的工作时间
     const workTimeDetection = customWorkHours
       ? this.parseCustomWorkHours(customWorkHours)
@@ -34,7 +41,7 @@ export class GitParser {
 
     const weekendOvertime =
       rawData.dailyCommitHours && rawData.dailyCommitHours.length > 0
-        ? OvertimeAnalyzer.calculateWeekendOvertime(rawData.dailyCommitHours)
+        ? await OvertimeAnalyzer.calculateWeekendOvertime(rawData.dailyCommitHours)
         : undefined
 
     const lateNightAnalysis =
@@ -42,7 +49,7 @@ export class GitParser {
       rawData.dailyLatestCommits.length > 0 &&
       rawData.dailyFirstCommits &&
       rawData.dailyFirstCommits.length > 0
-        ? OvertimeAnalyzer.calculateLateNightAnalysis(
+        ? await OvertimeAnalyzer.calculateLateNightAnalysis(
             rawData.dailyLatestCommits,
             rawData.dailyFirstCommits,
             workTimeDetection,
@@ -51,12 +58,15 @@ export class GitParser {
           )
         : undefined
 
+    // 使用 dailyCommitCounts 中的日期信息来正确判断工作日/周末（考虑中国调休）
+    const workWeekPl = await this.calculateWorkWeekPl(rawData.byDay, rawData.dailyCommitCounts || [], rawData.byHour)
+
     return {
       hourData: rawData.byHour,
       dayData: rawData.byDay,
       totalCommits: rawData.totalCommits,
       workHourPl: this.calculateWorkHourPl(rawData.byHour, workTimeDetection),
-      workWeekPl: this.calculateWorkWeekPl(rawData.byDay) as unknown as WorkWeekPl,
+      workWeekPl: workWeekPl as unknown as WorkWeekPl,
       detectedWorkTime: workTimeDetection, // 保存识别的工作时间
       dailyFirstCommits: rawData.dailyFirstCommits,
       weekdayOvertime,
@@ -134,9 +144,55 @@ export class GitParser {
 
   /**
    * 计算工作时间分布（按星期）
-   * 假设工作日为周一到周五，周末为加班
+   * 使用 holiday-calendar 支持中国调休制度
+   * @param dayData 按星期统计的提交数（兼容性保留）
+   * @param dailyCommitCounts 每日提交数列表（包含具体日期和提交数）
+   * @param hourData 按小时统计的提交数（用于验证）
    */
-  private static calculateWorkWeekPl(dayData: TimeCount[]): WorkDayPl {
+  private static async calculateWorkWeekPl(
+    dayData: TimeCount[],
+    dailyCommitCounts: DailyCommitCount[],
+    hourData: TimeCount[]
+  ): Promise<WorkDayPl> {
+    // 如果没有具体日期信息，回退到基础判断（周一到周五为工作日）
+    if (!dailyCommitCounts || dailyCommitCounts.length === 0) {
+      return this.calculateWorkWeekPlBasic(dayData)
+    }
+
+    try {
+      const checker = getWorkdayChecker()
+
+      // 批量判断所有日期是否为工作日
+      const dates = dailyCommitCounts.map((item) => item.date)
+      const isWorkdayResults = await checker.isWorkdayBatch(dates)
+
+      let workDayCount = 0
+      let weekendCount = 0
+
+      dailyCommitCounts.forEach((item, index) => {
+        if (isWorkdayResults[index]) {
+          workDayCount += item.count
+        } else {
+          weekendCount += item.count
+        }
+      })
+
+      return [
+        { time: '工作日', count: workDayCount },
+        { time: '周末', count: weekendCount },
+      ]
+    } catch (error) {
+      // 如果 holiday-calendar 查询失败，回退到基础判断
+      console.warn('使用 holiday-calendar 失败，回退到基础判断:', error)
+      return this.calculateWorkWeekPlBasic(dayData)
+    }
+  }
+
+  /**
+   * 基础的工作日/周末判断（不考虑调休）
+   * 周一到周五为工作日，周六日为周末
+   */
+  private static calculateWorkWeekPlBasic(dayData: TimeCount[]): WorkDayPl {
     let workDayCount = 0
     let weekendCount = 0
 

@@ -195,7 +195,7 @@ export class TrendAnalyzer {
       const mergedData = GitDataMerger.merge(monthDataList)
 
       // 解析数据并计算 996 指数
-      const parsedData = GitParser.parseGitData(mergedData, undefined, since, until)
+      const parsedData = await GitParser.parseGitData(mergedData, undefined, since, until)
       const result996 = calculate996Index({
         workHourPl: parsedData.workHourPl,
         workWeekPl: parsedData.workWeekPl,
@@ -210,8 +210,8 @@ export class TrendAnalyzer {
 
       const avgWorkSpan = WorkSpanCalculator.calculateAverage(dailySpans)
       const workSpanStdDev = WorkSpanCalculator.calculateStdDev(dailySpans)
-      const avgStartTime = WorkSpanCalculator.getAverageStartTime(dailySpans)
-      const avgEndTime = WorkSpanCalculator.getAverageEndTime(dailySpans)
+      const avgStartTime = await WorkSpanCalculator.getAverageStartTime(dailySpans)
+      const avgEndTime = await WorkSpanCalculator.getAverageEndTime(dailySpans)
       const latestEndTime = WorkSpanCalculator.getLatestEndTime(dailySpans)
 
       // 判断数据质量
@@ -280,7 +280,7 @@ export class TrendAnalyzer {
       }
 
       // 解析数据并计算 996 指数
-      const parsedData = GitParser.parseGitData(gitLogData, undefined, since, until)
+      const parsedData = await GitParser.parseGitData(gitLogData, undefined, since, until)
       const result996 = calculate996Index({
         workHourPl: parsedData.workHourPl,
         workWeekPl: parsedData.workWeekPl,
@@ -295,8 +295,8 @@ export class TrendAnalyzer {
 
       const avgWorkSpan = WorkSpanCalculator.calculateAverage(dailySpans)
       const workSpanStdDev = WorkSpanCalculator.calculateStdDev(dailySpans)
-      const avgStartTime = WorkSpanCalculator.getAverageStartTime(dailySpans)
-      const avgEndTime = WorkSpanCalculator.getAverageEndTime(dailySpans)
+      const avgStartTime = await WorkSpanCalculator.getAverageStartTime(dailySpans)
+      const avgEndTime = await WorkSpanCalculator.getAverageEndTime(dailySpans)
       const latestEndTime = WorkSpanCalculator.getLatestEndTime(dailySpans)
 
       // 判断数据质量

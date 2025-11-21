@@ -21,6 +21,7 @@ export interface GitLogData {
   dayHourCommits?: DayHourCommit[]
   dailyLatestCommits?: DailyLatestCommit[]
   dailyCommitHours?: DailyCommitHours[]
+  dailyCommitCounts?: DailyCommitCount[] // 每日提交数（用于判断工作日/周末）
   contributors?: number // 参与人数
   firstCommitDate?: string // 第一次提交日期
   lastCommitDate?: string // 最后一次提交日期
@@ -105,6 +106,14 @@ export interface DailyLatestCommit {
 export interface DailyCommitHours {
   date: string
   hours: Set<number> // 该天所有提交的小时（去重）
+}
+
+/**
+ * 每日提交数
+ */
+export interface DailyCommitCount {
+  date: string // 日期 (YYYY-MM-DD)
+  count: number // 提交数
 }
 
 /**

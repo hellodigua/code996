@@ -122,7 +122,7 @@ export class AnalyzeExecutor {
       }
 
       // 步骤2: 数据解析与验证
-      const parsedData = GitParser.parseGitData(rawData, options.hours, effectiveSince, effectiveUntil)
+      const parsedData = await GitParser.parseGitData(rawData, options.hours, effectiveSince, effectiveUntil)
       const validation = GitParser.validateData(parsedData)
 
       if (!validation.isValid) {

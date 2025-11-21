@@ -1,4 +1,5 @@
 import { DailyWorkSpan } from '../types/git-types'
+import { getWorkdayChecker } from '../utils/workday-checker'
 
 /**
  * 工作跨度计算器
@@ -90,27 +91,57 @@ export class WorkSpanCalculator {
 
   /**
    * 获取平均开始工作时间
+   * 支持中国调休制度：只统计实际工作日
    * @param spans 工作跨度数组
    * @returns 平均开始工作时间 (HH:mm)
    */
-  static getAverageStartTime(spans: DailyWorkSpan[]): string {
+  static async getAverageStartTime(spans: DailyWorkSpan[]): Promise<string> {
     if (spans.length === 0) return '--:--'
 
-    // 使用与 getAverageEndTime 相同的过滤逻辑
+    try {
+      const checker = getWorkdayChecker()
+      const dates = spans.map((span) => span.date)
+      const isWorkdayResults = await checker.isWorkdayBatch(dates)
+
+      // 使用与 getAverageEndTime 相同的过滤逻辑
+      const validSpans = spans.filter((span, index) => {
+        return (
+          isWorkdayResults[index] && // 工作日（考虑调休）
+          span.spanHours >= 4 && // 跨度≥4小时
+          span.lastCommitMinutes >= 15 * 60 // 15:00后结束
+        )
+      })
+
+      const dataToUse = validSpans.length > 0 ? validSpans : spans
+
+      const totalMinutes = dataToUse.reduce((sum, span) => sum + span.firstCommitMinutes, 0)
+      const avgMinutes = Math.round(totalMinutes / dataToUse.length)
+      return this.formatTime(avgMinutes)
+    } catch (error) {
+      // 回退到基础判断
+      return this.getAverageStartTimeBasic(spans)
+    }
+  }
+
+  /**
+   * 基础的平均开始工作时间计算（不考虑调休）
+   */
+  private static getAverageStartTimeBasic(spans: DailyWorkSpan[]): string {
+    if (spans.length === 0) return '--:--'
+
     const validSpans = spans.filter((span) => {
       const date = new Date(`${span.date}T00:00:00`)
       const dayOfWeek = date.getDay()
 
       return (
         dayOfWeek >= 1 &&
-        dayOfWeek <= 5 && // 工作日
-        span.spanHours >= 4 && // 跨度≥4小时
-        span.lastCommitMinutes >= 15 * 60 // 15:00后结束
+        dayOfWeek <= 5 && // 工作日（基础判断）
+        span.spanHours >= 4 &&
+        span.lastCommitMinutes >= 15 * 60
       )
     })
 
     const dataToUse = validSpans.length > 0 ? validSpans : spans
-
     const totalMinutes = dataToUse.reduce((sum, span) => sum + span.firstCommitMinutes, 0)
     const avgMinutes = Math.round(totalMinutes / dataToUse.length)
     return this.formatTime(avgMinutes)
@@ -118,30 +149,68 @@ export class WorkSpanCalculator {
 
   /**
    * 获取平均结束工作时间
+   * 支持中国调休制度：只统计实际工作日
    * @param spans 工作跨度数组
    * @returns 平均结束工作时间 (HH:mm)
    */
-  static getAverageEndTime(spans: DailyWorkSpan[]): string {
+  static async getAverageEndTime(spans: DailyWorkSpan[]): Promise<string> {
     if (spans.length === 0) return '--:--'
 
-    // 过滤条件：只统计正常工作日
+    try {
+      const checker = getWorkdayChecker()
+      const dates = spans.map((span) => span.date)
+      const isWorkdayResults = await checker.isWorkdayBatch(dates)
+
+      // 过滤条件：只统计正常工作日
+      const validSpans = spans.filter((span, index) => {
+        // 1. 排除非工作日（周末和法定节假日，考虑调休）
+        if (!isWorkdayResults[index]) {
+          return false
+        }
+
+        // 2. 排除工作跨度过短的异常天（<4小时）
+        if (span.spanHours < 4) {
+          return false
+        }
+
+        // 3. 排除过早结束的天（15:00之前结束）
+        if (span.lastCommitMinutes < 15 * 60) {
+          return false
+        }
+
+        return true
+      })
+
+      // 如果过滤后没有有效数据，降级使用所有数据
+      const dataToUse = validSpans.length > 0 ? validSpans : spans
+
+      const totalMinutes = dataToUse.reduce((sum, span) => sum + span.lastCommitMinutes, 0)
+      const avgMinutes = Math.round(totalMinutes / dataToUse.length)
+      return this.formatTime(avgMinutes)
+    } catch (error) {
+      // 回退到基础判断
+      return this.getAverageEndTimeBasic(spans)
+    }
+  }
+
+  /**
+   * 基础的平均结束工作时间计算（不考虑调休）
+   */
+  private static getAverageEndTimeBasic(spans: DailyWorkSpan[]): string {
+    if (spans.length === 0) return '--:--'
+
     const validSpans = spans.filter((span) => {
       const date = new Date(`${span.date}T00:00:00`)
-      const dayOfWeek = date.getDay() // 0=Sunday, 6=Saturday
+      const dayOfWeek = date.getDay()
 
-      // 1. 排除周末（周六、周日）
       if (dayOfWeek === 0 || dayOfWeek === 6) {
         return false
       }
 
-      // 2. 排除工作跨度过短的异常天（<4小时，可能是临时修复或远程单次提交）
-      // 正常工作日至少应该工作4小时以上
       if (span.spanHours < 4) {
         return false
       }
 
-      // 3. 排除过早结束的天（15:00之前结束，明显不是正常下班）
-      // 正常下班时间至少应该在15:00之后
       if (span.lastCommitMinutes < 15 * 60) {
         return false
       }
@@ -149,9 +218,7 @@ export class WorkSpanCalculator {
       return true
     })
 
-    // 如果过滤后没有有效数据，降级使用所有数据
     const dataToUse = validSpans.length > 0 ? validSpans : spans
-
     const totalMinutes = dataToUse.reduce((sum, span) => sum + span.lastCommitMinutes, 0)
     const avgMinutes = Math.round(totalMinutes / dataToUse.length)
     return this.formatTime(avgMinutes)
