@@ -54,7 +54,7 @@ export class UserAnalyzer {
       commitPercentage: (contributor.commits / totalCommits) * 100,
       timeDistribution,
       workingHours,
-      ...avgTimes, // 包含 avgStartTimeMean, avgStartTimeMedian, avgEndTimeMean, avgEndTimeMedian, validDays
+      ...avgTimes, // 包含 avgStartTimeMedian, avgEndTimeMedian, validDays
       index996: result996.index996,
       overtimeStats,
       intensityLevel,
@@ -62,16 +62,14 @@ export class UserAnalyzer {
   }
 
   /**
-   * 计算用户的平均上下班时间（算术平均 + 中位数）
+   * 计算用户的平均上下班时间（中位数）
    * 要求：至少10天或20次有效数据
    */
   private static calculateAverageWorkTimes(
     dailyFirstCommits: Array<{ minutesFromMidnight: number }>,
     dailyLatestCommits: Array<{ minutesFromMidnight: number }>
   ): {
-    avgStartTimeMean?: number
     avgStartTimeMedian?: number
-    avgEndTimeMean?: number
     avgEndTimeMedian?: number
     validDays?: number
   } {
@@ -87,24 +85,20 @@ export class UserAnalyzer {
     }
 
     const result: {
-      avgStartTimeMean?: number
       avgStartTimeMedian?: number
-      avgEndTimeMean?: number
       avgEndTimeMedian?: number
       validDays?: number
     } = {}
 
-    // 计算上班时间
+    // 计算上班时间（中位数）
     if (hasEnoughStartData) {
       const startMinutes = dailyFirstCommits.map((c) => c.minutesFromMidnight)
-      result.avgStartTimeMean = this.calculateMean(startMinutes) / 60 // 转换为小时
-      result.avgStartTimeMedian = this.calculateMedian(startMinutes) / 60
+      result.avgStartTimeMedian = this.calculateMedian(startMinutes) / 60 // 转换为小时
     }
 
-    // 计算下班时间
+    // 计算下班时间（中位数）
     if (hasEnoughEndData) {
       const endMinutes = dailyLatestCommits.map((c) => c.minutesFromMidnight)
-      result.avgEndTimeMean = this.calculateMean(endMinutes) / 60
       result.avgEndTimeMedian = this.calculateMedian(endMinutes) / 60
     }
 
@@ -112,14 +106,6 @@ export class UserAnalyzer {
     result.validDays = Math.min(dailyFirstCommits.length, dailyLatestCommits.length)
 
     return result
-  }
-
-  /**
-   * 计算算术平均值
-   */
-  private static calculateMean(values: number[]): number {
-    if (values.length === 0) return 0
-    return values.reduce((sum, val) => sum + val, 0) / values.length
   }
 
   /**

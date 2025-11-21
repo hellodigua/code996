@@ -289,10 +289,8 @@ export interface UserWorkPattern {
   commitPercentage: number // 占比（百分比）
   timeDistribution: TimeCount[] // 个人的时间分布（24小时）
   workingHours?: WorkTimeDetectionResult // 个人的上下班时间（算法识别）
-  // 基于每日首末commit的平均值
-  avgStartTimeMean?: number // 平均上班时间（算术平均，小时数）
+  // 基于每日首末commit的中位数
   avgStartTimeMedian?: number // 平均上班时间（中位数，小时数）
-  avgEndTimeMean?: number // 平均下班时间（算术平均，小时数）
   avgEndTimeMedian?: number // 平均下班时间（中位数，小时数）
   validDays?: number // 有效天数（用于判断数据可靠性）
   index996?: number // 个人的996指数

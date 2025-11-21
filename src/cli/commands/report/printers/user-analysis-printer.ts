@@ -33,35 +33,20 @@ export function printTeamAnalysis(analysis: TeamAnalysis): void {
 }
 
 /**
- * 打印每日首次提交分布（基于每日首次commit的平均值）
+ * 打印每日首次提交分布（基于每日首次commit的中位数）
  */
 function printStartTimeDistribution(analysis: TeamAnalysis): void {
   // 收集有效数据的用户
-  const usersWithData = analysis.coreContributors.filter(
-    (u) => u.avgStartTimeMean !== undefined && u.avgStartTimeMedian !== undefined
-  )
+  const usersWithData = analysis.coreContributors.filter((u) => u.avgStartTimeMedian !== undefined)
 
   if (usersWithData.length === 0) return
 
-  // 提取算术平均值和中位数
-  const meanTimes = usersWithData.map((u) => u.avgStartTimeMean!).sort((a, b) => a - b)
+  // 提取中位数
   const medianTimes = usersWithData.map((u) => u.avgStartTimeMedian!).sort((a, b) => a - b)
 
-  console.log(chalk.yellow.bold('🌅 每日首次提交分布：'))
+  console.log(chalk.yellow.bold('🌅 每日首次提交分布（按中位数）：'))
   console.log()
 
-  // 算术平均方案
-  console.log(chalk.gray('   按算术平均'))
-  const meanP25 = calculatePercentile(meanTimes, 25)
-  const meanP50 = calculatePercentile(meanTimes, 50)
-  const meanP75 = calculatePercentile(meanTimes, 75)
-  console.log(`   • 较早组（P25）：${formatTime(meanP25)}左右`)
-  console.log(`   • 中位数（P50）：${formatTime(meanP50)}左右  ${chalk.gray('← 团队基准')}`)
-  console.log(`   • 较晚组（P75）：${formatTime(meanP75)}左右`)
-  console.log()
-
-  // 中位数方案
-  console.log(chalk.gray('   按中位数'))
   const medianP25 = calculatePercentile(medianTimes, 25)
   const medianP50 = calculatePercentile(medianTimes, 50)
   const medianP75 = calculatePercentile(medianTimes, 75)
@@ -72,52 +57,20 @@ function printStartTimeDistribution(analysis: TeamAnalysis): void {
 }
 
 /**
- * 打印每日末次提交分布（基于每日末次commit的平均值）
+ * 打印每日末次提交分布（基于每日末次commit的中位数）
  */
 function printEndTimePercentiles(analysis: TeamAnalysis): void {
   // 收集有效数据的用户
-  const usersWithData = analysis.coreContributors.filter(
-    (u) => u.avgEndTimeMean !== undefined && u.avgEndTimeMedian !== undefined
-  )
+  const usersWithData = analysis.coreContributors.filter((u) => u.avgEndTimeMedian !== undefined)
 
   if (usersWithData.length === 0) return
 
-  // 提取算术平均值和中位数
-  const meanTimes = usersWithData.map((u) => u.avgEndTimeMean!).sort((a, b) => a - b)
+  // 提取中位数
   const medianTimes = usersWithData.map((u) => u.avgEndTimeMedian!).sort((a, b) => a - b)
 
-  console.log(chalk.yellow.bold('🌙 每日末次提交分布：'))
+  console.log(chalk.yellow.bold('🌙 每日末次提交分布（按中位数）：'))
   console.log()
 
-  // 算术平均方案
-  console.log(chalk.gray('   按算术平均'))
-  const meanP25 = calculatePercentile(meanTimes, 25)
-  const meanP50 = calculatePercentile(meanTimes, 50)
-  const meanP75 = calculatePercentile(meanTimes, 75)
-
-  const countMeanP25 = meanTimes.filter((t) => t <= meanP25).length
-  const countMeanP50 = meanTimes.filter((t) => t > meanP25 && t <= meanP50).length
-  const countMeanP75 = meanTimes.filter((t) => t > meanP50 && t <= meanP75).length
-  const countMeanOver = meanTimes.filter((t) => t > meanP75).length
-
-  const total = meanTimes.length
-  const pctMeanP25 = ((countMeanP25 / total) * 100).toFixed(0)
-  const pctMeanP50 = ((countMeanP50 / total) * 100).toFixed(0)
-  const pctMeanP75 = ((countMeanP75 / total) * 100).toFixed(0)
-  const pctMeanOver = ((countMeanOver / total) * 100).toFixed(0)
-
-  console.log(`   • 较早组（P25）：${formatTime(meanP25)}左右  (${countMeanP25}人, ${pctMeanP25}%)`)
-  console.log(
-    `   • 中位数（P50）：${formatTime(meanP50)}左右  (${countMeanP50}人, ${pctMeanP50}%)  ${chalk.gray('← 团队基准')}`
-  )
-  console.log(`   • 较晚组（P75）：${formatTime(meanP75)}左右  (${countMeanP75}人, ${pctMeanP75}%)`)
-  if (countMeanOver > 0) {
-    console.log(`   • 持续工作（>P75）：${formatTime(meanP75)}之后   (${countMeanOver}人, ${pctMeanOver}%)`)
-  }
-  console.log()
-
-  // 中位数方案
-  console.log(chalk.gray('   按中位数'))
   const medianP25 = calculatePercentile(medianTimes, 25)
   const medianP50 = calculatePercentile(medianTimes, 50)
   const medianP75 = calculatePercentile(medianTimes, 75)
@@ -127,6 +80,7 @@ function printEndTimePercentiles(analysis: TeamAnalysis): void {
   const countMedianP75 = medianTimes.filter((t) => t > medianP50 && t <= medianP75).length
   const countMedianOver = medianTimes.filter((t) => t > medianP75).length
 
+  const total = medianTimes.length
   const pctMedianP25 = ((countMedianP25 / total) * 100).toFixed(0)
   const pctMedianP50 = ((countMedianP50 / total) * 100).toFixed(0)
   const pctMedianP75 = ((countMedianP75 / total) * 100).toFixed(0)
@@ -142,8 +96,8 @@ function printEndTimePercentiles(analysis: TeamAnalysis): void {
   }
   console.log()
 
-  // 分类评估（使用算术平均的P50作为基准）
-  const baselineEndHour = meanP50
+  // 分类评估（使用中位数的P50作为基准）
+  const baselineEndHour = medianP50
   let assessment = ''
   if (baselineEndHour < 18.5) {
     assessment = '团队整体下班时间正常，工作生活平衡较好'
