@@ -249,6 +249,7 @@ export interface AnalyzeOptions {
   timezone?: string // 指定时区进行分析 (例如: +0800, -0700)
   skipUserAnalysis?: boolean // 是否跳过团队工作模式分析
   maxUsers?: number // 最大分析用户数（默认30）
+  cn?: boolean // 强制开启中国节假日调休模式
 }
 
 /**

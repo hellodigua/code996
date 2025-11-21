@@ -21,12 +21,14 @@ export class GitParser {
    * @param customWorkHours 可选的自定义工作时间（格式："9-18"），如果不提供则自动识别
    * @param since 开始日期
    * @param until 结束日期
+   * @param enableHolidayMode 是否启用节假日调休模式（默认 true）
    */
   static async parseGitData(
     rawData: GitLogData,
     customWorkHours?: string,
     since?: string,
-    until?: string
+    until?: string,
+    enableHolidayMode: boolean = true
   ): Promise<ParsedGitData> {
     // 智能识别或使用自定义的工作时间
     const workTimeDetection = customWorkHours
@@ -41,7 +43,7 @@ export class GitParser {
 
     const weekendOvertime =
       rawData.dailyCommitHours && rawData.dailyCommitHours.length > 0
-        ? await OvertimeAnalyzer.calculateWeekendOvertime(rawData.dailyCommitHours)
+        ? await OvertimeAnalyzer.calculateWeekendOvertime(rawData.dailyCommitHours, enableHolidayMode)
         : undefined
 
     const lateNightAnalysis =
@@ -53,13 +55,19 @@ export class GitParser {
             rawData.dailyLatestCommits,
             rawData.dailyFirstCommits,
             workTimeDetection,
-            since,
-            until
+            since || undefined,
+            until || undefined,
+            enableHolidayMode
           )
         : undefined
 
     // 使用 dailyCommitCounts 中的日期信息来正确判断工作日/周末（考虑中国调休）
-    const workWeekPl = await this.calculateWorkWeekPl(rawData.byDay, rawData.dailyCommitCounts || [], rawData.byHour)
+    const workWeekPl = await this.calculateWorkWeekPl(
+      rawData.byDay,
+      rawData.dailyCommitCounts || [],
+      rawData.byHour,
+      enableHolidayMode
+    )
 
     return {
       hourData: rawData.byHour,
@@ -148,11 +156,13 @@ export class GitParser {
    * @param dayData 按星期统计的提交数（兼容性保留）
    * @param dailyCommitCounts 每日提交数列表（包含具体日期和提交数）
    * @param hourData 按小时统计的提交数（用于验证）
+   * @param enableHolidayMode 是否启用节假日调休模式
    */
   private static async calculateWorkWeekPl(
     dayData: TimeCount[],
     dailyCommitCounts: DailyCommitCount[],
-    hourData: TimeCount[]
+    hourData: TimeCount[],
+    enableHolidayMode: boolean = true
   ): Promise<WorkDayPl> {
     // 如果没有具体日期信息，回退到基础判断（周一到周五为工作日）
     if (!dailyCommitCounts || dailyCommitCounts.length === 0) {
@@ -160,7 +170,7 @@ export class GitParser {
     }
 
     try {
-      const checker = getWorkdayChecker()
+      const checker = getWorkdayChecker(enableHolidayMode)
 
       // 批量判断所有日期是否为工作日
       const dates = dailyCommitCounts.map((item) => item.date)

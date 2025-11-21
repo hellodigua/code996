@@ -48,6 +48,7 @@ export class CLIManager {
       .option('--ignore-author <regex>', '排除匹配的作者 (例如: bot|jenkins)')
       .option('--ignore-msg <regex>', '排除匹配的提交消息 (例如: merge|lint)')
       .option('--timezone <offset>', '指定时区进行分析 (例如: +0800, -0700)')
+      .option('--cn', '强制开启中国节假日调休模式（自动检测 +0800 时区）')
       .option('--skip-user-analysis', '跳过团队工作模式分析')
       .option('--max-users <number>', '最大分析用户数（默认30）', '30')
       .action(async (paths: string[], options: AnalyzeOptions, command: Command) => {

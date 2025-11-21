@@ -74,8 +74,12 @@ export class OvertimeAnalyzer {
    * 计算周末加班分布（基于每天的提交小时数区分真正加班和临时修复）
    * 支持中国调休制度：只统计实际假期的加班，调休工作日不计入
    * @param dailyCommitHours 每日提交小时列表
+   * @param enableHolidayMode 是否启用节假日调休模式
    */
-  static async calculateWeekendOvertime(dailyCommitHours: DailyCommitHours[]): Promise<WeekendOvertimeDistribution> {
+  static async calculateWeekendOvertime(
+    dailyCommitHours: DailyCommitHours[],
+    enableHolidayMode: boolean = true
+  ): Promise<WeekendOvertimeDistribution> {
     // 定义阈值：提交时间跨度 >= 3 小时才算真正加班
     const REAL_OVERTIME_THRESHOLD = 3
 
@@ -86,7 +90,7 @@ export class OvertimeAnalyzer {
     let realOvertimeDays = 0
 
     try {
-      const checker = getWorkdayChecker()
+      const checker = getWorkdayChecker(enableHolidayMode)
 
       // 批量判断所有日期是否为假期（考虑调休）
       const dates = dailyCommitHours.map((item) => item.date)
@@ -205,13 +209,15 @@ export class OvertimeAnalyzer {
    * @param workTime 工作时间识别结果
    * @param since 开始日期
    * @param until 结束日期
+   * @param enableHolidayMode 是否启用节假日调休模式
    */
   static async calculateLateNightAnalysis(
     dailyLatestCommits: DailyLatestCommit[],
     dailyFirstCommits: DailyFirstCommit[],
     workTime: WorkTimeDetectionResult,
-    since?: string,
-    until?: string
+    since: string | undefined,
+    until: string | undefined,
+    enableHolidayMode: boolean = true
   ): Promise<LateNightAnalysis> {
     const endHour = Math.ceil(workTime.endHour)
 
@@ -248,7 +254,7 @@ export class OvertimeAnalyzer {
     // 使用 holiday-calendar 判断工作日（考虑中国调休）
     const workDaysSet = new Set<string>()
     try {
-      const checker = getWorkdayChecker()
+      const checker = getWorkdayChecker(enableHolidayMode)
       const dates = dailyFirstCommits.map((c) => c.date)
       const isWorkdayResults = await checker.isWorkdayBatch(dates)
 

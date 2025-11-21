@@ -11,6 +11,7 @@ import { TrendAnalyzer } from '../../core/trend-analyzer'
 import { TimezoneAnalyzer } from '../../core/timezone-analyzer'
 import { ProjectClassifier, ProjectType } from '../../core/project-classifier'
 import { AnalyzeOptions, GitLogData, RepoAnalysisRecord, RepoInfo, GitLogOptions } from '../../types/git-types'
+import { resetWorkdayChecker } from '../../utils/workday-checker'
 import { calculateTimeRange, getTerminalWidth, createAdaptiveTable } from '../../utils/terminal'
 import {
   printCoreResults,
@@ -24,6 +25,46 @@ import {
 } from './report'
 import { printTrendReport } from './report/trend-printer'
 import { printTeamAnalysis } from './report/printers/user-analysis-printer'
+
+/**
+ * 判断是否应该启用节假日调休模式
+ * @param rawData Git数据
+ * @param options 用户选项
+ * @returns 是否启用及原因
+ */
+function shouldEnableHolidayMode(
+  rawData: GitLogData,
+  options: AnalyzeOptions
+): { enabled: boolean; reason: string } {
+  // 如果用户强制开启，直接启用
+  if (options.cn) {
+    return {
+      enabled: true,
+      reason: '原因：用户通过 --cn 参数强制开启',
+    }
+  }
+
+  // 检测主要时区是否为 +0800
+  if (rawData.timezoneData && rawData.timezoneData.timezones.length > 0) {
+    // 找到占比最高的时区
+    const dominantTimezone = rawData.timezoneData.timezones[0]
+    const dominantRatio = dominantTimezone.count / rawData.timezoneData.totalCommits
+
+    // 如果主要时区是 +0800 且占比超过 50%
+    if (dominantTimezone.offset === '+0800' && dominantRatio >= 0.5) {
+      return {
+        enabled: true,
+        reason: `原因：检测到主要时区为 +0800 (占比 ${(dominantRatio * 100).toFixed(1)}%)`,
+      }
+    }
+  }
+
+  // 默认不启用
+  return {
+    enabled: false,
+    reason: '',
+  }
+}
 
 /**
  * 多仓库分析执行器
@@ -164,7 +205,14 @@ export class MultiExecutor {
           dataList.push(data)
 
           // 为每个仓库计算 996 指数（用于后续对比表）
-          const parsedData = await GitParser.parseGitData(data, options.hours, effectiveSince, effectiveUntil)
+          const shouldEnableHoliday2 = shouldEnableHolidayMode(data, options) // 本地变量以避免混淆
+          const parsedData = await GitParser.parseGitData(
+            data,
+            options.hours,
+            effectiveSince,
+            effectiveUntil,
+            shouldEnableHoliday2.enabled
+          )
           const result = GitParser.calculate996Index(parsedData)
 
           // 项目类型识别
@@ -220,7 +268,14 @@ export class MultiExecutor {
 
       // ========== 步骤 5: 分析合并后的数据 ==========
       const spinner3 = ora('📈 正在计算996指数...').start()
-      const parsedData = await GitParser.parseGitData(mergedData, options.hours, effectiveSince, effectiveUntil)
+      const shouldEnableHoliday3 = shouldEnableHolidayMode(mergedData, options) // 本地变量以避免混淆
+      const parsedData = await GitParser.parseGitData(
+        mergedData,
+        options.hours,
+        effectiveSince,
+        effectiveUntil,
+        shouldEnableHoliday3.enabled
+      )
       const result = GitParser.calculate996Index(parsedData)
       spinner3.succeed('分析完成！')
       console.log()
@@ -238,6 +293,13 @@ export class MultiExecutor {
       // ========== 步骤 6: 输出汇总结果 ==========
       console.log(chalk.cyan.bold('📊 多仓库汇总分析报告:'))
       console.log()
+
+      // 显示节假日调休模式提示
+      if (shouldEnableHoliday3.enabled) {
+        console.log(chalk.blue('🇨🇳 已启用中国节假日调休判断'))
+        console.log(chalk.gray(`${shouldEnableHoliday3.reason}`))
+        console.log()
+      }
 
       // 如果有开源项目，隐藏核心结果、详细分析和工作时间推测
       if (!hasOpenSourceProject) {
@@ -277,7 +339,8 @@ export class MultiExecutor {
                 // 实时更新进度
                 trendSpinner.text = `📈 正在分析月度趋势... (${current}/${total}: ${month})`
               },
-              options.timezone // 传递时区过滤参数
+              options.timezone, // 传递时区过滤参数
+              shouldEnableHoliday3.enabled // 传递节假日调休模式参数
             )
             trendSpinner.succeed()
             printTrendReport(trendResult)

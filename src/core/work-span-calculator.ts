@@ -93,13 +93,14 @@ export class WorkSpanCalculator {
    * 获取平均开始工作时间
    * 支持中国调休制度：只统计实际工作日
    * @param spans 工作跨度数组
+   * @param enableHolidayMode 是否启用节假日调休模式
    * @returns 平均开始工作时间 (HH:mm)
    */
-  static async getAverageStartTime(spans: DailyWorkSpan[]): Promise<string> {
+  static async getAverageStartTime(spans: DailyWorkSpan[], enableHolidayMode: boolean = true): Promise<string> {
     if (spans.length === 0) return '--:--'
 
     try {
-      const checker = getWorkdayChecker()
+      const checker = getWorkdayChecker(enableHolidayMode)
       const dates = spans.map((span) => span.date)
       const isWorkdayResults = await checker.isWorkdayBatch(dates)
 
@@ -151,13 +152,14 @@ export class WorkSpanCalculator {
    * 获取平均结束工作时间
    * 支持中国调休制度：只统计实际工作日
    * @param spans 工作跨度数组
+   * @param enableHolidayMode 是否启用节假日调休模式
    * @returns 平均结束工作时间 (HH:mm)
    */
-  static async getAverageEndTime(spans: DailyWorkSpan[]): Promise<string> {
+  static async getAverageEndTime(spans: DailyWorkSpan[], enableHolidayMode: boolean = true): Promise<string> {
     if (spans.length === 0) return '--:--'
 
     try {
-      const checker = getWorkdayChecker()
+      const checker = getWorkdayChecker(enableHolidayMode)
       const dates = spans.map((span) => span.date)
       const isWorkdayResults = await checker.isWorkdayBatch(dates)
 

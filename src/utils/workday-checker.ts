@@ -13,9 +13,11 @@ import HolidayCalendar from 'holiday-calendar'
 export class WorkdayChecker {
   private calendar: HolidayCalendar
   private readonly region = 'CN'
+  private enabled: boolean
 
-  constructor() {
+  constructor(enabled: boolean = true) {
     this.calendar = new HolidayCalendar()
+    this.enabled = enabled
   }
 
   /**
@@ -24,6 +26,11 @@ export class WorkdayChecker {
    * @returns 是否为工作日
    */
   async isWorkday(date: string | Date): Promise<boolean> {
+    // 如果未启用节假日调休功能，直接使用基础判断
+    if (!this.enabled) {
+      return this.fallbackIsWorkday(date)
+    }
+
     const dateStr = this.formatDate(date)
     try {
       return await this.calendar.isWorkday(this.region, dateStr)
@@ -39,6 +46,11 @@ export class WorkdayChecker {
    * @returns 是否为假期
    */
   async isHoliday(date: string | Date): Promise<boolean> {
+    // 如果未启用节假日调休功能，直接使用基础判断
+    if (!this.enabled) {
+      return this.fallbackIsHoliday(date)
+    }
+
     const dateStr = this.formatDate(date)
     try {
       return await this.calendar.isHoliday(this.region, dateStr)
@@ -109,12 +121,21 @@ let defaultChecker: WorkdayChecker | null = null
 
 /**
  * 获取默认的工作日检查器（单例模式）
+ * @param enabled 是否启用节假日调休功能（默认 true）
  */
-export function getWorkdayChecker(): WorkdayChecker {
-  if (!defaultChecker) {
-    defaultChecker = new WorkdayChecker()
+export function getWorkdayChecker(enabled: boolean = true): WorkdayChecker {
+  // 如果启用状态改变，重新创建实例
+  if (!defaultChecker || (defaultChecker as any).enabled !== enabled) {
+    defaultChecker = new WorkdayChecker(enabled)
   }
   return defaultChecker
+}
+
+/**
+ * 重置工作日检查器（用于切换启用状态）
+ */
+export function resetWorkdayChecker(): void {
+  defaultChecker = null
 }
 
 /**
