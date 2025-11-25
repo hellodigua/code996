@@ -90,7 +90,7 @@ export class BaseCollector {
   }
 
   /**
-   * 解析 format-local 输出的时间戳，提取日期和小时信息
+   * 解析 format 输出的时间戳，提取日期和小时信息
    */
   protected parseLocalTimestamp(timestamp: string): { dateKey: string; hour: number; minute: number } | null {
     const match = timestamp.match(/^(\d{4})-(\d{2})-(\d{2})[T\s](\d{2}):(\d{2})/)

@@ -20,7 +20,8 @@ export class CommitCollector extends BaseCollector {
     const { path } = options
 
     // 格式: "Author Name <email@example.com>|D H|ISO_TIMESTAMP" (D=星期几 0-6，H=小时)
-    const args = ['log', '--format=%an <%ae>|%cd|%ai', '--date=format-local:%w %H']
+    // 使用提交时的原始时区
+    const args = ['log', '--format=%an <%ae>|%cd|%ai', '--date=format:%w %H']
     this.applyCommonFilters(args, options)
 
     const output = await this.execGitCommand(args, path)
@@ -87,7 +88,8 @@ export class CommitCollector extends BaseCollector {
     const { path } = options
 
     // 格式: "Author Name <email@example.com>|YYYY-MM-DDTHH:MM:SS|ISO_TIMESTAMP"
-    const args = ['log', '--format=%an <%ae>|%cd|%ai', '--date=format-local:%Y-%m-%dT%H:%M:%S']
+    // 使用提交时的原始时区
+    const args = ['log', '--format=%an <%ae>|%cd|%ai', '--date=format:%Y-%m-%dT%H:%M:%S']
     this.applyCommonFilters(args, options)
 
     const output = await this.execGitCommand(args, path)
@@ -153,7 +155,8 @@ export class CommitCollector extends BaseCollector {
     const { path } = options
 
     // 格式: "Author Name <email@example.com>|YYYY-MM-DDTHH:MM:SS|ISO_TIMESTAMP"
-    const args = ['log', '--format=%an <%ae>|%cd|%ai', '--date=format-local:%Y-%m-%dT%H:%M:%S']
+    // 使用提交时的原始时区
+    const args = ['log', '--format=%an <%ae>|%cd|%ai', '--date=format:%Y-%m-%dT%H:%M:%S']
     this.applyCommonFilters(args, options)
 
     const output = await this.execGitCommand(args, path)
@@ -241,7 +244,8 @@ export class CommitCollector extends BaseCollector {
     const { path } = options
 
     // 格式: "Author Name <email@example.com>|YYYY-MM-DDTHH:MM:SS|ISO_TIMESTAMP"
-    const args = ['log', '--format=%an <%ae>|%cd|%ai', '--date=format-local:%Y-%m-%dT%H:%M:%S']
+    // 使用提交时的原始时区
+    const args = ['log', '--format=%an <%ae>|%cd|%ai', '--date=format:%Y-%m-%dT%H:%M:%S']
     this.applyCommonFilters(args, options)
 
     const output = await this.execGitCommand(args, path)
@@ -305,7 +309,8 @@ export class CommitCollector extends BaseCollector {
     const { path } = options
 
     // 格式: "Author Name <email@example.com>|YYYY-MM-DD|ISO_TIMESTAMP"
-    const args = ['log', '--format=%an <%ae>|%cd|%ai', '--date=format-local:%Y-%m-%d']
+    // 使用提交时的原始时区
+    const args = ['log', '--format=%an <%ae>|%cd|%ai', '--date=format:%Y-%m-%d']
     this.applyCommonFilters(args, options)
 
     const output = await this.execGitCommand(args, path)

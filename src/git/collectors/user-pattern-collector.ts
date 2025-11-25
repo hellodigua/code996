@@ -130,7 +130,8 @@ export class UserPatternCollector extends BaseCollector {
 
     // 使用 --author 参数过滤特定用户
     // 格式: "HH:MM|ISO_TIMESTAMP"
-    const args = ['log', '--format=%cd|%ai', `--date=format-local:%H:%M`, `--author=${email}`]
+    // 使用提交时的原始时区
+    const args = ['log', '--format=%cd|%ai', `--date=format:%H:%M`, `--author=${email}`]
     this.applyCommonFilters(args, options)
 
     const output = await this.execGitCommand(args, path)
@@ -183,7 +184,8 @@ export class UserPatternCollector extends BaseCollector {
 
     // 使用 --author 参数过滤特定用户
     // 格式: "D|ISO_TIMESTAMP" (0-6, 周日到周六)
-    const args = ['log', '--format=%cd|%ai', `--date=format-local:%w`, `--author=${email}`]
+    // 使用提交时的原始时区
+    const args = ['log', '--format=%cd|%ai', `--date=format:%w`, `--author=${email}`]
     this.applyCommonFilters(args, options)
 
     const output = await this.execGitCommand(args, path)
@@ -244,7 +246,8 @@ export class UserPatternCollector extends BaseCollector {
     const sinceDate = nMonthsAgo.toISOString().split('T')[0]
 
     // 格式: "YYYY-MM-DD HH:MM|ISO_TIMESTAMP"
-    const args = ['log', '--format=%cd|%ai', `--date=format-local:%Y-%m-%d %H:%M`, `--author=${email}`, `--since=${sinceDate}`]
+    // 使用提交时的原始时区
+    const args = ['log', '--format=%cd|%ai', `--date=format:%Y-%m-%d %H:%M`, `--author=${email}`, `--since=${sinceDate}`]
     this.applyCommonFilters(args, options)
 
     const output = await this.execGitCommand(args, path)
@@ -324,7 +327,8 @@ export class UserPatternCollector extends BaseCollector {
     const sinceDate = nMonthsAgo.toISOString().split('T')[0]
 
     // 格式: "YYYY-MM-DD HH:MM|ISO_TIMESTAMP"
-    const args = ['log', '--format=%cd|%ai', `--date=format-local:%Y-%m-%d %H:%M`, `--author=${email}`, `--since=${sinceDate}`]
+    // 使用提交时的原始时区
+    const args = ['log', '--format=%cd|%ai', `--date=format:%Y-%m-%d %H:%M`, `--author=${email}`, `--since=${sinceDate}`]
     this.applyCommonFilters(args, options)
 
     const output = await this.execGitCommand(args, path)
