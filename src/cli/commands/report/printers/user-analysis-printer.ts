@@ -25,8 +25,8 @@ export function printTeamAnalysis(analysis: TeamAnalysis): void {
   // 2. 每日末次提交分布（使用百分位数方案）
   printEndTimePercentiles(analysis)
 
-  // 3. 工作强度分位数
-  printIntensityPercentiles(analysis)
+  // 3. 工作强度分布
+  printIntensityDistribution(analysis)
 
   // 4. 团队健康度评估
   printHealthAssessment(analysis)
@@ -114,30 +114,55 @@ function printEndTimePercentiles(analysis: TeamAnalysis): void {
 }
 
 /**
- * 打印工作强度分位数
+ * 打印工作强度分布（按996指数等级分组统计人数）
  */
-function printIntensityPercentiles(analysis: TeamAnalysis): void {
-  console.log(chalk.yellow.bold('📈 工作强度分位数：'))
+function printIntensityDistribution(analysis: TeamAnalysis): void {
+  console.log(chalk.yellow.bold('📈 工作强度分布：'))
   console.log()
 
-  const { percentiles } = analysis.statistics
+  // 获取所有用户的996指数
+  const index996List = analysis.coreContributors.map((u) => u.index996 || 0)
+  const total = index996List.length
 
-  const p25Color = getIndexColor(percentiles.p25)
-  const p50Color = getIndexColor(percentiles.p50)
-  const p75Color = getIndexColor(percentiles.p75)
-  const p90Color = getIndexColor(percentiles.p90)
+  if (total === 0) {
+    console.log(chalk.gray('   暂无数据'))
+    console.log()
+    return
+  }
 
+  // 按等级分组统计
+  const groups = {
+    light: index996List.filter((i) => i < 40), // 较轻松
+    medium: index996List.filter((i) => i >= 40 && i < 60), // 中等
+    heavy: index996List.filter((i) => i >= 60 && i < 80), // 较累
+    veryHeavy: index996List.filter((i) => i >= 80), // 很累
+  }
+
+  // 找出人数最多的等级
+  const maxCount = Math.max(groups.light.length, groups.medium.length, groups.heavy.length, groups.veryHeavy.length)
+
+  // 格式化显示函数
+  const formatGroup = (count: number, label: string, range: string, color: (s: string) => string): string => {
+    const pct = ((count / total) * 100).toFixed(0)
+    const countStr = `${count}人`.padEnd(4, ' ')
+    const pctStr = `(${pct}%)`.padEnd(6, ' ')
+    const mainTag = count === maxCount && count > 0 ? chalk.gray(' ← 团队主体') : ''
+    return `   ${color(label)} ${chalk.gray(range)}:  ${countStr} ${pctStr}${mainTag}`
+  }
+
+  // 输出各等级统计
+  console.log(formatGroup(groups.light.length, '🟢 较轻松', '(996指数 < 40) ', chalk.green))
+  console.log(formatGroup(groups.medium.length, '🟡 中等  ', '(996指数 40-60)', chalk.yellow))
+  console.log(formatGroup(groups.heavy.length, '🟡 较累  ', '(996指数 60-80)', chalk.yellow))
+  console.log(formatGroup(groups.veryHeavy.length, '🔴 很累  ', '(996指数 ≥ 80) ', chalk.red))
+  console.log()
+
+  // 补充范围和中位数信息
+  const { range, median996 } = analysis.statistics
+  const medianColor = getIndexColor(median996)
   console.log(
-    `   - P25 (25%的人): 996指数 ≤ ${p25Color(percentiles.p25.toFixed(0))}  ${getIndexDescription(percentiles.p25)}`
-  )
-  console.log(
-    `   - P50 (中位数):  996指数 = ${p50Color(percentiles.p50.toFixed(0))}  ${getIndexDescription(percentiles.p50)}`
-  )
-  console.log(
-    `   - P75 (75%的人): 996指数 ≤ ${p75Color(percentiles.p75.toFixed(0))}  ${getIndexDescription(percentiles.p75)}`
-  )
-  console.log(
-    `   - P90 (90%的人): 996指数 ≤ ${p90Color(percentiles.p90.toFixed(0))}  ${getIndexDescription(percentiles.p90)}`
+    chalk.gray(`   范围：${range[0].toFixed(0)} ~ ${range[1].toFixed(0)}  中位数：`) +
+      medianColor(median996.toFixed(0))
   )
   console.log()
 }
@@ -173,16 +198,3 @@ function formatTime(hours: number): string {
   return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`
 }
 
-/**
- * 获取996指数的描述
- */
-function getIndexDescription(index: number): string {
-  if (index < 40) return chalk.green('(较轻松)')
-  if (index < 60) return chalk.yellow('(中等)')
-  if (index < 80) return chalk.yellow('(较累)')
-  return chalk.red('(很累)')
-}
-
-/**
- * 计算百分位数
- */

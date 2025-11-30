@@ -20,6 +20,9 @@ importers:
       commander:
         specifier: ^11.1.0
         version: 11.1.0
+      holiday-calendar:
+        specifier: ^1.3.0
+        version: 1.3.0
       ora:
         specifier: ^5.4.1
         version: 5.4.1
@@ -771,6 +774,9 @@ packages:
   hasown@2.0.2:
     resolution: {integrity: sha512-0hJU9SCPvmMzIBdZFqNPXWa6dqh7WdH0cII9y+CyS8rG3nL48Bclra9HmKhVVUHyPWNH5Y7xDwAB7bfgSjkUMQ==}
     engines: {node: '>= 0.4'}
+
+  holiday-calendar@1.3.0:
+    resolution: {integrity: sha512-m2ojuY2hRsscWeRHakVvq3b+SZayhtncpLne0sChpvs20fziuK1KEgryN1dKr+WZCsylGFwomwP1lo8azEMLRw==}
 
   html-escaper@2.0.2:
     resolution: {integrity: sha512-H2iMtd0I4Mt5eYiapRdIDjp+XzelXQ0tFE4JS7YFwFevXXMmOp9myNrUvCg0D6ws8iqkRPBfKHgbwig1SmlLfg==}
@@ -2341,6 +2347,8 @@ snapshots:
   hasown@2.0.2:
     dependencies:
       function-bind: 1.1.2
+
+  holiday-calendar@1.3.0: {}
 
   html-escaper@2.0.2: {}
 
