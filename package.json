@@ -1,6 +1,6 @@
 {
   "name": "code996",
-  "version": "1.0.0",
+  "version": "1.0.0-beta.25",
   "description": "统计 Git commit 的时间分布，进而推导出项目的编码工作强度",
   "main": "dist/index.js",
   "bin": {
