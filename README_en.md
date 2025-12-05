@@ -94,28 +94,26 @@ code996 /workspace         # Auto-scan subdirectories
 
 ## 📖 Detailed Usage
 
-### Basic Commands
+### Time Range Options
 
-- `help`: Show help information
+| Option           | Short | Description                                                                  |
+| ---------------- | ----- | ---------------------------------------------------------------------------- |
+| `--year <year>`  | `-y`  | Specify year or year range (recommended). Single: `2025`; Range: `2023-2025` |
+| `--since <date>` | `-s`  | Custom start date (YYYY-MM-DD)                                               |
+| `--until <date>` | `-u`  | Custom end date (YYYY-MM-DD)                                                 |
+| `--all-time`     | -     | Cover entire repository history                                              |
 
-#### Time Range Options
+### Filter & Display Options
 
-- `-y, --year <year>`: Specify year or year range (recommended)
-  - Single year format: `2025` → Analyze 2025-01-01 to 2025-12-31
-  - Range format: `2023-2025` → Analyze 2023-01-01 to 2025-12-31
-- `-s, --since <date>`: Custom start date (YYYY-MM-DD)
-- `-u, --until <date>`: Custom end date (YYYY-MM-DD)
-- `--all-time`: Cover entire repository history
-
-#### Filter & Display Options
-
-- `-H, --hours <range>`: Manually specify standard working hours (e.g., 9-18 or 9.5-18.5) **Important: Recommend using this parameter for more accurate evaluation results**
-- `--half-hour`: Display time distribution in half-hour granularity (default is hourly) **More precise statistics**
-- `--timezone <offset>`: Specify timezone for analysis (e.g., +0800, -0700) **For cross-timezone team projects**
-- `--cn`: Force enable Chinese holiday makeup workday mode **(System auto-detects +0800 timezone and enables, can be manually enabled for other timezones)**
-- `--self`: Only count current Git user's commits
-- `--ignore-author <regex>`: Exclude authors matching specific regex (e.g., exclude bot or jenkins)
-- `--ignore-msg <regex>`: Exclude commits with specific keywords in message (e.g., exclude merge or lint)
+| Option                    | Short | Description                                                                         |
+| ------------------------- | ----- | ----------------------------------------------------------------------------------- |
+| `--hours <range>`         | `-H`  | Specify standard working hours (e.g., 9-18) ⭐ **Recommended for accurate results** |
+| `--half-hour`             | -     | Display in half-hour granularity (default hourly) 📊 More precise                   |
+| `--timezone <offset>`     | -     | Specify timezone (e.g., +0800, -0700) 🌍 For cross-timezone teams                   |
+| `--cn`                    | -     | Force enable Chinese holiday mode (+0800 auto-enabled)                              |
+| `--self`                  | -     | Only count current Git user's commits                                               |
+| `--ignore-author <regex>` | -     | Exclude authors matching regex (e.g., `bot\|jenkins`)                               |
+| `--ignore-msg <regex>`    | -     | Exclude commits matching regex (e.g., `^Merge\|lint`)                               |
 
 ### Usage Examples
 
@@ -125,6 +123,8 @@ code996                        # Analyze current repo (past year)
 code996 /path/to/repo          # Analyze specified repo
 code996 -y 2025                # Analyze year 2025
 code996 -y 2023-2025           # Analyze 2023-2025
+code996 -s 2025-01-01 -u 2025-06-30  # Custom date range (first half of year)
+code996 --since 2024-07-01     # Analyze from specified date to now
 code996 --all-time             # Query entire repo history
 code996 --self                 # Only analyze current user's commits
 code996 --self -y 2025         # Analyze your commits in 2025
@@ -135,6 +135,10 @@ code996 /path/proj1 /path/proj2  # Pass multiple paths, auto-analyze multiple re
 code996 /workspace             # Scan all sub-repos in specified directory
 code996 /workspace -y 2025     # Analyze 2025 data and trends
 code996 --self                 # Only count current user's commits across all repos
+
+# Specify Working Hours (Recommended)
+code996 --hours 9.5-18.5       # Specify 9:30-18:30 (supports decimals)
+code996 --hours 9.5-19 -y 2025 # Combine with year analysis
 
 # Fine-grained Analysis (Half-hour Granularity)
 code996 --half-hour            # Display time distribution in half-hour granularity
