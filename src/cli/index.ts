@@ -51,6 +51,8 @@ export class CLIManager {
       .option('--cn', '强制开启中国节假日调休模式（自动检测 +0800 时区）')
       .option('--skip-user-analysis', '跳过团队工作模式分析')
       .option('--max-users <number>', '最大分析用户数（默认30）', '30')
+      .option('-e, --export <format>', '导出报告格式 (json 或 markdown)')
+      .option('-o, --output <path>', '导出文件路径 (默认: report.json 或 report.md)')
       .action(async (paths: string[], options: AnalyzeOptions, command: Command) => {
         const mergedOptions = this.mergeGlobalOptions(options)
 
@@ -180,6 +182,8 @@ export class CLIManager {
       ignoreAuthor: options.ignoreAuthor ?? globalOpts.ignoreAuthor,
       ignoreMsg: options.ignoreMsg ?? globalOpts.ignoreMsg,
       timezone: options.timezone ?? globalOpts.timezone,
+      export: options.export ?? globalOpts.export,
+      output: options.output ?? globalOpts.output,
     }
   }
 
@@ -325,6 +329,10 @@ ${chalk.bold('分析选项:')}
   --ignore-author <regex> 排除匹配的作者 (例如: bot|jenkins)
   --ignore-msg <regex>    排除匹配的提交消息 (例如: merge|lint)
 
+${chalk.bold('导出选项:')}
+  -e, --export <format>   导出报告格式 (json 或 markdown)
+  -o, --output <path>     导出文件路径 (默认: report.json 或 report.md)
+
 ${chalk.bold('默认策略:')}
   自动以最后一次提交为基准，回溯365天进行分析
 
@@ -346,6 +354,11 @@ ${chalk.bold('示例:')}
   code996 --ignore-author "bot|jenkins|github-actions"  # 排除多个作者（使用 | 分隔）
   code996 --ignore-msg "^Merge" # 排除所有以 "Merge" 开头的提交消息
   code996 --ignore-msg "merge|lint|format"  # 排除多个关键词
+
+  ${chalk.gray('# 导出报告')}
+  code996 -e json               # 导出 JSON 格式
+  code996 -e markdown           # 导出 Markdown 格式
+  code996 -e json -o data.json  # 导出到指定路径
 
 ${chalk.bold('正则表达式语法说明:')}
   - 使用 | 分隔多个模式 (例如: bot|jenkins)

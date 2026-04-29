@@ -250,6 +250,8 @@ export interface AnalyzeOptions {
   skipUserAnalysis?: boolean // 是否跳过团队工作模式分析
   maxUsers?: number // 最大分析用户数（默认30）
   cn?: boolean // 强制开启中国节假日调休模式
+  export?: string // 导出格式 (json 或 markdown)
+  output?: string // 导出文件路径
 }
 
 /**

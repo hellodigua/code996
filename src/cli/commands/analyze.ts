@@ -22,6 +22,7 @@ import {
 import { printTrendReport } from './report/trend-printer'
 import { printTeamAnalysis } from './report/printers/user-analysis-printer'
 import { ensureCommitSamples } from '../common/commit-guard'
+import { exportReport, ExportData, ExportFormat } from '../../utils/exporter'
 
 type TimeRangeMode = 'all-time' | 'custom' | 'auto-last-commit' | 'fallback'
 
@@ -170,12 +171,13 @@ export class AnalyzeExecutor {
       const isOpenSource = classification.projectType === ProjectType.OPEN_SOURCE
 
       // ========== 步骤 4: 月度趋势分析 ==========
+      let trendResult: Awaited<ReturnType<typeof TrendAnalyzer.analyzeTrend>> | undefined
       // 只有在分析时间跨度超过1个月时才显示趋势分析
       if (effectiveSince && effectiveUntil && shouldShowTrendAnalysis(effectiveSince, effectiveUntil)) {
         console.log()
         const trendSpinner = ora('📈 正在进行月度趋势分析...').start()
         try {
-          const trendResult = await TrendAnalyzer.analyzeTrend(
+          trendResult = await TrendAnalyzer.analyzeTrend(
             path,
             effectiveSince,
             effectiveUntil,
@@ -195,11 +197,12 @@ export class AnalyzeExecutor {
       }
 
       // ========== 步骤 5: 团队工作模式分析 ==========
+      let teamResult: Awaited<ReturnType<typeof GitTeamAnalyzer.analyzeTeam>> | undefined
       // 开源项目不显示团队工作模式分析
       if (!isOpenSource && GitTeamAnalyzer.shouldAnalyzeTeam(options)) {
         try {
           const maxUsers = options.maxUsers ? parseInt(String(options.maxUsers), 10) : 30
-          const teamAnalysis = await GitTeamAnalyzer.analyzeTeam(
+          teamResult = await GitTeamAnalyzer.analyzeTeam(
             collectOptions,
             result.index996,
             20, // minCommits
@@ -207,8 +210,8 @@ export class AnalyzeExecutor {
             false // silent
           )
 
-          if (teamAnalysis) {
-            printTeamAnalysis(teamAnalysis)
+          if (teamResult) {
+            printTeamAnalysis(teamResult)
           }
         } catch (error) {
           console.log(chalk.yellow('⚠️  团队分析失败:'), (error as Error).message)
@@ -223,6 +226,43 @@ export class AnalyzeExecutor {
           const warningMessage = TimezoneAnalyzer.generateWarningMessage(tzAnalysis)
           console.log(chalk.yellow(warningMessage))
         }
+      }
+
+      // ========== 步骤 7: 导出报告 ==========
+      if (options.export) {
+        const format = options.export.toLowerCase() as ExportFormat
+        if (format !== 'json' && format !== 'markdown') {
+          console.error(chalk.red('❌ 不支持的导出格式:'), options.export, chalk.gray('(仅支持 json 或 markdown)'))
+          return
+        }
+        const repoName = path.split('/').filter(Boolean).pop() || 'unknown'
+        const defaultExt = format === 'json' ? 'json' : 'md'
+        const defaultName = `report.${defaultExt}`
+        const outputPath = options.output || defaultName
+
+        const exportData: ExportData = {
+          repoName,
+          repoPath: path,
+          generatedAt: new Date().toISOString(),
+          options: {
+            since: effectiveSince,
+            until: effectiveUntil,
+            self: options.self,
+            hours: options.hours,
+            halfHour: options.halfHour,
+            ignoreAuthor: options.ignoreAuthor,
+            ignoreMsg: options.ignoreMsg,
+            timezone: options.timezone,
+          },
+          result,
+          parsedData,
+          rawData,
+          classification,
+          trendResult,
+          teamAnalysis: teamResult ?? undefined,
+        }
+
+        exportReport(exportData, format, outputPath)
       }
     } catch (error) {
       console.error(chalk.red('❌ 分析失败:'), (error as Error).message)

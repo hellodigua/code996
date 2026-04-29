@@ -25,6 +25,7 @@ import {
 } from './report'
 import { printTrendReport } from './report/trend-printer'
 import { printTeamAnalysis } from './report/printers/user-analysis-printer'
+import { exportReport, ExportData, ExportFormat, MultiExportData } from '../../utils/exporter'
 
 /**
  * 判断是否应该启用节假日调休模式
@@ -317,6 +318,7 @@ export class MultiExecutor {
       MultiComparisonPrinter.print(repoRecords)
 
       // ========== 步骤 8: 月度趋势分析（默认启用） ==========
+      let trendResult: Awaited<ReturnType<typeof TrendAnalyzer.analyzeMultiRepoTrend>> | undefined
       if (selectedRepos.length > 0) {
         console.log()
         const trendSpinner = ora('📈 正在进行多仓库汇总月度趋势分析...').start()
@@ -330,7 +332,7 @@ export class MultiExecutor {
             trendSpinner.warn('没有成功的仓库数据，跳过趋势分析')
           } else {
             // 使用新的多仓库汇总趋势分析方法
-            const trendResult = await TrendAnalyzer.analyzeMultiRepoTrend(
+            trendResult = await TrendAnalyzer.analyzeMultiRepoTrend(
               successfulRepoPaths,
               effectiveSince ?? null,
               effectiveUntil ?? null,
@@ -353,6 +355,7 @@ export class MultiExecutor {
 
       // ========== 步骤 9: 团队工作模式分析（聚合所有仓库的数据）==========
       // 开源项目不显示团队工作模式分析
+      let teamResult: Awaited<ReturnType<typeof MultiRepoTeamAnalyzer.analyzeAggregatedTeam>> | undefined
       if (!hasOpenSourceProject && GitTeamAnalyzer.shouldAnalyzeTeam(options) && selectedRepos.length > 0) {
         // 收集所有成功分析的仓库路径
         const successfulRepoPaths = selectedRepos
@@ -374,7 +377,7 @@ export class MultiExecutor {
             }
 
             const maxUsers = options.maxUsers ? parseInt(String(options.maxUsers), 10) : 30
-            const teamAnalysis = await MultiRepoTeamAnalyzer.analyzeAggregatedTeam(
+            teamResult = await MultiRepoTeamAnalyzer.analyzeAggregatedTeam(
               successfulRepoPaths,
               collectOptions,
               20, // minCommits（所有仓库总计≥20）
@@ -382,8 +385,8 @@ export class MultiExecutor {
               result.index996 // 整体996指数
             )
 
-            if (teamAnalysis) {
-              printTeamAnalysis(teamAnalysis)
+            if (teamResult) {
+              printTeamAnalysis(teamResult)
             }
           } catch (error) {
             console.log(chalk.yellow('⚠️  团队分析失败:'), (error as Error).message)
@@ -399,6 +402,66 @@ export class MultiExecutor {
           const warningMessage = TimezoneAnalyzer.generateWarningMessage(tzAnalysis)
           console.log(chalk.yellow(warningMessage))
         }
+      }
+
+      // ========== 步骤 11: 导出报告 ==========
+      if (options.export) {
+        const format = options.export.toLowerCase() as ExportFormat
+        if (format !== 'json' && format !== 'markdown') {
+          console.error(chalk.red('❌ 不支持的导出格式:'), options.export, chalk.gray('(仅支持 json 或 markdown)'))
+          return
+        }
+        const defaultExt = format === 'json' ? 'json' : 'md'
+        const defaultName = `report.${defaultExt}`
+        const outputPath = options.output || defaultName
+
+        const successfulRepoRecords = repoRecords.filter((r) => r.status === 'success')
+        const repoExportPromises = successfulRepoRecords.map(async (record) => {
+          const shouldEnableHolidayRepo = shouldEnableHolidayMode(record.data, options)
+          const parsedRepoData = await GitParser.parseGitData(
+            record.data,
+            options.hours,
+            effectiveSince,
+            effectiveUntil,
+            shouldEnableHolidayRepo.enabled
+          )
+          return {
+            repoName: record.repo.name,
+            repoPath: record.repo.path,
+            generatedAt: new Date().toISOString(),
+            options: {
+              since: effectiveSince,
+              until: effectiveUntil,
+              self: options.self,
+              hours: options.hours,
+            },
+            result: record.result,
+            parsedData: parsedRepoData,
+            rawData: record.data,
+            classification: record.classification,
+          } as ExportData
+        })
+
+        const resolvedRepos = await Promise.all(repoExportPromises)
+
+        const multiExportData: MultiExportData = {
+          generatedAt: new Date().toISOString(),
+          options: {
+            since: effectiveSince,
+            until: effectiveUntil,
+            self: options.self,
+            hours: options.hours,
+          },
+          repos: resolvedRepos,
+          mergedResult: result,
+          mergedParsedData: parsedData,
+          mergedRawData: mergedData,
+          repoRecords: successfulRepoRecords,
+          trendResult,
+          teamAnalysis: teamResult ?? undefined,
+        }
+
+        exportReport(multiExportData, format, outputPath)
       }
     } catch (error) {
       console.error(chalk.red('❌ 多仓库分析失败:'), (error as Error).message)
