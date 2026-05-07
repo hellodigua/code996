@@ -1,6 +1,7 @@
 import chalk from 'chalk'
 import path from 'path'
 import { RepoInfo } from '../../types/git-types'
+import { t } from '../../i18n'
 
 /**
  * 交互式仓库选择器
@@ -13,7 +14,7 @@ export async function promptRepoSelection(repos: RepoInfo[]): Promise<RepoInfo[]
   }
 
   if (repos.length === 1) {
-    console.log(chalk.blue('✅ 仅发现 1 个仓库，默认选中。'))
+    console.log(chalk.blue(`✅ ${t('prompt.singleRepo')}`))
     return repos
   }
 
@@ -45,12 +46,12 @@ export async function promptRepoSelection(repos: RepoInfo[]): Promise<RepoInfo[]
   })
 
   const selected = await checkbox({
-    message: '请选择需要分析的仓库（空格选择，回车确认）',
+    message: t('prompt.message'),
     choices,
     pageSize: Math.min(10, choices.length),
     validate: (answer) => {
       if (answer.length === 0) {
-        return '请至少选择一个仓库'
+        return t('prompt.validate')
       }
       return true
     },

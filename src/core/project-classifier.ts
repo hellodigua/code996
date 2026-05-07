@@ -1,4 +1,5 @@
 import { GitLogData, ParsedGitData, TimeCount } from '../types/git-types'
+import { t } from '../i18n'
 
 /**
  * 项目类型枚举
@@ -95,11 +96,11 @@ export class ProjectClassifier {
    * 获取贡献者数量的描述
    */
   private static getContributorsDescription(count: number): string {
-    if (count >= 100) return `${count} 人（大型开源项目）`
-    if (count >= 50) return `${count} 人（中型开源项目）`
-    if (count >= 20) return `${count} 人（小型开源项目）`
-    if (count >= 10) return `${count} 人（小团队）`
-    return `${count} 人`
+    if (count >= 100) return t('project.contributors.large', { count })
+    if (count >= 50) return t('project.contributors.medium', { count })
+    if (count >= 20) return t('project.contributors.small', { count })
+    if (count >= 10) return t('project.contributors.team', { count })
+    return t('project.contributors.default', { count })
   }
 
   /**
@@ -116,7 +117,7 @@ export class ProjectClassifier {
     if (hourlyCommits.length === 0 || hourlyCommits.every((c) => c === 0)) {
       return {
         score: 50,
-        description: '数据不足',
+        description: t('project.regularity.insufficient'),
         details: {
           morningUptrend: false,
           afternoonPeak: false,
@@ -142,13 +143,13 @@ export class ProjectClassifier {
     // 生成描述
     let description = ''
     if (score >= 75) {
-      description = '高规律性（典型的公司工作模式）'
+      description = t('project.regularity.high')
     } else if (score >= 50) {
-      description = '中等规律性'
+      description = t('project.regularity.medium')
     } else if (score >= 25) {
-      description = '低规律性（可能是开源项目）'
+      description = t('project.regularity.low')
     } else {
-      description = '无规律性（典型的开源项目）'
+      description = t('project.regularity.none')
     }
 
     return {

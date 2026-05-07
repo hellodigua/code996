@@ -1,72 +1,100 @@
-import { describe, it, expect, beforeEach, jest } from '@jest/globals'
-import { CLIManager } from '../src/cli'
-import * as chalk from 'chalk'
+import { afterEach, beforeEach, describe, expect, it, jest } from '@jest/globals'
+import { CLIManager } from '../cli'
+import { resolveRequestedLocale } from '../i18n'
 
-// Mock chalk to avoid color output in tests
-jest.mock('chalk', () => ({
-  blue: jest.fn((text) => text),
-  yellow: jest.fn((text) => text),
-  green: jest.fn((text) => text),
-  red: jest.fn((text) => text),
-  gray: jest.fn((text) => text),
-  bold: { blue: jest.fn((text) => text) },
-}))
+jest.mock('chalk', () => {
+  const passthrough = (value: unknown) => String(value)
+  const passthroughFactory = () => passthrough
+  const fn = Object.assign(passthrough, {
+    blue: passthrough,
+    yellow: Object.assign(passthrough, { bold: passthrough }),
+    green: passthrough,
+    red: passthrough,
+    gray: passthrough,
+    cyan: Object.assign(passthrough, { bold: passthrough }),
+    magenta: passthrough,
+    bold: passthrough,
+    bgRed: { white: passthrough },
+    hex: passthroughFactory,
+  })
 
-describe('CLIManager', () => {
-  let consoleSpy: jest.SpyInstance
-  let cli: CLIManager
+  return {
+    __esModule: true,
+    default: fn,
+  }
+})
+
+describe('CLI i18n', () => {
+  const originalEnv = { ...process.env }
+
+  let logSpy: ReturnType<typeof jest.spyOn>
+  let errorSpy: ReturnType<typeof jest.spyOn>
 
   beforeEach(() => {
-    consoleSpy = jest.spyOn(console, 'log').mockImplementation()
-    cli = new CLIManager()
+    process.env = { ...originalEnv }
+    logSpy = jest.spyOn(console, 'log').mockImplementation(() => undefined)
+    errorSpy = jest.spyOn(console, 'error').mockImplementation(() => undefined)
   })
 
   afterEach(() => {
-    consoleSpy.mockRestore()
+    process.env = { ...originalEnv }
+    logSpy.mockRestore()
+    errorSpy.mockRestore()
   })
 
-  describe('analyze command', () => {
-    it('should handle analyze command with default options', async () => {
-      cli.parse(['node', 'code996', 'analyze'])
-
-      expect(consoleSpy).toHaveBeenCalledWith('分析仓库: .')
-      expect(consoleSpy).toHaveBeenCalledWith('分析完成！ (此功能将在后续阶段实现)')
+  it('默认按 LC_ALL 识别中文', () => {
+    const locale = resolveRequestedLocale([], {
+      ...process.env,
+      CODE996_LANG: '',
+      LC_ALL: 'zh_CN.UTF-8',
+      LC_MESSAGES: '',
+      LANG: 'en_US.UTF-8',
     })
 
-    it('should handle analyze command with custom path', async () => {
-      cli.parse(['node', 'code996', 'analyze', '/test/path'])
-
-      expect(consoleSpy).toHaveBeenCalledWith('分析仓库: /test/path')
-    })
-
-    it('should handle analyze command with debug mode', async () => {
-      cli.parse(['node', 'code996', 'analyze', '--debug'])
-
-      expect(consoleSpy).toHaveBeenCalledWith('调试模式开启')
-      expect(consoleSpy).toHaveBeenCalledWith('参数:')
-    })
+    expect(locale).toBe('zh-CN')
   })
 
-  describe('help command', () => {
-    it('should display help information', () => {
-      cli.parse(['node', 'code996', 'help'])
-
-      expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('code996'))
-      expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('使用方法:'))
-      expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('命令:'))
+  it('--lang 优先级高于系统语言', () => {
+    const locale = resolveRequestedLocale(['node', 'code996', '--lang', 'en'], {
+      ...process.env,
+      LC_ALL: 'zh_CN.UTF-8',
     })
+
+    expect(locale).toBe('en')
   })
 
-  describe('error handling', () => {
-    it('should handle unknown commands', () => {
-      const exitSpy = jest.spyOn(process, 'exit').mockImplementation()
+  it('中文环境下 help 输出中文', async () => {
+    process.env.LC_ALL = 'zh_CN.UTF-8'
+    const cli = new CLIManager(['node', 'code996', 'help'])
 
-      cli.parse(['node', 'code996', 'unknown'])
+    await cli.parseAsync(['node', 'code996', 'help'])
 
-      expect(consoleSpy).toHaveBeenCalledWith("错误: 未知命令 'unknown'")
-      expect(exitSpy).toHaveBeenCalledWith(1)
+    expect(logSpy).toHaveBeenCalledWith(expect.stringContaining('使用方法:'))
+    expect(logSpy).toHaveBeenCalledWith(expect.stringContaining('智能分析模式:'))
+  })
 
-      exitSpy.mockRestore()
-    })
+  it('--lang en 可以覆盖中文环境的 help 输出', async () => {
+    process.env.LC_ALL = 'zh_CN.UTF-8'
+    const cli = new CLIManager(['node', 'code996', 'help', '--lang', 'en'])
+
+    await cli.parseAsync(['node', 'code996', 'help', '--lang', 'en'])
+
+    expect(logSpy).toHaveBeenCalledWith(expect.stringContaining('Usage:'))
+    expect(logSpy).toHaveBeenCalledWith(expect.stringContaining('Smart analysis mode:'))
+  })
+
+  it('中文环境下路径不存在时输出中文错误', async () => {
+    process.env.LC_ALL = 'zh_CN.UTF-8'
+    const exitSpy = jest.spyOn(process, 'exit').mockImplementation((() => {
+      throw new Error('process.exit')
+    }) as never)
+    const cli = new CLIManager(['node', 'code996', '/__missing_repo__'])
+
+    await expect(cli.parseAsync(['node', 'code996', '/__missing_repo__'])).rejects.toThrow('process.exit')
+
+    expect(errorSpy).toHaveBeenCalledWith('❌ 指定的路径不存在:', expect.stringContaining('/__missing_repo__'))
+    expect(exitSpy).toHaveBeenCalledWith(1)
+
+    exitSpy.mockRestore()
   })
 })

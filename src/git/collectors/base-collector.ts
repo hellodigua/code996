@@ -1,5 +1,6 @@
 import { spawn } from 'child_process'
 import { GitLogOptions } from '../../types/git-types'
+import { t } from '../../i18n'
 
 /**
  * 基础Git命令执行器
@@ -40,12 +41,19 @@ export class BaseCollector {
         if (code === 0) {
           resolve(stdout)
         } else {
-          reject(new Error(`Git命令执行失败 (退出码: ${code}): ${stderr}`))
+          reject(
+            new Error(
+              t('git.exec.failed', {
+                code: code ?? 'unknown',
+                stderr: stderr.trim(),
+              })
+            )
+          )
         }
       })
 
       child.on('error', (err) => {
-        reject(new Error(`无法执行git命令: ${err.message}`))
+        reject(new Error(t('git.exec.unavailable', { message: err.message })))
       })
     })
   }
@@ -141,13 +149,13 @@ export class BaseCollector {
     const name = await this.getGitConfigValue('user.name', path)
 
     if (!email && !name) {
-      throw new Error('启用 --self 需要先配置 git config user.name 或 user.email')
+      throw new Error(t('collector.selfConfig'))
     }
 
     const hasEmail = Boolean(email)
     const hasName = Boolean(name)
 
-    const displayLabel = hasEmail && hasName ? `${name} <${email}>` : email || name || '未知用户'
+    const displayLabel = hasEmail && hasName ? `${name} <${email}>` : email || name || t('collector.unknownUser')
 
     const pattern = hasEmail ? this.escapeAuthorPattern(email!) : this.escapeAuthorPattern(name!)
 
@@ -173,7 +181,12 @@ export class BaseCollector {
       return regex.test(authorLine)
     } catch (error) {
       // 如果正则表达式无效，打印警告并不排除
-      console.warn(`警告: 无效的作者排除正则表达式 "${ignorePattern}": ${(error as Error).message}`)
+      console.warn(
+        t('collector.invalidIgnoreAuthorRegex', {
+          pattern: ignorePattern,
+          message: (error as Error).message,
+        })
+      )
       return false
     }
   }

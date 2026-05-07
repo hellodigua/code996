@@ -6,13 +6,17 @@ import {
   WorkTimeData,
   Result996,
   WorkWeekPl,
+  WorkTimePl,
   WorkTimeDetectionResult,
   DailyCommitCount,
+  WorkTimeCategory,
+  WorkWeekCategory,
 } from '../types/git-types'
 import { calculate996Index } from '../core/calculator'
 import { WorkTimeAnalyzer } from '../core/work-time-analyzer'
 import { OvertimeAnalyzer } from '../core/overtime-analyzer'
 import { getWorkdayChecker } from '../utils/workday-checker'
+import { t } from '../i18n'
 
 export class GitParser {
   /**
@@ -91,18 +95,18 @@ export class GitParser {
   private static parseCustomWorkHours(customWorkHours: string): WorkTimeDetectionResult {
     const parts = customWorkHours.split('-')
     if (parts.length !== 2) {
-      throw new Error(`无效的工作时间格式: ${customWorkHours}，正确格式为 "9-18" 或 "9.5-18.5"`)
+      throw new Error(t('git.parser.invalidHoursFormat', { value: customWorkHours }))
     }
 
     const startHour = parseFloat(parts[0])
     const endHour = parseFloat(parts[1])
 
     if (isNaN(startHour) || isNaN(endHour) || startHour < 0 || startHour > 23 || endHour < 0 || endHour > 24) {
-      throw new Error(`无效的工作时间: ${customWorkHours}，小时必须在 0-23 之间，结束时间可到24`)
+      throw new Error(t('git.parser.invalidHoursRange', { value: customWorkHours }))
     }
 
     if (startHour >= endHour) {
-      throw new Error(`无效的工作时间: ${customWorkHours}，上班时间必须早于下班时间`)
+      throw new Error(t('git.parser.invalidHoursOrder', { value: customWorkHours }))
     }
 
     return {
@@ -145,8 +149,8 @@ export class GitParser {
     }
 
     return [
-      { time: '工作', count: workCount },
-      { time: '加班', count: overtimeCount },
+      { time: 'work', count: workCount },
+      { time: 'overtime', count: overtimeCount },
     ]
   }
 
@@ -188,12 +192,12 @@ export class GitParser {
       })
 
       return [
-        { time: '工作日', count: workDayCount },
-        { time: '周末', count: weekendCount },
+        { time: 'weekday', count: workDayCount },
+        { time: 'weekend', count: weekendCount },
       ]
     } catch (error) {
       // 如果 holiday-calendar 查询失败，回退到基础判断
-      console.warn('使用 holiday-calendar 失败，回退到基础判断:', error)
+      console.warn(t('git.parser.holidayFallback'), error)
       return this.calculateWorkWeekPlBasic(dayData)
     }
   }
@@ -218,8 +222,8 @@ export class GitParser {
     }
 
     return [
-      { time: '工作日', count: workDayCount },
-      { time: '周末', count: weekendCount },
+      { time: 'weekday', count: workDayCount },
+      { time: 'weekend', count: weekendCount },
     ]
   }
 
@@ -235,16 +239,26 @@ export class GitParser {
     const dayTotal = data.dayData.reduce((sum, item) => sum + item.count, 0)
 
     if (hourTotal !== data.totalCommits) {
-      errors.push(`按小时统计的总commit数(${hourTotal})与实际总commit数(${data.totalCommits})不一致`)
+      errors.push(
+        t('git.parser.validation.hourMismatch', {
+          hourTotal,
+          total: data.totalCommits,
+        })
+      )
     }
 
     if (dayTotal !== data.totalCommits) {
-      errors.push(`按星期统计的总commit数(${dayTotal})与实际总commit数(${data.totalCommits})不一致`)
+      errors.push(
+        t('git.parser.validation.dayMismatch', {
+          dayTotal,
+          total: data.totalCommits,
+        })
+      )
     }
 
     // 检查是否有足够的数据
     if (data.totalCommits === 0) {
-      warnings.push('仓库中没有找到commit记录')
+      warnings.push(t('git.parser.validation.noCommits'))
     }
 
     // 检查数据分布
@@ -254,11 +268,11 @@ export class GitParser {
     const weekendCount = data.workWeekPl[1].count
 
     if (workHourCount === 0 && overtimeHourCount > 0) {
-      warnings.push('所有commit都在非工作时间，可能是加班严重或工作时间设置不合理')
+      warnings.push(t('git.parser.validation.allOvertime'))
     }
 
     if (workDayCount === 0 && weekendCount > 0) {
-      warnings.push('所有commit都在周末，可能是周末工作或工作日设置不合理')
+      warnings.push(t('git.parser.validation.allWeekend'))
     }
 
     return {
@@ -282,6 +296,4 @@ export class GitParser {
   }
 }
 
-export type WorkTimePl = [{ time: '工作' | '加班'; count: number }, { time: '工作' | '加班'; count: number }]
-
-export type WorkDayPl = [{ time: '工作日' | '周末'; count: number }, { time: '工作日' | '周末'; count: number }]
+type WorkDayPl = [{ time: WorkWeekCategory; count: number }, { time: WorkWeekCategory; count: number }]

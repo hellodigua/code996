@@ -2,6 +2,7 @@ import { GitLogOptions, TeamAnalysis } from '../types/git-types'
 import { UserPatternCollector } from './collectors/user-pattern-collector'
 import { UserAnalyzer } from '../core/user-analyzer'
 import ora from 'ora'
+import { t } from '../i18n'
 
 /**
  * Git团队分析器
@@ -27,11 +28,11 @@ export class GitTeamAnalyzer {
     const collector = new UserPatternCollector()
 
     // 1. 获取所有贡献者列表
-    const spinner = !silent ? ora('正在获取贡献者列表...').start() : null
+    const spinner = !silent ? ora(t('team.spinner.contributors')).start() : null
     const allContributors = await collector.getAllContributors(options)
 
     if (allContributors.length === 0) {
-      spinner?.fail('未找到任何贡献者')
+      spinner?.fail(t('team.spinner.none'))
       return null
     }
 
@@ -40,33 +41,38 @@ export class GitTeamAnalyzer {
 
     if (coreContributors.length < 3) {
       // 贡献者太少，不适合进行团队分析
-      spinner?.info(`核心贡献者数量不足（${coreContributors.length}人），跳过团队分析`)
+      spinner?.info(t('team.spinner.insufficient', { count: coreContributors.length }))
       return null
     }
 
-    spinner?.succeed(`找到 ${allContributors.length} 位贡献者，筛选出 ${coreContributors.length} 位核心成员`)
+    spinner?.succeed(
+      t('team.spinner.filtered', {
+        all: allContributors.length,
+        core: coreContributors.length,
+      })
+    )
 
     // 3. 批量采集用户工作模式数据
-    const dataSpinner = !silent ? ora('正在采集用户工作模式数据...').start() : null
+    const dataSpinner = !silent ? ora(t('team.spinner.userData')).start() : null
 
     const userPatternDataList = await collector.collectUserPatterns(coreContributors, options)
 
-    dataSpinner?.succeed(`成功采集 ${userPatternDataList.length} 位用户的工作模式数据`)
+    dataSpinner?.succeed(t('team.spinner.userDataDone', { count: userPatternDataList.length }))
 
     // 4. 分析每个用户的工作模式
-    const analysisSpinner = !silent ? ora('正在分析用户工作模式...').start() : null
+    const analysisSpinner = !silent ? ora(t('team.spinner.userAnalysis')).start() : null
 
     const totalCommits = allContributors.reduce((sum, c) => sum + c.commits, 0)
     const userPatterns = userPatternDataList.map((data) => UserAnalyzer.analyzeUser(data, totalCommits))
 
-    analysisSpinner?.succeed(`成功分析 ${userPatterns.length} 位用户的工作模式`)
+    analysisSpinner?.succeed(t('team.spinner.userAnalysisDone', { count: userPatterns.length }))
 
     // 5. 进行团队级别的统计和聚类
-    const teamSpinner = !silent ? ora('正在进行团队统计和聚类...').start() : null
+    const teamSpinner = !silent ? ora(t('team.spinner.team')).start() : null
 
     const teamAnalysis = UserAnalyzer.analyzeTeam(userPatterns, minCommits, allContributors.length, overallIndex)
 
-    teamSpinner?.succeed('团队分析完成')
+    teamSpinner?.succeed(t('team.spinner.teamDone'))
 
     return teamAnalysis
   }
@@ -88,4 +94,3 @@ export class GitTeamAnalyzer {
     return true
   }
 }
-
