@@ -1,3 +1,7 @@
+import { IndexDescriptionKey, WorkTimeCategory, WorkWeekCategory } from '../i18n'
+
+export type { IndexDescriptionKey, WorkTimeCategory, WorkWeekCategory }
+
 /**
  * 时间统计粒度
  */
@@ -66,9 +70,15 @@ export interface ParsedGitData {
   lateNightAnalysis?: LateNightAnalysis
 }
 
-export type WorkTimePl = [{ time: '工作' | '加班'; count: number }, { time: '工作' | '加班'; count: number }]
+export type WorkTimePl = [
+  { time: WorkTimeCategory; count: number },
+  { time: WorkTimeCategory; count: number },
+]
 
-export type WorkWeekPl = [{ time: '工作日' | '周末'; count: number }, { time: '工作日' | '周末'; count: number }]
+export type WorkWeekPl = [
+  { time: WorkWeekCategory; count: number },
+  { time: WorkWeekCategory; count: number },
+]
 
 export interface ValidationResult {
   isValid: boolean
@@ -84,7 +94,7 @@ export interface WorkTimeData {
 
 export interface Result996 {
   index996: number
-  index996Str: string
+  index996DescriptionKey: IndexDescriptionKey
   overTimeRadio: number
 }
 
@@ -250,6 +260,7 @@ export interface AnalyzeOptions {
   skipUserAnalysis?: boolean // 是否跳过团队工作模式分析
   maxUsers?: number // 最大分析用户数（默认30）
   cn?: boolean // 强制开启中国节假日调休模式
+  lang?: string // 界面语言 (例如: en, zh-CN)
 }
 
 /**

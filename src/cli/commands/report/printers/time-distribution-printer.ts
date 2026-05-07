@@ -1,6 +1,7 @@
 import chalk from 'chalk'
 import { ParsedGitData, TimeCount } from '../../../../types/git-types'
 import { TimeAggregator } from '../../../../utils/time-aggregator'
+import { t, tWeekday } from '../../../../i18n'
 
 /**
  * 时间分布打印器
@@ -16,13 +17,13 @@ export function printTimeDistribution(parsedData: ParsedGitData, halfHourMode = 
     ? parsedData.hourData // 直接展示48点
     : TimeAggregator.aggregateToHour(parsedData.hourData) // 聚合为24点
 
-  const title = halfHourMode ? '🕐 24小时分布（半小时粒度）:' : '🕐 24小时分布:'
+  const title = halfHourMode ? `🕐 ${t('distribution.hourHalf')}` : `🕐 ${t('distribution.hour')}`
   console.log(chalk.cyan.bold(title))
 
   const maxCount = Math.max(0, ...displayData.map((item: TimeCount) => item.count))
 
   if (maxCount === 0) {
-    console.log('暂无提交数据')
+    console.log(t('distribution.none'))
     console.log()
   } else {
     displayData.forEach((hour: TimeCount) => {
@@ -43,14 +44,22 @@ export function printTimeDistribution(parsedData: ParsedGitData, halfHourMode = 
     console.log()
   }
 
-  console.log(chalk.cyan.bold('📅 星期分布:'))
+  console.log(chalk.cyan.bold(`📅 ${t('distribution.weekday')}`))
 
-  const weekDayNames = ['周一', '周二', '周三', '周四', '周五', '周六', '周日']
+  const weekDayNames = [
+    tWeekday('monday'),
+    tWeekday('tuesday'),
+    tWeekday('wednesday'),
+    tWeekday('thursday'),
+    tWeekday('friday'),
+    tWeekday('saturday'),
+    tWeekday('sunday'),
+  ]
   const maxDayCount = Math.max(0, ...parsedData.dayData.map((item) => item.count))
   const totalDayCount = parsedData.dayData.reduce((sum, item) => sum + item.count, 0)
 
   if (totalDayCount === 0) {
-    console.log('暂无星期提交数据')
+    console.log(t('distribution.weekday.none'))
     console.log()
     return
   }

@@ -2,5 +2,5 @@
 
 import { CLIManager } from './cli'
 
-const cli = new CLIManager()
+const cli = new CLIManager(process.argv)
 cli.parse(process.argv)

@@ -5,6 +5,7 @@ import { TimeCollector } from './collectors/time-collector'
 import { CommitCollector } from './collectors/commit-collector'
 import { ContributorCollector } from './collectors/contributor-collector'
 import { TimezoneCollector } from './collectors/timezone-collector'
+import { t } from '../i18n'
 
 /**
  * Git数据采集主类
@@ -52,12 +53,12 @@ export class GitCollector extends BaseCollector {
    */
   async collect(options: GitLogOptions): Promise<GitLogData> {
     if (!options.silent) {
-      console.log(chalk.blue(`正在分析仓库: ${options.path}`))
+      console.log(chalk.blue(t('collector.analyzing', { path: options.path })))
     }
 
     // 检查是否为有效的Git仓库
     if (!(await this.isValidGitRepo(options.path))) {
-      throw new Error(`路径 "${options.path}" 不是一个有效的Git仓库`)
+      throw new Error(t('collector.invalidRepo', { path: options.path }))
     }
 
     try {
@@ -90,7 +91,7 @@ export class GitCollector extends BaseCollector {
       ])
 
       if (!options.silent) {
-        console.log(chalk.green(`数据采集完成: ${totalCommits} 个commit`))
+        console.log(chalk.green(t('collector.done', { count: totalCommits })))
       }
 
       return {
@@ -110,7 +111,7 @@ export class GitCollector extends BaseCollector {
       }
     } catch (error) {
       if (!options.silent) {
-        console.error(chalk.red(`数据采集失败: ${(error as Error).message}`))
+        console.error(chalk.red(t('collector.failed', { message: (error as Error).message })))
       }
       throw error
     }

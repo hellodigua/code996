@@ -25,6 +25,7 @@ import {
 } from './report'
 import { printTrendReport } from './report/trend-printer'
 import { printTeamAnalysis } from './report/printers/user-analysis-printer'
+import { t } from '../../i18n'
 
 /**
  * 判断是否应该启用节假日调休模式
@@ -40,7 +41,7 @@ function shouldEnableHolidayMode(
   if (options.cn) {
     return {
       enabled: true,
-      reason: '原因：用户通过 --cn 参数强制开启',
+      reason: t('analyze.holiday.reason.force'),
     }
   }
 
@@ -54,7 +55,9 @@ function shouldEnableHolidayMode(
     if (dominantTimezone.offset === '+0800' && dominantRatio >= 0.5) {
       return {
         enabled: true,
-        reason: `原因：检测到主要时区为 +0800 (占比 ${(dominantRatio * 100).toFixed(1)}%)`,
+        reason: t('analyze.holiday.reason.auto', {
+          ratio: (dominantRatio * 100).toFixed(1),
+        }),
       }
     }
   }
@@ -85,10 +88,10 @@ export class MultiExecutor {
       if (preScannedRepos && preScannedRepos.length > 0) {
         // 使用已扫描的仓库列表（来自智能模式）
         repos = preScannedRepos
-        console.log(chalk.green(`✔ 已检测到 ${repos.length} 个候选仓库`))
+        console.log(chalk.green(`✔ ${t('multi.detected', { count: repos.length })}`))
       } else {
         // 重新扫描
-        const spinner = ora('🔍 正在扫描 Git 仓库...').start()
+        const spinner = ora(`🔍 ${t('multi.scan.start')}`).start()
 
         try {
           if (inputDirs.length === 0) {
@@ -96,32 +99,32 @@ export class MultiExecutor {
           } else {
             repos = await RepoScanner.scan(inputDirs)
           }
-          spinner.succeed(`扫描完成，发现 ${repos.length} 个候选仓库`)
+          spinner.succeed(t('multi.scan.done', { count: repos.length }))
         } catch (error) {
-          spinner.fail('扫描失败')
-          console.error(chalk.red('❌ 扫描失败:'), (error as Error).message)
+          spinner.fail(t('multi.scan.failed'))
+          console.error(chalk.red(`❌ ${t('multi.scan.error')}`), (error as Error).message)
           return
         }
 
         if (repos.length === 0) {
-          console.log(chalk.yellow('⚠️ 未在提供的目录中找到 Git 仓库。'))
+          console.log(chalk.yellow(`⚠️ ${t('multi.scan.none')}`))
           return
         }
       }
 
-      console.log(chalk.gray(`可选择的仓库总数: ${repos.length} 个`))
+      console.log(chalk.gray(t('multi.repoCount', { count: repos.length })))
       console.log()
 
       // ========== 步骤 2: 交互式选择仓库 ==========
       const selectedRepos = await promptRepoSelection(repos)
 
       if (selectedRepos.length === 0) {
-        console.log(chalk.yellow('⚠️ 未选择任何仓库，分析已取消。'))
+        console.log(chalk.yellow(`⚠️ ${t('multi.selection.cancelled')}`))
         return
       }
 
       console.log()
-      console.log(chalk.blue(`📦 开始分析 ${selectedRepos.length} 个仓库（串行执行）`))
+      console.log(chalk.blue(`📦 ${t('multi.start', { count: selectedRepos.length })}`))
       console.log()
 
       // 创建 collector 实例
@@ -133,11 +136,11 @@ export class MultiExecutor {
         try {
           const authorInfo = await collector.resolveSelfAuthor(selectedRepos[0].path)
           authorPattern = authorInfo.pattern
-          console.log(chalk.blue('🙋 作者过滤:'), authorInfo.displayLabel)
-          console.log(chalk.gray('   将在所有仓库中只统计该作者的提交'))
+          console.log(chalk.blue(`🙋 ${t('analyze.authorFilter')}`), authorInfo.displayLabel)
+          console.log(chalk.gray(t('multi.author.single')))
           console.log()
         } catch (error) {
-          console.error(chalk.red('❌ 解析当前用户信息失败:'), (error as Error).message)
+          console.error(chalk.red(`❌ ${t('multi.author.resolveFailed')}`), (error as Error).message)
           return
         }
       }
@@ -153,7 +156,7 @@ export class MultiExecutor {
         effectiveUntil = range.until
       } else {
         // 默认：找到所有仓库中最新的提交，从那个时间回溯 1 年
-        const spinner2 = ora('🔍 正在检测仓库时间范围...').start()
+        const spinner2 = ora(`🔍 ${t('multi.range.detect')}`).start()
         try {
           const latestDate = await this.findLatestCommitDate(selectedRepos, collector)
           if (latestDate) {
@@ -164,21 +167,28 @@ export class MultiExecutor {
             effectiveSince = this.formatUTCDate(sinceDate)
             effectiveUntil = this.formatUTCDate(untilDate)
 
-            spinner2.succeed(`检测到最新提交: ${latestDate}`)
-            console.log(chalk.gray(`💡 提示: 默认从最新提交回溯 1 年，可使用 --all-time 或 -y 自定义`))
+            spinner2.succeed(t('multi.range.latest', { date: latestDate }))
+            console.log(chalk.gray(`💡 ${t('multi.range.tip')}`))
           } else {
-            spinner2.warn('未能检测到提交，将使用所有时间')
+            spinner2.warn(t('multi.range.none'))
           }
         } catch {
-          spinner2.warn('检测失败，将使用所有时间')
+          spinner2.warn(t('multi.range.fail'))
         }
       }
 
       // 显示时间范围信息
       if (!effectiveSince && !effectiveUntil) {
-        console.log(chalk.blue('📅 分析时段: 所有时间'))
+        console.log(chalk.blue(`📅 ${t('multi.range.label')}`))
       } else {
-        console.log(chalk.blue(`📅 分析时段: ${effectiveSince || '最早'} 至 ${effectiveUntil || '最新'}`))
+        console.log(
+          chalk.blue(
+            `📅 ${t('multi.range.labelCustom', {
+              since: effectiveSince || (t('core.result.period.from', { since: '' }).trim() || 'earliest'),
+              until: effectiveUntil || 'latest',
+            })}`
+          )
+        )
       }
       console.log()
 
@@ -190,7 +200,7 @@ export class MultiExecutor {
         const repo = selectedRepos[i]
         const progress = `(${i + 1}/${selectedRepos.length})`
 
-        console.log(chalk.cyan(`${progress} 正在分析: ${repo.name}`))
+        console.log(chalk.cyan(`${progress} ${t('multi.progress', { name: repo.name })}`))
 
         try {
           const data = await collector.collect({
@@ -226,13 +236,20 @@ export class MultiExecutor {
             classification,
           })
 
-          console.log(chalk.green(`    ✓ ${data.totalCommits} 个提交, 996指数: ${result.index996.toFixed(1)}`))
+          console.log(
+            chalk.green(
+              `    ✓ ${t('multi.progress.success', {
+                count: data.totalCommits,
+                index: result.index996.toFixed(1),
+              })}`
+            )
+          )
         } catch (error) {
-          console.error(chalk.red(`    ✗ 分析失败: ${(error as Error).message}`))
+          console.error(chalk.red(`    ✗ ${t('multi.progress.failed', { message: (error as Error).message })}`))
           repoRecords.push({
             repo,
             data: { byHour: [], byDay: [], totalCommits: 0 },
-            result: { index996: 0, index996Str: '未知', overTimeRadio: 0 },
+            result: { index996: 0, index996DescriptionKey: 'ok', overTimeRadio: 0 },
             status: 'failed',
             error: (error as Error).message,
           })
@@ -244,30 +261,30 @@ export class MultiExecutor {
 
       if (successfulData.length === 0) {
         console.log()
-        console.log(chalk.red('❌ 所有仓库分析均失败，无法生成汇总报告'))
+        console.log(chalk.red(`❌ ${t('multi.allFailed')}`))
         return
       }
 
       console.log()
-      console.log(chalk.green(`✓ 成功分析 ${successfulData.length}/${selectedRepos.length} 个仓库`))
+      console.log(chalk.green(`✓ ${t('multi.success', { success: successfulData.length, total: selectedRepos.length })}`))
       console.log()
 
       // ========== 步骤 4: 合并数据 ==========
-      const spinner2 = ora('📊 正在合并数据...').start()
+      const spinner2 = ora(`📊 ${t('multi.merge.start')}`).start()
       const mergedData = GitDataMerger.merge(successfulData)
-      spinner2.succeed('数据合并完成')
+      spinner2.succeed(t('multi.merge.done'))
       console.log()
 
       // 显示时区过滤提示（如果有）
       if (options.timezone) {
-        console.log(chalk.blue('⚙️  时区过滤已启用'))
-        console.log(chalk.gray(`目标时区: ${options.timezone}`))
-        console.log(chalk.gray(`过滤后总提交数: ${mergedData.totalCommits}`))
+        console.log(chalk.blue(`⚙️  ${t('analyze.timezoneFilter')}`))
+        console.log(chalk.gray(t('analyze.timezoneTarget', { timezone: options.timezone })))
+        console.log(chalk.gray(t('analyze.timezoneCommits', { count: mergedData.totalCommits })))
         console.log()
       }
 
       // ========== 步骤 5: 分析合并后的数据 ==========
-      const spinner3 = ora('📈 正在计算996指数...').start()
+      const spinner3 = ora(`📈 ${t('analyze.spinner.index')}`).start()
       const shouldEnableHoliday3 = shouldEnableHolidayMode(mergedData, options) // 本地变量以避免混淆
       const parsedData = await GitParser.parseGitData(
         mergedData,
@@ -277,7 +294,7 @@ export class MultiExecutor {
         shouldEnableHoliday3.enabled
       )
       const result = GitParser.calculate996Index(parsedData)
-      spinner3.succeed('分析完成！')
+      spinner3.succeed(t('analyze.spinner.done'))
       console.log()
 
       // ========== 步骤 5.5: 检查是否有开源项目 ==========
@@ -291,12 +308,12 @@ export class MultiExecutor {
       }
 
       // ========== 步骤 6: 输出汇总结果 ==========
-      console.log(chalk.cyan.bold('📊 多仓库汇总分析报告:'))
+      console.log(chalk.cyan.bold(`📊 ${t('multi.summary.title')}`))
       console.log()
 
       // 显示节假日调休模式提示
       if (shouldEnableHoliday3.enabled) {
-        console.log(chalk.blue('🇨🇳 已启用中国节假日调休判断'))
+        console.log(chalk.blue(`🇨🇳 ${t('analyze.holiday.enabled')}`))
         console.log(chalk.gray(`${shouldEnableHoliday3.reason}`))
         console.log()
       }
@@ -319,7 +336,7 @@ export class MultiExecutor {
       // ========== 步骤 8: 月度趋势分析（默认启用） ==========
       if (selectedRepos.length > 0) {
         console.log()
-        const trendSpinner = ora('📈 正在进行多仓库汇总月度趋势分析...').start()
+        const trendSpinner = ora(`📈 ${t('multi.trend.start')}`).start()
         try {
           // 提取所有成功分析的仓库路径
           const successfulRepoPaths = selectedRepos
@@ -327,7 +344,7 @@ export class MultiExecutor {
             .map((repo) => repo.path)
 
           if (successfulRepoPaths.length === 0) {
-            trendSpinner.warn('没有成功的仓库数据，跳过趋势分析')
+            trendSpinner.warn(t('multi.trend.skip'))
           } else {
             // 使用新的多仓库汇总趋势分析方法
             const trendResult = await TrendAnalyzer.analyzeMultiRepoTrend(
@@ -337,7 +354,7 @@ export class MultiExecutor {
               authorPattern,
               (current, total, month) => {
                 // 实时更新进度
-                trendSpinner.text = `📈 正在分析月度趋势... (${current}/${total}: ${month})`
+                trendSpinner.text = `📈 ${t('analyze.trend.progress', { current, total, month })}`
               },
               options.timezone, // 传递时区过滤参数
               shouldEnableHoliday3.enabled // 传递节假日调休模式参数
@@ -346,8 +363,8 @@ export class MultiExecutor {
             printTrendReport(trendResult)
           }
         } catch (error) {
-          trendSpinner.fail('趋势分析失败')
-          console.error(chalk.red('⚠️  趋势分析错误:'), (error as Error).message)
+          trendSpinner.fail(t('analyze.trend.failed'))
+          console.error(chalk.red(`⚠️  ${t('analyze.trend.error')}`), (error as Error).message)
         }
       }
 
@@ -361,7 +378,7 @@ export class MultiExecutor {
 
         if (successfulRepoPaths.length > 0) {
           console.log()
-          console.log(chalk.gray(`💡 聚合 ${successfulRepoPaths.length} 个仓库的数据进行团队工作模式分析`))
+          console.log(chalk.gray(`💡 ${t('multi.team.aggregate', { count: successfulRepoPaths.length })}`))
 
           try {
             const collectOptions: GitLogOptions = {
@@ -386,7 +403,7 @@ export class MultiExecutor {
               printTeamAnalysis(teamAnalysis)
             }
           } catch (error) {
-            console.log(chalk.yellow('⚠️  团队分析失败:'), (error as Error).message)
+            console.log(chalk.yellow(`⚠️  ${t('analyze.team.failed')}`), (error as Error).message)
           }
         }
       }
@@ -401,7 +418,7 @@ export class MultiExecutor {
         }
       }
     } catch (error) {
-      console.error(chalk.red('❌ 多仓库分析失败:'), (error as Error).message)
+      console.error(chalk.red(`❌ ${t('multi.failed')}`), (error as Error).message)
       process.exit(1)
     }
   }
@@ -410,7 +427,7 @@ export class MultiExecutor {
    * 打印项目类型对比表格
    */
   private static printProjectTypeComparison(repoRecords: RepoAnalysisRecord[]): void {
-    console.log(chalk.yellow.bold('🌍 项目类型检测结果'))
+    console.log(chalk.yellow.bold(`🌍 ${t('multi.projectType.title')}`))
     console.log()
 
     const terminalWidth = Math.min(getTerminalWidth(), 120)
@@ -418,8 +435,8 @@ export class MultiExecutor {
 
     // 表头
     typeTable.push([
-      { content: chalk.yellow(chalk.bold('仓库名称')), colSpan: 1 },
-      { content: chalk.yellow(chalk.bold('项目类型')), colSpan: 1 },
+      { content: chalk.yellow(chalk.bold(t('multi.projectType.repo'))), colSpan: 1 },
+      { content: chalk.yellow(chalk.bold(t('multi.projectType.type'))), colSpan: 1 },
     ])
 
     // 数据行
@@ -431,13 +448,13 @@ export class MultiExecutor {
 
         if (projectType === ProjectType.OPEN_SOURCE) {
           typeEmoji = '🌍'
-          typeText = `开源项目 (置信度: ${confidence}%)`
+          typeText = t('multi.projectType.openSource', { confidence })
         } else if (projectType === ProjectType.CORPORATE) {
           typeEmoji = '🏢'
-          typeText = `公司项目 (置信度: ${confidence}%)`
+          typeText = t('multi.projectType.corporate', { confidence })
         } else {
           typeEmoji = '❓'
-          typeText = `不确定 (置信度: ${confidence}%)`
+          typeText = t('multi.projectType.uncertain', { confidence })
         }
 
         typeTable.push([
@@ -456,9 +473,9 @@ export class MultiExecutor {
     ).length
 
     if (openSourceCount > 0) {
-      console.log(chalk.yellow('💡 提示：'))
-      console.log(chalk.yellow(`   检测到 ${openSourceCount} 个开源项目。开源项目的周末和晚间提交是正常的社区贡献。`))
-      console.log(chalk.yellow('   汇总报告不会显示"996指数"和"加班分析"等不适用的指标。'))
+      console.log(chalk.yellow(`💡 ${t('multi.projectType.tipTitle')}`))
+      console.log(chalk.yellow(`   ${t('multi.projectType.tipLine1', { count: openSourceCount })}`))
+      console.log(chalk.yellow(`   ${t('multi.projectType.tipLine2')}`))
       console.log()
     }
   }
@@ -538,7 +555,7 @@ export class MultiExecutor {
       const endYear = parseInt(rangeMatch[2], 10)
 
       if (startYear < 1970 || endYear < 1970 || startYear > endYear) {
-        console.error(chalk.red('❌ 年份格式错误: 起始年份不能大于结束年份，且年份必须 >= 1970'))
+        console.error(chalk.red(`❌ ${t('analyze.year.invalidRange')}`))
         process.exit(1)
       }
 
@@ -554,7 +571,7 @@ export class MultiExecutor {
       const year = parseInt(singleMatch[1], 10)
 
       if (year < 1970) {
-        console.error(chalk.red('❌ 年份格式错误: 年份必须 >= 1970'))
+        console.error(chalk.red(`❌ ${t('analyze.year.invalidSingle')}`))
         process.exit(1)
       }
 
@@ -564,7 +581,7 @@ export class MultiExecutor {
       }
     }
 
-    console.error(chalk.red('❌ 年份格式错误: 请使用 YYYY 格式（如 2025）或 YYYY-YYYY 格式（如 2023-2025）'))
+    console.error(chalk.red(`❌ ${t('analyze.year.invalidFormat')}`))
     process.exit(1)
   }
 }

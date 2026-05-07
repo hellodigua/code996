@@ -1,4 +1,5 @@
 import { TimezoneData, TimezoneAnalysisResult, TimeCount } from '../types/git-types'
+import { t } from '../i18n'
 
 /**
  * 时区分析器
@@ -205,14 +206,12 @@ export class TimezoneAnalyzer {
     }
 
     const lines: string[] = []
-    lines.push('⚠️  跨时区协作检测\n')
+    lines.push(`⚠️  ${t('timezone.warning.title')}\n`)
 
     // 时区分布信息
     if (analysis.timezoneGroups && analysis.timezoneGroups.length > 0) {
-      lines.push(
-        `检测到该项目可能涉及跨时区协作（非主导时区占比: ${(analysis.crossTimezoneRatio * 100).toFixed(1)}%），对于跨时区项目可能不准确。`
-      )
-      lines.push('主要时区分布:')
+      lines.push(t('timezone.warning.body', { ratio: (analysis.crossTimezoneRatio * 100).toFixed(1) }))
+      lines.push(t('timezone.warning.groups'))
 
       for (const group of analysis.timezoneGroups.slice(0, 3)) {
         const percent = (group.ratio * 100).toFixed(1)
@@ -222,7 +221,7 @@ export class TimezoneAnalyzer {
     }
 
     // 建议
-    lines.push('💡 建议使用 --timezone 参数指定时区，例如: --timezone="+0800"')
+    lines.push(`💡 ${t('timezone.warning.tip')}`)
 
     return lines.join('\n')
   }

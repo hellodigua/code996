@@ -1,5 +1,6 @@
 import { GitLogData, TimezoneData } from '../types/git-types'
 import chalk from 'chalk'
+import { t } from '../i18n'
 
 /**
  * 按时区过滤 Git 数据
@@ -32,12 +33,12 @@ export class TimezoneFilter {
   } {
     // 验证时区格式
     if (!this.isValidTimezone(targetTimezone)) {
-      throw new Error(`无效的时区格式: ${targetTimezone}，正确格式为 +HHMM 或 -HHMM（例如: +0800, -0700）`)
+      throw new Error(t('timezone.filter.invalid', { timezone: targetTimezone }))
     }
 
     // 检查时区数据是否存在
     if (!rawData.timezoneData || rawData.timezoneData.totalCommits === 0) {
-      throw new Error('无法按时区过滤：时区数据不可用')
+      throw new Error(t('timezone.filter.unavailable'))
     }
 
     const timezoneData = rawData.timezoneData
@@ -53,7 +54,10 @@ export class TimezoneFilter {
         .join(', ')
 
       throw new Error(
-        `时区 ${targetTimezone} 在数据中不存在。可用时区: ${availableTimezones}${timezoneData.timezones.length > 5 ? '...' : ''}`
+        t('timezone.filter.missing', {
+          timezone: targetTimezone,
+          available: `${availableTimezones}${timezoneData.timezones.length > 5 ? '...' : ''}`,
+        })
       )
     }
 
@@ -132,18 +136,18 @@ export class TimezoneFilter {
   ): string {
     const lines: string[] = []
 
-    lines.push(chalk.blue('⚙️  时区过滤已启用'))
+    lines.push(chalk.blue(`⚙️  ${t('timezone.filter.enabled')}`))
     lines.push('')
-    lines.push(chalk.gray(`目标时区: ${timezone}`))
-    lines.push(chalk.gray(`时区占比: ${(ratio * 100).toFixed(1)}%`))
-    lines.push(chalk.gray(`原始提交: ${originalCommits} → 过滤后: ${filteredCommits}`))
+    lines.push(chalk.gray(t('timezone.filter.target', { timezone })))
+    lines.push(chalk.gray(t('timezone.filter.ratio', { ratio: (ratio * 100).toFixed(1) })))
+    lines.push(chalk.gray(t('timezone.filter.original', { original: originalCommits, filtered: filteredCommits })))
     lines.push('')
-    lines.push(chalk.yellow('⚠️  注意: 当前使用后处理近似过滤，以下数据可能不够精确:'))
-    lines.push(chalk.gray('  • 每日首次/最晚提交时间'))
-    lines.push(chalk.gray('  • 工作时间推测'))
-    lines.push(chalk.gray('  • 部分统计维度'))
+    lines.push(chalk.yellow(`⚠️  ${t('timezone.filter.note')}`))
+    lines.push(chalk.gray(`  • ${t('timezone.filter.item.firstLast')}`))
+    lines.push(chalk.gray(`  • ${t('timezone.filter.item.workTime')}`))
+    lines.push(chalk.gray(`  • ${t('timezone.filter.item.partial')}`))
     lines.push('')
-    lines.push(chalk.gray('💡 建议: 结合 --author 参数获得更精确的结果'))
+    lines.push(chalk.gray(`💡 ${t('timezone.filter.tip')}`))
 
     return lines.join('\n')
   }
