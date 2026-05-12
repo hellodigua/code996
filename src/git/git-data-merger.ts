@@ -6,6 +6,7 @@ import {
   DayHourCommit,
   DailyCommitHours,
 } from '../types/git-types'
+import { t } from '../i18n'
 
 /**
  * Git 数据合并器
@@ -19,7 +20,7 @@ export class GitDataMerger {
    */
   static merge(dataList: GitLogData[]): GitLogData {
     if (dataList.length === 0) {
-      throw new Error('数据列表为空，无法合并')
+      throw new Error(t('git.dataMerger.empty'))
     }
 
     if (dataList.length === 1) {

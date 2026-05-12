@@ -10,6 +10,7 @@ import {
   DailyCommitHours,
 } from '../types/git-types'
 import { getWorkdayChecker } from '../utils/workday-checker'
+import { t, tWeekday } from '../i18n'
 
 /**
  * 加班分析器
@@ -56,11 +57,11 @@ export class OvertimeAnalyzer {
     const maxEntry = entries.reduce((max, curr) => (curr[1] > max[1] ? curr : max), entries[0])
 
     const dayNameMap: Record<string, string> = {
-      monday: '周一',
-      tuesday: '周二',
-      wednesday: '周三',
-      thursday: '周四',
-      friday: '周五',
+      monday: tWeekday('monday'),
+      tuesday: tWeekday('tuesday'),
+      wednesday: tWeekday('wednesday'),
+      thursday: tWeekday('thursday'),
+      friday: tWeekday('friday'),
     }
 
     return {
@@ -141,7 +142,7 @@ export class OvertimeAnalyzer {
       }
     } catch (error) {
       // 如果 holiday-calendar 查询失败，回退到基础判断
-      console.warn('使用 holiday-calendar 失败，周末加班分析回退到基础判断:', error)
+      console.warn(t('overtime.holidayFallback'), error)
       return this.calculateWeekendOvertimeBasic(dailyCommitHours)
     }
 

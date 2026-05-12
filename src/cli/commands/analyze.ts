@@ -22,6 +22,7 @@ import {
 import { printTrendReport } from './report/trend-printer'
 import { printTeamAnalysis } from './report/printers/user-analysis-printer'
 import { ensureCommitSamples } from '../common/commit-guard'
+import { t } from '../../i18n'
 
 type TimeRangeMode = 'all-time' | 'custom' | 'auto-last-commit' | 'fallback'
 
@@ -49,29 +50,45 @@ export class AnalyzeExecutor {
       } = await resolveTimeRange({ collector, path, options })
 
       // 显示分析开始信息
-      console.log(chalk.blue('🔍 分析仓库:'), path || process.cwd())
+      console.log(chalk.blue(`🔍 ${t('analyze.repo')}`), path || process.cwd())
       switch (rangeMode) {
         case 'all-time':
-          console.log(chalk.blue('📅 时间范围:'), '所有时间')
+          console.log(chalk.blue(`📅 ${t('analyze.range')}`), t('analyze.range.all'))
           break
         case 'custom':
-          console.log(chalk.blue('📅 时间范围:'), `${effectiveSince} 至 ${effectiveUntil}`)
+          console.log(
+            chalk.blue(`📅 ${t('analyze.range')}`),
+            t('analyze.range.custom', {
+              since: effectiveSince || '',
+              until: effectiveUntil || '',
+            })
+          )
           break
         case 'auto-last-commit':
           console.log(
-            chalk.blue('📅 时间范围:'),
-            `${effectiveSince} 至 ${effectiveUntil}${rangeNote ? `（${rangeNote}）` : ''}`
+            chalk.blue(`📅 ${t('analyze.range')}`),
+            t('analyze.range.auto', {
+              since: effectiveSince || '',
+              until: effectiveUntil || '',
+              note: rangeNote || '',
+            })
           )
           break
         default:
-          console.log(chalk.blue('📅 时间范围:'), `${effectiveSince} 至 ${effectiveUntil}（按当前日期回溯）`)
+          console.log(
+            chalk.blue(`📅 ${t('analyze.range')}`),
+            t('analyze.range.fallback', {
+              since: effectiveSince || '',
+              until: effectiveUntil || '',
+            })
+          )
       }
       console.log()
 
       let authorFilter: AuthorFilterInfo | undefined
       if (options.self) {
         authorFilter = await resolveAuthorFilter(collector, path)
-        console.log(chalk.blue('🙋 作者过滤:'), authorFilter.displayLabel)
+        console.log(chalk.blue(`🙋 ${t('analyze.authorFilter')}`), authorFilter.displayLabel)
         console.log()
       }
 
@@ -87,17 +104,17 @@ export class AnalyzeExecutor {
       }
 
       // 在正式分析前，先检查 commit 样本量是否达到最低要求
-      const hasEnoughCommits = await ensureCommitSamples(collector, collectOptions, 50, '分析')
+      const hasEnoughCommits = await ensureCommitSamples(collector, collectOptions, 50, t('guard.scene.analysis'))
       if (!hasEnoughCommits) {
         return
       }
 
       // 创建进度指示器
-      const spinner = ora('📦 开始分析').start()
+      const spinner = ora(`📦 ${t('analyze.spinner.start')}`).start()
 
       // 步骤1: 数据采集（时区过滤已在采集阶段完成）
       const rawData = await collector.collect(collectOptions)
-      spinner.text = '⚙️ 正在解析数据...'
+      spinner.text = `⚙️ ${t('analyze.spinner.parsing')}`
       spinner.render()
 
       // 步骤2: 数据解析与验证
@@ -112,28 +129,28 @@ export class AnalyzeExecutor {
       const validation = GitParser.validateData(parsedData)
 
       if (!validation.isValid) {
-        spinner.fail('数据验证失败')
-        console.log(chalk.red('❌ 发现以下错误:'))
+        spinner.fail(t('analyze.validationFailed'))
+        console.log(chalk.red(`❌ ${t('analyze.validationErrors')}`))
         validation.errors.forEach((error) => {
           console.log(`  ${chalk.red('•')} ${error}`)
         })
         process.exit(1)
       }
 
-      spinner.text = '📈 正在计算996指数...'
+      spinner.text = `📈 ${t('analyze.spinner.index')}`
       spinner.render()
 
       // 步骤3: 计算996指数
       const result = GitParser.calculate996Index(parsedData)
 
-      spinner.succeed('分析完成！')
+      spinner.succeed(t('analyze.spinner.done'))
       console.log()
 
       // 显示时区过滤提示（如果有）
       if (options.timezone) {
-        console.log(chalk.blue('⚙️  时区过滤已启用'))
-        console.log(chalk.gray(`目标时区: ${options.timezone}`))
-        console.log(chalk.gray(`过滤后提交数: ${rawData.totalCommits}`))
+        console.log(chalk.blue(`⚙️  ${t('analyze.timezoneFilter')}`))
+        console.log(chalk.gray(t('analyze.timezoneTarget', { timezone: options.timezone })))
+        console.log(chalk.gray(t('analyze.timezoneCommits', { count: rawData.totalCommits })))
         console.log()
       }
 
@@ -146,7 +163,7 @@ export class AnalyzeExecutor {
 
       // ========== 显示节假日调休模式提示 ==========
       if (shouldEnableHoliday.enabled) {
-        console.log(chalk.blue('🇨🇳 已启用中国节假日调休判断'))
+        console.log(chalk.blue(`🇨🇳 ${t('analyze.holiday.enabled')}`))
         console.log(chalk.gray(`${shouldEnableHoliday.reason}`))
         console.log()
       }
@@ -160,7 +177,7 @@ export class AnalyzeExecutor {
           actualSince = await collector.getFirstCommitDate(collectOptions)
           actualUntil = await collector.getLastCommitDate(collectOptions)
         } catch {
-          console.log(chalk.yellow('⚠️ 无法获取实际时间范围，将使用默认显示'))
+          console.log(chalk.yellow(`⚠️ ${t('analyze.actualRangeFallback')}`))
         }
       }
 
@@ -173,7 +190,7 @@ export class AnalyzeExecutor {
       // 只有在分析时间跨度超过1个月时才显示趋势分析
       if (effectiveSince && effectiveUntil && shouldShowTrendAnalysis(effectiveSince, effectiveUntil)) {
         console.log()
-        const trendSpinner = ora('📈 正在进行月度趋势分析...').start()
+        const trendSpinner = ora(`📈 ${t('analyze.trend.start')}`).start()
         try {
           const trendResult = await TrendAnalyzer.analyzeTrend(
             path,
@@ -181,7 +198,7 @@ export class AnalyzeExecutor {
             effectiveUntil,
             authorFilter?.pattern,
             (current, total, month) => {
-              trendSpinner.text = `📈 正在分析月度趋势... (${current}/${total}: ${month})`
+              trendSpinner.text = `📈 ${t('analyze.trend.progress', { current, total, month })}`
             },
             options.timezone, // 传递时区过滤参数
             shouldEnableHoliday.enabled // 传递节假日调休模式参数
@@ -189,8 +206,8 @@ export class AnalyzeExecutor {
           trendSpinner.succeed()
           printTrendReport(trendResult)
         } catch (error) {
-          trendSpinner.fail('趋势分析失败')
-          console.error(chalk.red('⚠️  趋势分析错误:'), (error as Error).message)
+          trendSpinner.fail(t('analyze.trend.failed'))
+          console.error(chalk.red(`⚠️  ${t('analyze.trend.error')}`), (error as Error).message)
         }
       }
 
@@ -211,7 +228,7 @@ export class AnalyzeExecutor {
             printTeamAnalysis(teamAnalysis)
           }
         } catch (error) {
-          console.log(chalk.yellow('⚠️  团队分析失败:'), (error as Error).message)
+          console.log(chalk.yellow(`⚠️  ${t('analyze.team.failed')}`), (error as Error).message)
         }
       }
 
@@ -225,7 +242,7 @@ export class AnalyzeExecutor {
         }
       }
     } catch (error) {
-      console.error(chalk.red('❌ 分析失败:'), (error as Error).message)
+      console.error(chalk.red(`❌ ${t('analyze.failed')}`), (error as Error).message)
       process.exit(1)
     }
   }
@@ -309,7 +326,7 @@ async function resolveTimeRange({
         since: formatUTCDate(sinceDate),
         until: formatUTCDate(untilDate),
         mode: 'auto-last-commit',
-        note: '以最后一次提交为基准回溯365天',
+        note: t('analyze.lastCommitBacktrack'),
       }
     }
   } catch {}
@@ -346,7 +363,7 @@ function parseYearOption(yearStr: string): { since: string; until: string; note?
 
     // 验证年份合法性
     if (startYear < 1970 || endYear < 1970 || startYear > endYear) {
-      console.error(chalk.red('❌ 年份格式错误: 起始年份不能大于结束年份，且年份必须 >= 1970'))
+      console.error(chalk.red(`❌ ${t('analyze.year.invalidRange')}`))
       process.exit(1)
     }
 
@@ -364,7 +381,7 @@ function parseYearOption(yearStr: string): { since: string; until: string; note?
 
     // 验证年份合法性
     if (year < 1970) {
-      console.error(chalk.red('❌ 年份格式错误: 年份必须 >= 1970'))
+      console.error(chalk.red(`❌ ${t('analyze.year.invalidSingle')}`))
       process.exit(1)
     }
 
@@ -376,7 +393,7 @@ function parseYearOption(yearStr: string): { since: string; until: string; note?
   }
 
   // 格式不正确
-  console.error(chalk.red('❌ 年份格式错误: 请使用 YYYY 格式（如 2025）或 YYYY-YYYY 格式（如 2023-2025）'))
+  console.error(chalk.red(`❌ ${t('analyze.year.invalidFormat')}`))
   process.exit(1)
 }
 
@@ -396,7 +413,7 @@ function formatUTCDate(date: Date): string {
 function printOpenSourceProjectWarning(classification: ReturnType<typeof ProjectClassifier.classify>): void {
   const { dimensions, confidence, reasoning } = classification
 
-  console.log(chalk.yellow.bold('🌍 检测到开源项目特征'))
+  console.log(chalk.yellow.bold(`🌍 ${t('analyze.openSource.title')}`))
   console.log()
 
   const terminalWidth = Math.min(getTerminalWidth(), 80)
@@ -414,34 +431,34 @@ function printOpenSourceProjectWarning(classification: ReturnType<typeof Project
   // 月光族模式
   const moonlightingText = dimensions.moonlightingPattern.isActive
     ? `${dimensions.moonlightingPattern.description} 🌙`
-    : '未检测到'
+    : t('analyze.openSource.notDetected')
 
   // 贡献者数量
   const contributorsText = dimensions.contributorsCount.description
 
   warningTable.push(
     [
-      { content: chalk.yellow(chalk.bold('工作时间规律性')), colSpan: 1 },
+      { content: chalk.yellow(chalk.bold(t('analyze.openSource.regularity'))), colSpan: 1 },
       { content: chalk.yellow(regularityText), colSpan: 1 },
     ],
     [
-      { content: chalk.yellow(chalk.bold('贡献者数量')), colSpan: 1 },
+      { content: chalk.yellow(chalk.bold(t('analyze.openSource.contributors'))), colSpan: 1 },
       { content: chalk.yellow(contributorsText), colSpan: 1 },
     ],
     [
-      { content: chalk.yellow(chalk.bold('周末活跃度')), colSpan: 1 },
+      { content: chalk.yellow(chalk.bold(t('analyze.openSource.weekend'))), colSpan: 1 },
       { content: chalk.yellow(weekendText), colSpan: 1 },
     ],
     [
-      { content: chalk.yellow(chalk.bold('晚间活跃模式')), colSpan: 1 },
+      { content: chalk.yellow(chalk.bold(t('analyze.openSource.moonlighting'))), colSpan: 1 },
       { content: chalk.yellow(moonlightingText), colSpan: 1 },
     ],
     [
-      { content: chalk.yellow(chalk.bold('判断理由')), colSpan: 1 },
+      { content: chalk.yellow(chalk.bold(t('analyze.openSource.reasoning'))), colSpan: 1 },
       { content: chalk.yellow(reasoning), colSpan: 1 },
     ],
     [
-      { content: chalk.yellow(chalk.bold('置信度')), colSpan: 1 },
+      { content: chalk.yellow(chalk.bold(t('analyze.openSource.confidence'))), colSpan: 1 },
       { content: chalk.yellow(`${confidence}%`), colSpan: 1 },
     ]
   )
@@ -501,7 +518,7 @@ function shouldEnableHolidayMode(rawData: GitLogData, options: AnalyzeOptions): 
   if (options.cn) {
     return {
       enabled: true,
-      reason: '原因：用户通过 --cn 参数强制开启',
+      reason: t('analyze.holiday.reason.force'),
     }
   }
 
@@ -515,7 +532,9 @@ function shouldEnableHolidayMode(rawData: GitLogData, options: AnalyzeOptions): 
     if (dominantTimezone.offset === '+0800' && dominantRatio >= 0.5) {
       return {
         enabled: true,
-        reason: `原因：检测到主要时区为 +0800 (占比 ${(dominantRatio * 100).toFixed(1)}%)`,
+        reason: t('analyze.holiday.reason.auto', {
+          ratio: (dominantRatio * 100).toFixed(1),
+        }),
       }
     }
   }

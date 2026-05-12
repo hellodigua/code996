@@ -10,6 +10,7 @@ import { UserPatternData } from '../git/collectors/user-pattern-collector'
 import { WorkTimeAnalyzer } from './work-time-analyzer'
 import { calculatePercentile } from '../utils/statistics'
 import { calculate996Index } from './calculator'
+import { t } from '../i18n'
 
 /**
  * 用户分析器
@@ -158,13 +159,13 @@ export class UserAnalyzer {
     }
 
     const workHourPl: WorkTimePl = [
-      { time: '工作', count: normalWork },
-      { time: '加班', count: overtime },
+      { time: 'work', count: normalWork },
+      { time: 'overtime', count: overtime },
     ]
 
     const workWeekPl: WorkWeekPl = [
-      { time: '工作日', count: workdayCommits },
-      { time: '周末', count: weekendCommits },
+      { time: 'weekday', count: workdayCommits },
+      { time: 'weekend', count: weekendCommits },
     ]
 
     return {
@@ -295,28 +296,36 @@ export class UserAnalyzer {
     const totalCount = distribution.normal.length + distribution.moderate.length + distribution.heavy.length
 
     if (teamMedianIndex < 40) {
-      conclusion = '团队整体节奏良好，工作生活平衡较好。'
+      conclusion = t('team.health.conclusion.good')
     } else if (teamMedianIndex < 60) {
-      conclusion = '团队整体节奏尚可，存在一定加班情况。'
+      conclusion = t('team.health.conclusion.ok')
     } else if (teamMedianIndex < 80) {
-      conclusion = '团队加班较为普遍，建议关注成员健康。'
+      conclusion = t('team.health.conclusion.warn')
     } else {
-      conclusion = '团队加班强度较大，需要重点关注。'
+      conclusion = t('team.health.conclusion.bad')
     }
 
     // 检查是否存在个别严重加班的情况
     if (heavyCount > 0 && heavyCount / totalCount < 0.3) {
       const heavyRatio = ((heavyCount / totalCount) * 100).toFixed(0)
-      warning = `检测到 ${heavyCount} 名成员（${heavyRatio}%）存在严重加班情况，建议关注个别成员负荷。`
+      warning = t('team.health.warning.heavy', {
+        count: heavyCount,
+        ratio: heavyRatio,
+      })
     }
 
     // 检查整体指数和中位数的差异
     const indexGap = overallIndex - teamMedianIndex
     if (indexGap > 20) {
+      const gapMessage = t('team.health.warning.gap', {
+        overall: overallIndex.toFixed(0),
+        median: teamMedianIndex.toFixed(0),
+      })
+
       if (warning) {
-        warning += ` 项目整体指数（${overallIndex.toFixed(0)}）明显高于团队中位数（${teamMedianIndex.toFixed(0)}），可能存在个别"卷王"拉高整体数据。`
+        warning += ` ${gapMessage}`
       } else {
-        warning = `项目整体指数（${overallIndex.toFixed(0)}）明显高于团队中位数（${teamMedianIndex.toFixed(0)}），可能存在个别"卷王"拉高整体数据。`
+        warning = gapMessage
       }
     }
 

@@ -2,6 +2,7 @@ import chalk from 'chalk'
 import { GitLogData, Result996, AnalyzeOptions } from '../../../../types/git-types'
 import { getTerminalWidth, createAdaptiveTable } from '../../../../utils/terminal'
 import { getIndexColor } from '../../../../utils/formatter'
+import { t, tIndexDescription } from '../../../../i18n'
 
 export type TimeRangeMode = 'all-time' | 'custom' | 'auto-last-commit' | 'fallback'
 
@@ -19,7 +20,7 @@ export function printCoreResults(
   until?: string,
   rangeMode: TimeRangeMode = 'custom'
 ): void {
-  console.log(chalk.cyan.bold('📊 核心结果:'))
+  console.log(chalk.cyan.bold(`📊 ${t('core.result.title')}`))
   console.log()
 
   const terminalWidth = Math.min(getTerminalWidth(), 80)
@@ -31,42 +32,42 @@ export function printCoreResults(
   // 构建时间范围文本
   let periodText = ''
   if (options.since && options.until) {
-    periodText = `${options.since} 至 ${options.until}`
+    periodText = t('core.result.period.custom', { since: options.since, until: options.until })
   } else if (options.since) {
-    periodText = `从 ${options.since} 开始`
+    periodText = t('core.result.period.from', { since: options.since })
   } else if (options.until) {
-    periodText = `截至 ${options.until}`
+    periodText = t('core.result.period.until', { until: options.until })
   } else if (options.allTime) {
-    periodText = '所有时间'
+    periodText = t('core.result.period.all')
   } else if (rangeMode === 'auto-last-commit' && since && until) {
-    periodText = `${since} 至 ${until}（按最后一次提交回溯365天）`
+    periodText = t('core.result.period.lastCommit', { since, until })
   } else if (rangeMode === 'fallback' && since && until) {
-    periodText = `${since} 至 ${until}（按当前日期回溯365天）`
+    periodText = t('core.result.period.current', { since, until })
   } else if (since && until) {
-    periodText = `${since} 至 ${until}`
+    periodText = t('core.result.period.custom', { since, until })
   } else {
-    periodText = '最近一年'
+    periodText = t('core.result.period.default')
   }
 
   resultTable.push(
     [
-      { content: chalk.bold('996指数'), colSpan: 1 },
+      { content: chalk.bold(t('core.result.index')), colSpan: 1 },
       { content: indexColor(result.index996.toFixed(1)), colSpan: 1 },
     ],
     [
-      { content: chalk.bold('整体评价'), colSpan: 1 },
-      { content: result.index996Str, colSpan: 1 },
+      { content: chalk.bold(t('core.result.overall')), colSpan: 1 },
+      { content: tIndexDescription(result.index996DescriptionKey), colSpan: 1 },
     ],
     [
-      { content: chalk.bold('分析时段'), colSpan: 1 },
+      { content: chalk.bold(t('core.result.period')), colSpan: 1 },
       { content: periodText, colSpan: 1 },
     ],
     [
-      { content: chalk.bold('加班比例'), colSpan: 1 },
+      { content: chalk.bold(t('core.result.overtimeRatio')), colSpan: 1 },
       { content: radioColor(`${result.overTimeRadio.toFixed(1)}%`), colSpan: 1 },
     ],
     [
-      { content: chalk.bold('总提交数'), colSpan: 1 },
+      { content: chalk.bold(t('core.result.totalCommits')), colSpan: 1 },
       { content: `${rawData.totalCommits}`, colSpan: 1 },
     ]
   )
@@ -75,6 +76,6 @@ export function printCoreResults(
   console.log()
 
   // 在核心结果表格下方添加996指数说明
-  console.log(chalk.gray('* 996指数：为 0 则不加班，值越大代表加班越严重，996 工作制对应的值为 100。'))
+  console.log(chalk.gray(t('core.result.note')))
   console.log()
 }

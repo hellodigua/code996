@@ -11,6 +11,7 @@ import {
   DailyLatestCommit,
   GitLogData,
 } from '../types/git-types'
+import { t } from '../i18n'
 
 /**
  * 趋势分析器
@@ -119,7 +120,7 @@ export class TrendAnalyzer {
     }
 
     if (!since || !until) {
-      throw new Error('无法确定时间范围')
+      throw new Error(t('trend.error.range'))
     }
 
     // 生成月份列表
@@ -249,7 +250,7 @@ export class TrendAnalyzer {
         confidence,
       }
     } catch (error) {
-      console.error(`分析月份 ${month} 时出错:`, error)
+      console.error(t('trend.error.month', { month }), error)
       return null
     }
   }
@@ -335,7 +336,7 @@ export class TrendAnalyzer {
         confidence,
       }
     } catch (error) {
-      console.error(`分析月份 ${month} 时出错:`, error)
+      console.error(t('trend.error.month', { month }), error)
       return null
     }
   }

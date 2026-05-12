@@ -1,6 +1,7 @@
 import chalk from 'chalk'
 import Table from 'cli-table3'
 import { RepoAnalysisRecord } from '../../../types/git-types'
+import { t } from '../../../i18n'
 
 /**
  * 多仓库对比报表打印器
@@ -27,24 +28,24 @@ export class MultiComparisonPrinter {
 
     // 如果过滤后没有记录，不显示表格
     if (filteredRecords.length === 0) {
-      console.log(chalk.yellow('⚠️ 所有仓库的提交数均为 0，无法生成对比表'))
+      console.log(chalk.yellow(`⚠️ ${t('multi.comparison.empty')}`))
       console.log()
       return
     }
 
-    console.log(chalk.cyan.bold('📊 各仓库996指数对比:'))
+    console.log(chalk.cyan.bold(`📊 ${t('multi.comparison.title')}`))
     console.log()
 
     const table = new Table({
       head: [
-        chalk.bold('序号'),
-        chalk.bold('项目名称'),
-        chalk.bold('996指数'),
-        chalk.bold('加班比例'),
-        chalk.bold('提交数'),
-        chalk.bold('参与人数'),
-        chalk.bold('起止时间'),
-        chalk.bold('状态'),
+        chalk.bold(t('multi.comparison.index')),
+        chalk.bold(t('multi.comparison.name')),
+        chalk.bold(t('multi.comparison.indexValue')),
+        chalk.bold(t('multi.comparison.ratio')),
+        chalk.bold(t('multi.comparison.commits')),
+        chalk.bold(t('multi.comparison.contributors')),
+        chalk.bold(t('multi.comparison.range')),
+        chalk.bold(t('multi.comparison.status')),
       ],
       colWidths: [8, 25, 12, 12, 10, 10, 24, 10],
       wordWrap: true,
@@ -101,13 +102,13 @@ export class MultiComparisonPrinter {
     const failedCount = filteredRecords.length - successCount
     const filteredOutCount = records.length - filteredRecords.length
 
-    console.log(chalk.blue('统计信息:'))
-    console.log(`  成功分析: ${chalk.green(successCount)} 个仓库`)
+    console.log(chalk.blue(t('multi.comparison.stats')))
+    console.log(`  ${t('multi.comparison.success', { count: chalk.green(successCount) })}`)
     if (failedCount > 0) {
-      console.log(`  分析失败: ${chalk.red(failedCount)} 个仓库`)
+      console.log(`  ${t('multi.comparison.failed', { count: chalk.red(failedCount) })}`)
     }
     if (filteredOutCount > 0) {
-      console.log(`  已过滤（提交数为0）: ${chalk.gray(filteredOutCount)} 个仓库`)
+      console.log(`  ${t('multi.comparison.filtered', { count: chalk.gray(filteredOutCount) })}`)
     }
 
     // 找出加班最严重和最轻松的仓库
@@ -117,9 +118,17 @@ export class MultiComparisonPrinter {
       const minRecord = successfulRecords.reduce((min, r) => (r.result.index996 < min.result.index996 ? r : min))
 
       console.log()
-      console.log(`  加班最严重: ${chalk.red(maxRecord.repo.name)} (996指数: ${maxRecord.result.index996.toFixed(1)})`)
       console.log(
-        `  工作最轻松: ${chalk.green(minRecord.repo.name)} (996指数: ${minRecord.result.index996.toFixed(1)})`
+        `  ${t('multi.comparison.max', {
+          name: chalk.red(maxRecord.repo.name),
+          index: maxRecord.result.index996.toFixed(1),
+        })}`
+      )
+      console.log(
+        `  ${t('multi.comparison.min', {
+          name: chalk.green(minRecord.repo.name),
+          index: minRecord.result.index996.toFixed(1),
+        })}`
       )
     }
 
@@ -159,10 +168,10 @@ export class MultiComparisonPrinter {
       return '-'
     }
     if (!firstDate) {
-      return `至 ${lastDate}`
+      return t('multi.comparison.until', { date: lastDate || '' })
     }
     if (!lastDate) {
-      return `${firstDate} 至今`
+      return t('multi.comparison.sinceToday', { date: firstDate })
     }
 
     // 如果是同一天，只显示一个日期

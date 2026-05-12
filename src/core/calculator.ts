@@ -1,3 +1,4 @@
+import { IndexDescriptionKey } from '../i18n'
 import { TimeCount, WorkTimeData, Result996 } from '../types/git-types'
 
 /**
@@ -55,11 +56,11 @@ export function calculate996Index(data: WorkTimeData): Result996 {
   const index996 = overTimeRadio * 3
 
   // 生成分析文字
-  const index996Str = generateDescription(index996)
+  const index996DescriptionKey = generateDescriptionKey(index996)
 
   return {
     index996,
-    index996Str,
+    index996DescriptionKey,
     overTimeRadio,
   }
 }
@@ -68,14 +69,14 @@ export function calculate996Index(data: WorkTimeData): Result996 {
  * 生成 996 指数分析文字
  * 使用统一的分析体系
  */
-function generateDescription(index996: number): string {
-  if (index996 <= 0) return '非常健康，是理想的项目情况'
-  if (index996 <= 21) return '很健康，加班非常少'
-  if (index996 <= 48) return '还行，偶尔加班，能接受'
-  if (index996 <= 63) return '较差，加班文化比较严重'
-  if (index996 <= 100) return '很差，接近996的程度'
-  if (index996 <= 130) return '非常差，加班文化严重'
-  return '加班文化非常严重，福报已经修满了'
+function generateDescriptionKey(index996: number): IndexDescriptionKey {
+  if (index996 <= 0) return 'ideal'
+  if (index996 <= 21) return 'healthy'
+  if (index996 <= 48) return 'ok'
+  if (index996 <= 63) return 'poor'
+  if (index996 <= 100) return 'bad'
+  if (index996 <= 130) return 'veryBad'
+  return 'extreme'
 }
 
 /**

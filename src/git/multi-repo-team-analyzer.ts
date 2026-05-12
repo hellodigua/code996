@@ -6,6 +6,7 @@ import {
   DailyCommitTime,
 } from './collectors/user-pattern-collector'
 import { UserAnalyzer } from '../core/user-analyzer'
+import { t } from '../i18n'
 
 /**
  * 聚合的贡献者信息（跨多个仓库）
@@ -47,7 +48,7 @@ export class MultiRepoTeamAnalyzer {
       .slice(0, maxUsers)
 
     if (coreContributors.length < 2) {
-      console.log(`\n  核心贡献者数量不足（${coreContributors.length}人），跳过团队分析\n`)
+      console.log(`\n  ${t('team.multi.insufficient', { count: coreContributors.length })}\n`)
       return null
     }
 
@@ -96,7 +97,7 @@ export class MultiRepoTeamAnalyzer {
         }
       } catch (error) {
         // 跳过无法访问的仓库
-        console.error(`⚠️  无法访问仓库 ${repoPath}:`, error)
+        console.error(t('team.multi.repoAccess', { path: repoPath }), error)
       }
     }
 
@@ -154,7 +155,12 @@ export class MultiRepoTeamAnalyzer {
           allDailyLatestCommits.push(...latestCommits)
         } catch (error) {
           // 跳过该仓库
-          console.error(`⚠️  无法为用户 ${contributor.email} 采集仓库 ${repoPath} 的数据`)
+          console.error(
+            t('team.multi.userData', {
+              email: contributor.email,
+              path: repoPath,
+            })
+          )
         }
       }
 
