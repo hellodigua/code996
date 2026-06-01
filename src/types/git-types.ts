@@ -261,6 +261,47 @@ export interface AnalyzeOptions {
   maxUsers?: number // 最大分析用户数（默认30）
   cn?: boolean // 强制开启中国节假日调休模式
   lang?: string // 界面语言 (例如: en, zh-CN)
+  json?: boolean // 以 JSON 格式输出（静默终端报表）
+  md?: boolean // 以 Markdown 表格格式输出（静默终端报表）
+  output?: string | boolean // 输出文件路径（true 表示使用默认文件名，字符串为指定路径）
+}
+
+/**
+ * 结构化输出（--json / --md 模式）的统一 Schema
+ */
+export interface StructuredOutput {
+  schemaVersion: 'experimental'
+  meta: {
+    version: string
+    repos: string[]
+    since?: string
+    until?: string
+    rangeMode?: string
+    locale: string
+    options: Pick<AnalyzeOptions, 'self' | 'allTime' | 'ignoreAuthor' | 'ignoreMsg' | 'timezone' | 'halfHour'>
+  }
+  core: {
+    index996: number
+    rating: string
+    overTimeRatio: number
+    totalCommits: number
+  }
+  workTime: WorkTimeDetectionResult | null
+  hourlyDistribution: Array<{ hour: string; count: number }>
+  weekdayDistribution: Array<{ day: string; count: number }>
+  weekdayOvertime: WeekdayOvertimeDistribution | null
+  weekendOvertime: WeekendOvertimeDistribution | null
+  lateNight: LateNightAnalysis | null
+  trend: TrendAnalysisResult | null
+  team: { contributors: UserWorkPattern[] } | null
+  multiRepo: {
+    repos: Array<{
+      name: string
+      path: string
+      core: { index996: number; rating: string; overTimeRatio: number }
+      totalCommits: number
+    }>
+  } | null
 }
 
 /**
