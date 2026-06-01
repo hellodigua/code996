@@ -26,6 +26,9 @@ import {
 import { printTrendReport } from './report/trend-printer'
 import { printTeamAnalysis } from './report/printers/user-analysis-printer'
 import { t } from '../../i18n'
+import { buildMultiRepoOutput } from '../output/json-formatter'
+import { writeStructuredOutput } from '../output/file-writer'
+import { TeamAnalysis } from '../../types/git-types'
 
 /**
  * 判断是否应该启用节假日调休模式
@@ -81,6 +84,7 @@ export class MultiExecutor {
    * @param preScannedRepos 可选：已经扫描好的仓库列表（智能模式使用）
    */
   static async execute(inputDirs: string[], options: AnalyzeOptions, preScannedRepos?: RepoInfo[]): Promise<void> {
+    const isStructured = !!(options.json || options.md)
     try {
       // ========== 步骤 1: 扫描仓库 ==========
       let repos: RepoInfo[]
@@ -307,114 +311,170 @@ export class MultiExecutor {
         this.printProjectTypeComparison(repoRecords)
       }
 
-      // ========== 步骤 6: 输出汇总结果 ==========
-      console.log(chalk.cyan.bold(`📊 ${t('multi.summary.title')}`))
-      console.log()
-
-      // 显示节假日调休模式提示
-      if (shouldEnableHoliday3.enabled) {
-        console.log(chalk.blue(`🇨🇳 ${t('analyze.holiday.enabled')}`))
-        console.log(chalk.gray(`${shouldEnableHoliday3.reason}`))
-        console.log()
-      }
-
-      // 如果有开源项目，隐藏核心结果、详细分析和工作时间推测
-      if (!hasOpenSourceProject) {
-        printCoreResults(result, mergedData, options, effectiveSince, effectiveUntil)
-        printDetailedAnalysis(result, parsedData)
-        printWorkTimeSummary(parsedData)
-      }
-
-      printTimeDistribution(parsedData, options.halfHour) // 传递半小时模式参数
-      printWeekdayOvertime(parsedData)
-      printWeekendOvertime(parsedData)
-      printLateNightAnalysis(parsedData)
-
-      // ========== 步骤 7: 输出各仓库对比表 ==========
-      MultiComparisonPrinter.print(repoRecords)
-
-      // ========== 步骤 8: 月度趋势分析（默认启用） ==========
-      if (selectedRepos.length > 0) {
-        console.log()
-        const trendSpinner = ora(`📈 ${t('multi.trend.start')}`).start()
-        try {
-          // 提取所有成功分析的仓库路径
-          const successfulRepoPaths = selectedRepos
-            .filter((_, index) => repoRecords[index].status === 'success')
-            .map((repo) => repo.path)
-
-          if (successfulRepoPaths.length === 0) {
-            trendSpinner.warn(t('multi.trend.skip'))
-          } else {
-            // 使用新的多仓库汇总趋势分析方法
-            const trendResult = await TrendAnalyzer.analyzeMultiRepoTrend(
-              successfulRepoPaths,
-              effectiveSince ?? null,
-              effectiveUntil ?? null,
-              authorPattern,
-              (current, total, month) => {
-                // 实时更新进度
-                trendSpinner.text = `📈 ${t('analyze.trend.progress', { current, total, month })}`
-              },
-              options.timezone, // 传递时区过滤参数
-              shouldEnableHoliday3.enabled // 传递节假日调休模式参数
-            )
-            trendSpinner.succeed()
-            printTrendReport(trendResult)
-          }
-        } catch (error) {
-          trendSpinner.fail(t('analyze.trend.failed'))
-          console.error(chalk.red(`⚠️  ${t('analyze.trend.error')}`), (error as Error).message)
-        }
-      }
-
-      // ========== 步骤 9: 团队工作模式分析（聚合所有仓库的数据）==========
-      // 开源项目不显示团队工作模式分析
-      if (!hasOpenSourceProject && GitTeamAnalyzer.shouldAnalyzeTeam(options) && selectedRepos.length > 0) {
-        // 收集所有成功分析的仓库路径
+      if (isStructured) {
+        // 结构化输出模式：采集团队数据 + 趋势（均 silent）后序列化输出
         const successfulRepoPaths = selectedRepos
           .filter((_, index) => repoRecords[index].status === 'success')
           .map((repo) => repo.path)
 
-        if (successfulRepoPaths.length > 0) {
-          console.log()
-          console.log(chalk.gray(`💡 ${t('multi.team.aggregate', { count: successfulRepoPaths.length })}`))
-
+        let teamAnalysis: TeamAnalysis | null = null
+        if (!hasOpenSourceProject && GitTeamAnalyzer.shouldAnalyzeTeam(options) && successfulRepoPaths.length > 0) {
           try {
-            const collectOptions: GitLogOptions = {
-              path: '', // 多仓库模式下不需要单个path
+            const collectOptionsMulti: GitLogOptions = {
+              path: '',
               since: effectiveSince,
               until: effectiveUntil,
               authorPattern,
               ignoreAuthor: options.ignoreAuthor,
               ignoreMsg: options.ignoreMsg,
             }
-
             const maxUsers = options.maxUsers ? parseInt(String(options.maxUsers), 10) : 30
-            const teamAnalysis = await MultiRepoTeamAnalyzer.analyzeAggregatedTeam(
-              successfulRepoPaths,
-              collectOptions,
-              20, // minCommits（所有仓库总计≥20）
-              maxUsers,
-              result.index996 // 整体996指数
-            )
-
-            if (teamAnalysis) {
-              printTeamAnalysis(teamAnalysis)
-            }
-          } catch (error) {
-            console.log(chalk.yellow(`⚠️  ${t('analyze.team.failed')}`), (error as Error).message)
+            teamAnalysis =
+              (await MultiRepoTeamAnalyzer.analyzeAggregatedTeam(
+                successfulRepoPaths,
+                collectOptionsMulti,
+                20,
+                maxUsers,
+                result.index996
+              )) ?? null
+          } catch {
+            // 静默忽略
           }
         }
-      }
 
-      // ========== 步骤 10: 检测跨时区并显示警告（如果未使用 --timezone 过滤）==========
-      if (mergedData.timezoneData && !options.timezone) {
-        const tzAnalysis = TimezoneAnalyzer.analyzeTimezone(mergedData.timezoneData, mergedData.byHour)
-        if (tzAnalysis.isCrossTimezone) {
+        let trendResult = null
+        if (successfulRepoPaths.length > 0) {
+          try {
+            trendResult = await TrendAnalyzer.analyzeMultiRepoTrend(
+              successfulRepoPaths,
+              effectiveSince ?? null,
+              effectiveUntil ?? null,
+              authorPattern,
+              () => {},
+              options.timezone,
+              shouldEnableHoliday3.enabled
+            )
+          } catch {
+            // 静默忽略
+          }
+        }
+
+        const payload = buildMultiRepoOutput({
+          result,
+          parsedData,
+          mergedData,
+          repoRecords,
+          teamAnalysis,
+          trendResult,
+          options,
+          since: effectiveSince,
+          until: effectiveUntil,
+        })
+        await writeStructuredOutput(payload, options)
+      } else {
+        // ========== 步骤 6: 输出汇总结果 ==========
+        console.log(chalk.cyan.bold(`📊 ${t('multi.summary.title')}`))
+        console.log()
+
+        // 显示节假日调休模式提示
+        if (shouldEnableHoliday3.enabled) {
+          console.log(chalk.blue(`🇨🇳 ${t('analyze.holiday.enabled')}`))
+          console.log(chalk.gray(`${shouldEnableHoliday3.reason}`))
           console.log()
-          const warningMessage = TimezoneAnalyzer.generateWarningMessage(tzAnalysis)
-          console.log(chalk.yellow(warningMessage))
+        }
+
+        // 如果有开源项目，隐藏核心结果、详细分析和工作时间推测
+        if (!hasOpenSourceProject) {
+          printCoreResults(result, mergedData, options, effectiveSince, effectiveUntil)
+          printDetailedAnalysis(result, parsedData)
+          printWorkTimeSummary(parsedData)
+        }
+
+        printTimeDistribution(parsedData, options.halfHour)
+        printWeekdayOvertime(parsedData)
+        printWeekendOvertime(parsedData)
+        printLateNightAnalysis(parsedData)
+
+        // ========== 步骤 7: 输出各仓库对比表 ==========
+        MultiComparisonPrinter.print(repoRecords)
+
+        // ========== 步骤 8: 月度趋势分析 ==========
+        if (selectedRepos.length > 0) {
+          console.log()
+          const trendSpinner = ora(`📈 ${t('multi.trend.start')}`).start()
+          try {
+            const successfulRepoPaths = selectedRepos
+              .filter((_, index) => repoRecords[index].status === 'success')
+              .map((repo) => repo.path)
+
+            if (successfulRepoPaths.length === 0) {
+              trendSpinner.warn(t('multi.trend.skip'))
+            } else {
+              const trendResult = await TrendAnalyzer.analyzeMultiRepoTrend(
+                successfulRepoPaths,
+                effectiveSince ?? null,
+                effectiveUntil ?? null,
+                authorPattern,
+                (current, total, month) => {
+                  trendSpinner.text = `📈 ${t('analyze.trend.progress', { current, total, month })}`
+                },
+                options.timezone,
+                shouldEnableHoliday3.enabled
+              )
+              trendSpinner.succeed()
+              printTrendReport(trendResult)
+            }
+          } catch (error) {
+            trendSpinner.fail(t('analyze.trend.failed'))
+            console.error(chalk.red(`⚠️  ${t('analyze.trend.error')}`), (error as Error).message)
+          }
+        }
+
+        // ========== 步骤 9: 团队工作模式分析 ==========
+        if (!hasOpenSourceProject && GitTeamAnalyzer.shouldAnalyzeTeam(options) && selectedRepos.length > 0) {
+          const successfulRepoPaths = selectedRepos
+            .filter((_, index) => repoRecords[index].status === 'success')
+            .map((repo) => repo.path)
+
+          if (successfulRepoPaths.length > 0) {
+            console.log()
+            console.log(chalk.gray(`💡 ${t('multi.team.aggregate', { count: successfulRepoPaths.length })}`))
+
+            try {
+              const collectOptions: GitLogOptions = {
+                path: '',
+                since: effectiveSince,
+                until: effectiveUntil,
+                authorPattern,
+                ignoreAuthor: options.ignoreAuthor,
+                ignoreMsg: options.ignoreMsg,
+              }
+
+              const maxUsers = options.maxUsers ? parseInt(String(options.maxUsers), 10) : 30
+              const teamAnalysis = await MultiRepoTeamAnalyzer.analyzeAggregatedTeam(
+                successfulRepoPaths,
+                collectOptions,
+                20,
+                maxUsers,
+                result.index996
+              )
+
+              if (teamAnalysis) {
+                printTeamAnalysis(teamAnalysis)
+              }
+            } catch (error) {
+              console.log(chalk.yellow(`⚠️  ${t('analyze.team.failed')}`), (error as Error).message)
+            }
+          }
+        }
+
+        // ========== 步骤 10: 检测跨时区并显示警告 ==========
+        if (mergedData.timezoneData && !options.timezone) {
+          const tzAnalysis = TimezoneAnalyzer.analyzeTimezone(mergedData.timezoneData, mergedData.byHour)
+          if (tzAnalysis.isCrossTimezone) {
+            console.log()
+            console.log(chalk.yellow(TimezoneAnalyzer.generateWarningMessage(tzAnalysis)))
+          }
         }
       }
     } catch (error) {

@@ -54,6 +54,9 @@ export class CLIManager {
       .option('--skip-user-analysis', t('cli.option.skipUserAnalysis'))
       .option('--max-users <number>', t('cli.option.maxUsers'), '30')
       .option('--lang <locale>', t('cli.option.lang'))
+      .option('--json', t('cli.option.json'))
+      .option('--md', t('cli.option.md'))
+      .option('--output [path]', t('cli.option.output'))
       .action(async (paths: string[], options: AnalyzeOptions, command: Command) => {
         if (options.lang) {
           initializeLocale(['--lang', options.lang])
@@ -156,12 +159,10 @@ export class CLIManager {
 
   /** 处理分析流程的执行逻辑，targetPath 为已校验的 Git 根目录 */
   private async handleAnalyze(targetPath: string, options: AnalyzeOptions): Promise<void> {
-    // 默认以当前工作目录作为分析目标，保持使用体验简单
-    // 导入analyze命令并执行
     const mergedOptions = this.mergeGlobalOptions(options)
     const { AnalyzeExecutor } = await import('./commands/analyze')
     await AnalyzeExecutor.execute(targetPath, mergedOptions)
-    printGlobalNotices()
+    if (!mergedOptions.json && !mergedOptions.md) printGlobalNotices()
   }
 
   /** 处理多仓库分析流程的执行逻辑 */
@@ -169,7 +170,7 @@ export class CLIManager {
     const mergedOptions = this.mergeGlobalOptions(options)
     const { MultiExecutor } = await import('./commands/multi')
     await MultiExecutor.execute(dirs, mergedOptions, preScannedRepos)
-    printGlobalNotices()
+    if (!mergedOptions.json && !mergedOptions.md) printGlobalNotices()
   }
 
   /** 合并全局选项（解决子命令无法直接读取根命令参数的问题） */
@@ -188,6 +189,9 @@ export class CLIManager {
       ignoreAuthor: options.ignoreAuthor ?? globalOpts.ignoreAuthor,
       ignoreMsg: options.ignoreMsg ?? globalOpts.ignoreMsg,
       timezone: options.timezone ?? globalOpts.timezone,
+      json: options.json ?? globalOpts.json,
+      md: options.md ?? globalOpts.md,
+      output: options.output ?? globalOpts.output,
     }
   }
 

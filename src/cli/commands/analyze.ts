@@ -23,6 +23,9 @@ import { printTrendReport } from './report/trend-printer'
 import { printTeamAnalysis } from './report/printers/user-analysis-printer'
 import { ensureCommitSamples } from '../common/commit-guard'
 import { t } from '../../i18n'
+import { buildSingleRepoOutput } from '../output/json-formatter'
+import { writeStructuredOutput } from '../output/file-writer'
+import { TeamAnalysis } from '../../types/git-types'
 
 type TimeRangeMode = 'all-time' | 'custom' | 'auto-last-commit' | 'fallback'
 
@@ -35,6 +38,7 @@ interface AuthorFilterInfo {
 export class AnalyzeExecutor {
   /** 执行分析的主流程 */
   static async execute(path: string, options: AnalyzeOptions): Promise<void> {
+    const isStructured = !!(options.json || options.md)
     try {
       // 重置 WorkdayChecker 以应用新的配置
       resetWorkdayChecker()
@@ -50,46 +54,50 @@ export class AnalyzeExecutor {
       } = await resolveTimeRange({ collector, path, options })
 
       // 显示分析开始信息
-      console.log(chalk.blue(`🔍 ${t('analyze.repo')}`), path || process.cwd())
-      switch (rangeMode) {
-        case 'all-time':
-          console.log(chalk.blue(`📅 ${t('analyze.range')}`), t('analyze.range.all'))
-          break
-        case 'custom':
-          console.log(
-            chalk.blue(`📅 ${t('analyze.range')}`),
-            t('analyze.range.custom', {
-              since: effectiveSince || '',
-              until: effectiveUntil || '',
-            })
-          )
-          break
-        case 'auto-last-commit':
-          console.log(
-            chalk.blue(`📅 ${t('analyze.range')}`),
-            t('analyze.range.auto', {
-              since: effectiveSince || '',
-              until: effectiveUntil || '',
-              note: rangeNote || '',
-            })
-          )
-          break
-        default:
-          console.log(
-            chalk.blue(`📅 ${t('analyze.range')}`),
-            t('analyze.range.fallback', {
-              since: effectiveSince || '',
-              until: effectiveUntil || '',
-            })
-          )
+      if (!isStructured) console.log(chalk.blue(`🔍 ${t('analyze.repo')}`), path || process.cwd())
+      if (!isStructured) {
+        switch (rangeMode) {
+          case 'all-time':
+            console.log(chalk.blue(`📅 ${t('analyze.range')}`), t('analyze.range.all'))
+            break
+          case 'custom':
+            console.log(
+              chalk.blue(`📅 ${t('analyze.range')}`),
+              t('analyze.range.custom', {
+                since: effectiveSince || '',
+                until: effectiveUntil || '',
+              })
+            )
+            break
+          case 'auto-last-commit':
+            console.log(
+              chalk.blue(`📅 ${t('analyze.range')}`),
+              t('analyze.range.auto', {
+                since: effectiveSince || '',
+                until: effectiveUntil || '',
+                note: rangeNote || '',
+              })
+            )
+            break
+          default:
+            console.log(
+              chalk.blue(`📅 ${t('analyze.range')}`),
+              t('analyze.range.fallback', {
+                since: effectiveSince || '',
+                until: effectiveUntil || '',
+              })
+            )
+        }
+        console.log()
       }
-      console.log()
 
       let authorFilter: AuthorFilterInfo | undefined
       if (options.self) {
         authorFilter = await resolveAuthorFilter(collector, path)
-        console.log(chalk.blue(`🙋 ${t('analyze.authorFilter')}`), authorFilter.displayLabel)
-        console.log()
+        if (!isStructured) {
+          console.log(chalk.blue(`🙋 ${t('analyze.authorFilter')}`), authorFilter.displayLabel)
+          console.log()
+        }
       }
 
       // 构建统一的 Git 采集参数，保证所有步骤使用一致的过滤条件
@@ -100,17 +108,20 @@ export class AnalyzeExecutor {
         authorPattern: authorFilter?.pattern,
         ignoreAuthor: options.ignoreAuthor,
         ignoreMsg: options.ignoreMsg,
-        timezone: options.timezone, // 添加时区过滤参数
+        timezone: options.timezone,
+        silent: isStructured,
       }
 
       // 在正式分析前，先检查 commit 样本量是否达到最低要求
-      const hasEnoughCommits = await ensureCommitSamples(collector, collectOptions, 50, t('guard.scene.analysis'))
+      const hasEnoughCommits = await ensureCommitSamples(collector, collectOptions, 50, t('guard.scene.analysis'), isStructured)
       if (!hasEnoughCommits) {
         return
       }
 
-      // 创建进度指示器
-      const spinner = ora(`📦 ${t('analyze.spinner.start')}`).start()
+      // 创建进度指示器（结构化模式下静默）
+      const spinner = isStructured
+        ? { text: '', succeed: (_?: string) => {}, fail: (m?: string) => { if (m) process.stderr.write(m + '\n') }, render: () => {} }
+        : ora(`📦 ${t('analyze.spinner.start')}`).start()
 
       // 步骤1: 数据采集（时区过滤已在采集阶段完成）
       const rawData = await collector.collect(collectOptions)
@@ -144,102 +155,120 @@ export class AnalyzeExecutor {
       const result = GitParser.calculate996Index(parsedData)
 
       spinner.succeed(t('analyze.spinner.done'))
-      console.log()
-
-      // 显示时区过滤提示（如果有）
-      if (options.timezone) {
-        console.log(chalk.blue(`⚙️  ${t('analyze.timezoneFilter')}`))
-        console.log(chalk.gray(t('analyze.timezoneTarget', { timezone: options.timezone })))
-        console.log(chalk.gray(t('analyze.timezoneCommits', { count: rawData.totalCommits })))
-        console.log()
-      }
+      if (!isStructured) console.log()
 
       // ========== 项目类型识别 ==========
       const classification = ProjectClassifier.classify(rawData, parsedData)
-      if (classification.projectType === ProjectType.OPEN_SOURCE) {
-        printOpenSourceProjectWarning(classification)
-        console.log()
-      }
-
-      // ========== 显示节假日调休模式提示 ==========
-      if (shouldEnableHoliday.enabled) {
-        console.log(chalk.blue(`🇨🇳 ${t('analyze.holiday.enabled')}`))
-        console.log(chalk.gray(`${shouldEnableHoliday.reason}`))
-        console.log()
-      }
-
-      // 若未指定时间范围，尝试回填实际的首尾提交时间
-      let actualSince: string | undefined
-      let actualUntil: string | undefined
-
-      if (!options.since && !options.until && !options.allTime) {
-        try {
-          actualSince = await collector.getFirstCommitDate(collectOptions)
-          actualUntil = await collector.getLastCommitDate(collectOptions)
-        } catch {
-          console.log(chalk.yellow(`⚠️ ${t('analyze.actualRangeFallback')}`))
-        }
-      }
-
-      printResults(result, parsedData, rawData, options, effectiveSince, effectiveUntil, rangeMode, classification)
-
-      // 判断是否为开源项目
       const isOpenSource = classification.projectType === ProjectType.OPEN_SOURCE
 
-      // ========== 步骤 4: 月度趋势分析 ==========
-      // 只有在分析时间跨度超过1个月时才显示趋势分析
-      if (effectiveSince && effectiveUntil && shouldShowTrendAnalysis(effectiveSince, effectiveUntil)) {
-        console.log()
-        const trendSpinner = ora(`📈 ${t('analyze.trend.start')}`).start()
-        try {
-          const trendResult = await TrendAnalyzer.analyzeTrend(
-            path,
-            effectiveSince,
-            effectiveUntil,
-            authorFilter?.pattern,
-            (current, total, month) => {
-              trendSpinner.text = `📈 ${t('analyze.trend.progress', { current, total, month })}`
-            },
-            options.timezone, // 传递时区过滤参数
-            shouldEnableHoliday.enabled // 传递节假日调休模式参数
-          )
-          trendSpinner.succeed()
-          printTrendReport(trendResult)
-        } catch (error) {
-          trendSpinner.fail(t('analyze.trend.failed'))
-          console.error(chalk.red(`⚠️  ${t('analyze.trend.error')}`), (error as Error).message)
-        }
-      }
-
-      // ========== 步骤 5: 团队工作模式分析 ==========
-      // 开源项目不显示团队工作模式分析
-      if (!isOpenSource && GitTeamAnalyzer.shouldAnalyzeTeam(options)) {
-        try {
-          const maxUsers = options.maxUsers ? parseInt(String(options.maxUsers), 10) : 30
-          const teamAnalysis = await GitTeamAnalyzer.analyzeTeam(
-            collectOptions,
-            result.index996,
-            20, // minCommits
-            maxUsers,
-            false // silent
-          )
-
-          if (teamAnalysis) {
-            printTeamAnalysis(teamAnalysis)
-          }
-        } catch (error) {
-          console.log(chalk.yellow(`⚠️  ${t('analyze.team.failed')}`), (error as Error).message)
-        }
-      }
-
-      // ========== 步骤 6: 检测跨时区并显示警告（如果未使用 --timezone 过滤）==========
-      if (rawData.timezoneData && !options.timezone) {
-        const tzAnalysis = TimezoneAnalyzer.analyzeTimezone(rawData.timezoneData, rawData.byHour)
-        if (tzAnalysis.isCrossTimezone) {
+      if (!isStructured) {
+        // 显示时区过滤提示（如果有）
+        if (options.timezone) {
+          console.log(chalk.blue(`⚙️  ${t('analyze.timezoneFilter')}`))
+          console.log(chalk.gray(t('analyze.timezoneTarget', { timezone: options.timezone })))
+          console.log(chalk.gray(t('analyze.timezoneCommits', { count: rawData.totalCommits })))
           console.log()
-          const warningMessage = TimezoneAnalyzer.generateWarningMessage(tzAnalysis)
-          console.log(chalk.yellow(warningMessage))
         }
+
+        if (isOpenSource) {
+          printOpenSourceProjectWarning(classification)
+          console.log()
+        }
+
+        // 显示节假日调休模式提示
+        if (shouldEnableHoliday.enabled) {
+          console.log(chalk.blue(`🇨🇳 ${t('analyze.holiday.enabled')}`))
+          console.log(chalk.gray(`${shouldEnableHoliday.reason}`))
+          console.log()
+        }
+
+        printResults(result, parsedData, rawData, options, effectiveSince, effectiveUntil, rangeMode, classification)
+
+        // 步骤 4: 月度趋势分析
+        if (effectiveSince && effectiveUntil && shouldShowTrendAnalysis(effectiveSince, effectiveUntil)) {
+          console.log()
+          const trendSpinner = ora(`📈 ${t('analyze.trend.start')}`).start()
+          try {
+            const trendResult = await TrendAnalyzer.analyzeTrend(
+              path,
+              effectiveSince,
+              effectiveUntil,
+              authorFilter?.pattern,
+              (current, total, month) => {
+                trendSpinner.text = `📈 ${t('analyze.trend.progress', { current, total, month })}`
+              },
+              options.timezone,
+              shouldEnableHoliday.enabled
+            )
+            trendSpinner.succeed()
+            printTrendReport(trendResult)
+          } catch (error) {
+            trendSpinner.fail(t('analyze.trend.failed'))
+            console.error(chalk.red(`⚠️  ${t('analyze.trend.error')}`), (error as Error).message)
+          }
+        }
+
+        // 步骤 5: 团队工作模式分析
+        if (!isOpenSource && GitTeamAnalyzer.shouldAnalyzeTeam(options)) {
+          try {
+            const maxUsers = options.maxUsers ? parseInt(String(options.maxUsers), 10) : 30
+            const teamAnalysis = await GitTeamAnalyzer.analyzeTeam(collectOptions, result.index996, 20, maxUsers, false)
+            if (teamAnalysis) printTeamAnalysis(teamAnalysis)
+          } catch (error) {
+            console.log(chalk.yellow(`⚠️  ${t('analyze.team.failed')}`), (error as Error).message)
+          }
+        }
+
+        // 步骤 6: 跨时区警告
+        if (rawData.timezoneData && !options.timezone) {
+          const tzAnalysis = TimezoneAnalyzer.analyzeTimezone(rawData.timezoneData, rawData.byHour)
+          if (tzAnalysis.isCrossTimezone) {
+            console.log()
+            console.log(chalk.yellow(TimezoneAnalyzer.generateWarningMessage(tzAnalysis)))
+          }
+        }
+      } else {
+        // 结构化输出模式：采集团队数据 + 趋势（均 silent）后序列化输出
+        let teamAnalysis: TeamAnalysis | null = null
+        if (!isOpenSource && GitTeamAnalyzer.shouldAnalyzeTeam(options)) {
+          try {
+            const maxUsers = options.maxUsers ? parseInt(String(options.maxUsers), 10) : 30
+            teamAnalysis = (await GitTeamAnalyzer.analyzeTeam(collectOptions, result.index996, 20, maxUsers, true)) ?? null
+          } catch {
+            // 静默忽略
+          }
+        }
+
+        let trendResult = null
+        if (effectiveSince && effectiveUntil && shouldShowTrendAnalysis(effectiveSince, effectiveUntil)) {
+          try {
+            trendResult = await TrendAnalyzer.analyzeTrend(
+              path,
+              effectiveSince,
+              effectiveUntil,
+              collectOptions.authorPattern,
+              () => {},
+              options.timezone,
+              shouldEnableHoliday.enabled
+            )
+          } catch {
+            // 静默忽略
+          }
+        }
+
+        const payload = buildSingleRepoOutput({
+          result,
+          parsedData,
+          rawData,
+          teamAnalysis,
+          trendResult,
+          options,
+          since: effectiveSince,
+          until: effectiveUntil,
+          rangeMode,
+          path,
+        })
+        await writeStructuredOutput(payload, options)
       }
     } catch (error) {
       console.error(chalk.red(`❌ ${t('analyze.failed')}`), (error as Error).message)
