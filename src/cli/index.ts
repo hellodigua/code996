@@ -62,6 +62,11 @@ export class CLIManager {
           initializeLocale(['--lang', options.lang])
         }
 
+        if (options.json && options.md) {
+          command.error(t('cli.error.conflictingOutputFormats'))
+          return
+        }
+
         const mergedOptions = this.mergeGlobalOptions(options)
 
         // 智能检测模式

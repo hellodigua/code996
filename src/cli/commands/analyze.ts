@@ -25,6 +25,7 @@ import { ensureCommitSamples } from '../common/commit-guard'
 import { t } from '../../i18n'
 import { buildSingleRepoOutput } from '../output/json-formatter'
 import { writeStructuredOutput } from '../output/file-writer'
+import { createSpinner } from '../output/spinner'
 import { TeamAnalysis } from '../../types/git-types'
 
 type TimeRangeMode = 'all-time' | 'custom' | 'auto-last-commit' | 'fallback'
@@ -119,9 +120,8 @@ export class AnalyzeExecutor {
       }
 
       // 创建进度指示器（结构化模式下静默）
-      const spinner = isStructured
-        ? { text: '', succeed: (_?: string) => {}, fail: (m?: string) => { if (m) process.stderr.write(m + '\n') }, render: () => {} }
-        : ora(`📦 ${t('analyze.spinner.start')}`).start()
+      const spinner = createSpinner(`📦 ${t('analyze.spinner.start')}`, isStructured)
+      if (!isStructured) (spinner as ReturnType<typeof ora>).start()
 
       // 步骤1: 数据采集（时区过滤已在采集阶段完成）
       const rawData = await collector.collect(collectOptions)

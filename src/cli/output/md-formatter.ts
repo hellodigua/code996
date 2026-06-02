@@ -1,5 +1,19 @@
 import { StructuredOutput } from '../../types/git-types'
 
+const WEEKDAY_LABELS: Record<string, string> = {
+  monday: '星期一',
+  tuesday: '星期二',
+  wednesday: '星期三',
+  thursday: '星期四',
+  friday: '星期五',
+  saturday: '星期六',
+  sunday: '星期日',
+}
+
+function formatWeekday(day: string): string {
+  return WEEKDAY_LABELS[day] ?? day
+}
+
 function mdTable(headers: string[], rows: string[][]): string {
   const separator = headers.map(() => '---').join(' | ')
   const headerRow = headers.join(' | ')
@@ -57,7 +71,7 @@ export function buildMarkdown(data: StructuredOutput): string {
   // 工作日分布
   if (data.weekdayDistribution.length) {
     sections.push('## 工作日提交分布\n')
-    sections.push(mdTable(['星期', '提交数'], data.weekdayDistribution.map((d) => [d.day, String(d.count)])))
+    sections.push(mdTable(['星期', '提交数'], data.weekdayDistribution.map((d) => [formatWeekday(d.day), String(d.count)])))
     sections.push('')
   }
 

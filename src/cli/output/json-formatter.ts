@@ -36,6 +36,7 @@ interface MultiRepoContext {
   options: AnalyzeOptions
   since?: string
   until?: string
+  rangeMode?: string
 }
 
 function buildMeta(
@@ -72,8 +73,12 @@ function buildCore(result: Result996, totalCommits: number): StructuredOutput['c
   }
 }
 
-function buildHourlyDistribution(parsedData: ParsedGitData): StructuredOutput['hourlyDistribution'] {
-  // hourData 是 48 个半小时点（"00:00", "00:30", ...），聚合为 24 整点
+function buildHourlyDistribution(parsedData: ParsedGitData, halfHour?: boolean): StructuredOutput['hourlyDistribution'] {
+  if (halfHour) {
+    // 保留 48 个半小时点，time 格式已是 "09:30"
+    return parsedData.hourData.map(({ time, count }) => ({ hour: time, count }))
+  }
+  // 默认：聚合为 24 整点
   const hourMap = new Map<string, number>()
   for (const { time, count } of parsedData.hourData) {
     const hour = time.slice(0, 2)
@@ -85,7 +90,6 @@ function buildHourlyDistribution(parsedData: ParsedGitData): StructuredOutput['h
 }
 
 function buildWeekdayDistribution(parsedData: ParsedGitData): StructuredOutput['weekdayDistribution'] {
-  // dayData 索引 0=周一, 1=周二, ..., 6=周日
   return parsedData.dayData.map(({ count }, idx) => ({
     day: DAY_NAMES[idx] ?? `day${idx}`,
     count,
@@ -106,6 +110,7 @@ function buildMultiRepo(repoRecords: RepoAnalysisRecord[]): StructuredOutput['mu
       core: { index996: r.result.index996, rating: r.result.index996DescriptionKey, overTimeRatio: r.result.overTimeRadio },
       totalCommits: r.data.totalCommits,
     }))
+  if (repos.length === 0) return null
   return { repos }
 }
 
@@ -116,7 +121,7 @@ export function buildSingleRepoOutput(ctx: SingleRepoContext): StructuredOutput 
     meta: buildMeta([path], options, since, until, rangeMode),
     core: buildCore(result, rawData.totalCommits),
     workTime: parsedData.detectedWorkTime ?? null,
-    hourlyDistribution: buildHourlyDistribution(parsedData),
+    hourlyDistribution: buildHourlyDistribution(parsedData, options.halfHour),
     weekdayDistribution: buildWeekdayDistribution(parsedData),
     weekdayOvertime: parsedData.weekdayOvertime ?? null,
     weekendOvertime: parsedData.weekendOvertime ?? null,
@@ -128,14 +133,14 @@ export function buildSingleRepoOutput(ctx: SingleRepoContext): StructuredOutput 
 }
 
 export function buildMultiRepoOutput(ctx: MultiRepoContext): StructuredOutput {
-  const { result, parsedData, mergedData, repoRecords, teamAnalysis, trendResult, options, since, until } = ctx
+  const { result, parsedData, mergedData, repoRecords, teamAnalysis, trendResult, options, since, until, rangeMode } = ctx
   const repoPaths = repoRecords.filter((r) => r.status === 'success').map((r) => r.repo.path)
   return {
     schemaVersion: 'experimental',
-    meta: buildMeta(repoPaths, options, since, until, 'custom'),
+    meta: buildMeta(repoPaths, options, since, until, rangeMode),
     core: buildCore(result, mergedData.totalCommits),
     workTime: parsedData.detectedWorkTime ?? null,
-    hourlyDistribution: buildHourlyDistribution(parsedData),
+    hourlyDistribution: buildHourlyDistribution(parsedData, options.halfHour),
     weekdayDistribution: buildWeekdayDistribution(parsedData),
     weekdayOvertime: parsedData.weekdayOvertime ?? null,
     weekendOvertime: parsedData.weekendOvertime ?? null,
