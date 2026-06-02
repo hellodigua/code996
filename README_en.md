@@ -79,21 +79,56 @@ code996
 
 ## 🤖 Generate Reports in Claude Code
 
-Install the skill (one-time setup):
+Works with [Claude Code](https://claude.ai/code) to generate a narrative team work-intensity report in one sentence — not just numbers, but what the overtime was for, who's burning out, and how to improve.
+
+### Step 1: Install the Skill
+
+Run this command in your terminal (requires Node.js ≥ 16):
 
 ```bash
-cp -r skills/code996-report ~/.claude/skills/
-# Or project-level install:
-cp -r skills/code996-report .claude/skills/
+npx degit hellodigua/code996/skills/code996-report ~/.claude/skills/code996-report
 ```
 
-Then tell Claude Code:
+Restart Claude Code after installing — no other configuration needed.
 
-> "Use code996 to analyze this team's work intensity and generate a report"
+### Step 2: Go to Your Repo, Open Claude Code
 
-Claude will automatically collect data, analyze overtime commit semantics, ask about team context, and produce a shareable narrative report (conversation / Markdown / HTML output supported).
+```bash
+cd /path/to/your/project   # Navigate to the project you want to analyze
+claude                      # Start Claude Code
+```
 
-**Prerequisites**: Node.js ≥ 16 (for npx)
+### Step 3: Send This Prompt to Claude
+
+```
+Analyze the team work intensity of the current project using code996 and generate a 996 report
+```
+
+**Claude will automatically:**
+1. Detect git repositories in the current directory (interactively ask which ones to analyze if multiple found)
+2. Ask 3 background questions (team size, flexible hours or fixed schedule, agreed working hours)
+3. Run code996 to collect structured data
+4. Analyze overtime commits to summarize "what the overtime was for"
+5. Ask for the output format (conversation / Markdown file / HTML file)
+6. Generate the full report
+
+### Example Prompts
+
+```
+# Analyze current directory (past year)
+Analyze the team work intensity of the current project using code996 and generate a 996 report
+
+# Analyze a specific year
+Analyze our team's overtime situation for 2025 and generate a report
+
+# Compare multiple projects
+Analyze and compare the overtime intensity of /workspace/proj-a and /workspace/proj-b
+
+# Specify output format
+Analyze this repo's 996 situation with code996, save the report as an HTML file
+```
+
+**Prerequisites**: Node.js ≥ 16, [Claude Code](https://claude.ai/code)
 
 ## 🤖 Smart Analysis Mode
 

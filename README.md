@@ -81,21 +81,56 @@ code996
 
 ## 🤖 在 Claude Code 中生成分析报告
 
-安装 skill（一次性操作）：
+配合 [Claude Code](https://claude.ai/code) 使用，可一句话生成一份叙事化的团队工作强度报告——不只是数字，还有加班在干什么、谁最累、怎么改进。
+
+### 第一步：安装 Skill
+
+在终端执行以下命令，一键下载并安装（需要 Node.js ≥ 16）：
 
 ```bash
-cp -r skills/code996-report ~/.claude/skills/
-# 或项目级安装：
-cp -r skills/code996-report .claude/skills/
+npx degit hellodigua/code996/skills/code996-report ~/.claude/skills/code996-report
 ```
 
-然后在 Claude Code 对话中说：
+安装后重启 Claude Code 即生效，无需其他配置。
 
-> 「用 code996 分析这个团队的工作强度并生成报告」
+### 第二步：进入仓库目录，打开 Claude Code
 
-Claude 会自动采集数据、分析加班语义、询问团队背景，最终生成可分享的叙事化分析报告（支持对话输出 / Markdown / HTML）。
+```bash
+cd /path/to/your/project   # 进入你想分析的项目目录
+claude                      # 启动 Claude Code
+```
 
-**前置条件**：Node.js ≥ 16（用于 npx）
+### 第三步：复制以下提示词，发给 Claude
+
+```
+帮我用 code996 分析当前项目团队的工作强度，生成一份 996 分析报告
+```
+
+**Claude 接下来会自动：**
+1. 检测当前目录的 git 仓库（多仓库时交互式询问你选哪些）
+2. 询问 3 个团队背景问题（规模、是否弹性制、约定工时）
+3. 调用 code996 采集数据
+4. 分析加班时段的 commit，归纳「加班在干什么」
+5. 询问报告输出格式（对话 / Markdown 文件 / HTML 文件）
+6. 生成完整报告
+
+### 示例提示词
+
+```
+# 分析当前目录（最近一年）
+帮我用 code996 分析当前项目团队的工作强度，生成一份 996 分析报告
+
+# 分析指定年份
+分析我们团队 2025 年的加班情况，出一份报告
+
+# 分析多个项目并对比
+帮我分析 /workspace/proj-a 和 /workspace/proj-b 这两个项目的加班强度，对比一下哪个更严重
+
+# 指定输出格式
+用 code996 分析这个仓库的 996 情况，报告保存为 HTML 文件
+```
+
+**前置条件**：Node.js ≥ 16、[Claude Code](https://claude.ai/code)
 
 ## 🤖 智能分析模式
 
