@@ -77,6 +77,24 @@ npm i -g code996
 code996
 ```
 
+## 🤖 Generate Reports in Claude Code
+
+Install the skill (one-time setup):
+
+```bash
+cp -r skills/code996-report ~/.claude/skills/
+# Or project-level install:
+cp -r skills/code996-report .claude/skills/
+```
+
+Then tell Claude Code:
+
+> "Use code996 to analyze this team's work intensity and generate a report"
+
+Claude will automatically collect data, analyze overtime commit semantics, ask about team context, and produce a shareable narrative report (conversation / Markdown / HTML output supported).
+
+**Prerequisites**: Node.js ≥ 16 (for npx)
+
 ## 🤖 Smart Analysis Mode
 
 code996 automatically selects the most suitable analysis mode based on context:

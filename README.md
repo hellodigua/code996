@@ -79,6 +79,24 @@ npm i -g code996
 code996
 ```
 
+## 🤖 在 Claude Code 中生成分析报告
+
+安装 skill（一次性操作）：
+
+```bash
+cp -r skills/code996-report ~/.claude/skills/
+# 或项目级安装：
+cp -r skills/code996-report .claude/skills/
+```
+
+然后在 Claude Code 对话中说：
+
+> 「用 code996 分析这个团队的工作强度并生成报告」
+
+Claude 会自动采集数据、分析加班语义、询问团队背景，最终生成可分享的叙事化分析报告（支持对话输出 / Markdown / HTML）。
+
+**前置条件**：Node.js ≥ 16（用于 npx）
+
 ## 🤖 智能分析模式
 
 code996 会根据上下文自动选择最合适的分析模式：
