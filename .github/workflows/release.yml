@@ -11,6 +11,9 @@ permissions:
 jobs:
   release:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      id-token: write
 
     steps:
       - name: Checkout code
@@ -21,29 +24,35 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '18'
+          node-version: '24'
           registry-url: 'https://registry.npmjs.org'
+          package-manager-cache: false
 
       - name: Install dependencies
         run: npm ci
+
+      - name: Clean build output
+        run: rm -rf dist
 
       - name: Build project
         run: npm run build
 
       - name: Run tests
         run: npm test
-        continue-on-error: true
 
       - name: Get version from tag
         id: get_version
         run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
 
+      - name: Publish to npm
+        run: npm publish --provenance
+
       - name: Create tarball
         id: tarball
         run: |
-          # npm pack 会输出生成的文件名
-          TARBALL=$(npm pack)
-          echo "TARBALL=$TARBALL" >> $GITHUB_OUTPUT
+          # 把 GitHub Release 附件放到临时目录，避免 npm publish 时把 tgz 一起打进包。
+          TARBALL=$(npm pack --pack-destination "$RUNNER_TEMP")
+          echo "TARBALL=$RUNNER_TEMP/$TARBALL" >> $GITHUB_OUTPUT
 
       - name: Generate commit log
         id: commits
@@ -85,9 +94,3 @@ jobs:
           prerelease: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Publish to npm
-        run: npm publish
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-        continue-on-error: true

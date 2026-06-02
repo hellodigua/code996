@@ -58,6 +58,7 @@ node_modules/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+*.tgz
 
 # 其他构建产物
 dist/**/*.map

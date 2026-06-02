@@ -1,10 +1,10 @@
 {
   "name": "code996",
-  "version": "1.0.1",
+  "version": "1.1.0",
   "description": "统计 Git commit 的时间分布，进而推导出项目的编码工作强度",
   "main": "dist/index.js",
   "bin": {
-    "code996": "./dist/index.js"
+    "code996": "dist/index.js"
   },
   "scripts": {
     "build": "tsc",
@@ -21,7 +21,10 @@
     "cli"
   ],
   "author": "hellodigua",
-  "repository": "hellodigua/code996",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/hellodigua/code996.git"
+  },
   "license": "MIT",
   "devDependencies": {
     "@types/jest": "^29.5.12",
