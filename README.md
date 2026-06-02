@@ -116,6 +116,20 @@ code996 /workspace         # 自动扫描子目录
 | `--self`                  | -    | 仅统计当前 Git 用户的提交记录                                      |
 | `--ignore-author <regex>` | -    | 排除匹配正则的作者（如 `bot\|jenkins`）                            |
 | `--ignore-msg <regex>`    | -    | 排除匹配正则的提交信息（如 `^Merge\|lint`）                        |
+| `--lang <locale>`         | -    | 指定界面语言（支持 `zh-CN`、`en` 及常见别名）                      |
+
+### 界面语言
+
+code996 会自动根据电脑系统语言选择界面语言。优先级如下：
+
+1. `--lang <locale>` 命令行参数
+2. `CODE996_LANG` 环境变量
+3. 操作系统语言
+4. 终端 locale（如 `LC_ALL`、`LC_MESSAGES`、`LANG`）
+5. Node.js Intl locale
+6. 英文兜底
+
+当前支持中文和英文。显式指定时可使用 `zh`、`zh-CN`、`zh_CN`、`zh-Hans-CN`、`en`、`en-US`、`en_US`；如果指定不支持的语言，命令会报错退出。
 
 ### 使用示例
 
@@ -161,6 +175,10 @@ code996 --ignore-author "bot|jenkins|github-actions"  # 排除多个作者（使
 code996 --ignore-msg "^Merge"                    # 排除所有以 "Merge" 开头的提交消息
 code996 --ignore-msg "merge|lint|format"         # 排除多个关键词
 code996 -y 2025 --ignore-author "renovate|dependabot" --ignore-msg "^Merge" # 综合过滤
+
+# 指定界面语言
+code996 --lang zh-CN           # 强制中文界面
+code996 --lang en              # 强制英文界面
 ```
 
 **常见排除场景**：

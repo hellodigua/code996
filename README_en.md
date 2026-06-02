@@ -114,6 +114,20 @@ code996 /workspace         # Auto-scan subdirectories
 | `--self`                  | -     | Only count current Git user's commits                                               |
 | `--ignore-author <regex>` | -     | Exclude authors matching regex (e.g., `bot\|jenkins`)                               |
 | `--ignore-msg <regex>`    | -     | Exclude commits matching regex (e.g., `^Merge\|lint`)                               |
+| `--lang <locale>`         | -     | Specify interface language (`zh-CN`, `en`, and common aliases)                      |
+
+### Interface Language
+
+code996 automatically selects the interface language based on your computer's system language. Priority:
+
+1. `--lang <locale>` CLI option
+2. `CODE996_LANG` environment variable
+3. Operating system language
+4. Terminal locale (`LC_ALL`, `LC_MESSAGES`, `LANG`)
+5. Node.js Intl locale
+6. English fallback
+
+Currently supported output languages are Chinese and English. Explicit values may be `zh`, `zh-CN`, `zh_CN`, `zh-Hans-CN`, `en`, `en-US`, or `en_US`. Unsupported explicit values make the command exit with an error.
 
 ### Usage Examples
 
@@ -161,6 +175,10 @@ code996 --ignore-author "bot|jenkins|github-actions"  # Exclude multiple authors
 code996 --ignore-msg "^Merge"                    # Exclude all commit messages starting with "Merge"
 code996 --ignore-msg "merge|lint|format"         # Exclude multiple keywords
 code996 -y 2025 --ignore-author "renovate|dependabot" --ignore-msg "^Merge" # Combined filter
+
+# Specify interface language
+code996 --lang zh-CN          # Force Chinese UI
+code996 --lang en             # Force English UI
 ```
 
 **Common Exclusion Scenarios**:

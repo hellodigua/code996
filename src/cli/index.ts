@@ -6,7 +6,7 @@ import { execSync } from 'child_process'
 import { getPackageVersion } from '../utils/version'
 import { printGlobalNotices } from './common/notices'
 import { AnalyzeOptions } from '../types/git-types'
-import { getLocale, initializeLocale, t } from '../i18n'
+import { getLocale, initializeLocale, t, UnsupportedLocaleError } from '../i18n'
 
 // Re-export types for convenience
 export { AnalyzeOptions }
@@ -17,7 +17,11 @@ export class CLIManager {
   /** 构造函数：初始化 Commander 实例并完成命令注册 */
   constructor(argv: string[] = []) {
     this.program = new Command()
-    initializeLocale(argv)
+    try {
+      initializeLocale(argv)
+    } catch (error) {
+      this.handleLocaleError(error)
+    }
     this.setupProgram()
   }
 
@@ -59,7 +63,11 @@ export class CLIManager {
       .option('--output [path]', t('cli.option.output'))
       .action(async (paths: string[], options: AnalyzeOptions, command: Command) => {
         if (options.lang) {
-          initializeLocale(['--lang', options.lang])
+          try {
+            initializeLocale(['--lang', options.lang])
+          } catch (error) {
+            this.handleLocaleError(error)
+          }
         }
 
         if (options.json && options.md) {
@@ -95,6 +103,16 @@ export class CLIManager {
       console.error(chalk.red(t('cli.error.generic')), err.message)
       process.exit(1)
     })
+  }
+
+  /** 将显式语言指定错误转换为 CLI 错误输出，避免用户看到内部堆栈。 */
+  private handleLocaleError(error: unknown): never {
+    if (error instanceof UnsupportedLocaleError) {
+      console.error(chalk.red(error.message))
+      process.exit(1)
+    }
+
+    throw error
   }
 
   /**
