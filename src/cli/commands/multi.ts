@@ -152,6 +152,16 @@ export class MultiExecutor {
       // 计算时间范围
       let effectiveSince: string | undefined
       let effectiveUntil: string | undefined
+      let rangeMode: string
+
+      if (options.allTime) {
+        rangeMode = 'all-time'
+        // effectiveSince / effectiveUntil 保持 undefined，让 git 返回全部数据
+      } else if (options.year || options.since || options.until) {
+        rangeMode = 'custom'
+      } else {
+        rangeMode = 'auto-last-commit'
+      }
 
       if (options.allTime || options.year || options.since || options.until) {
         // 用户明确指定了时间范围，使用指定的范围
@@ -369,6 +379,7 @@ export class MultiExecutor {
           options,
           since: effectiveSince,
           until: effectiveUntil,
+          rangeMode,
         })
         await writeStructuredOutput(payload, options)
       } else {
