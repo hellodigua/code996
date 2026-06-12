@@ -308,7 +308,7 @@ export class ProjectClassifier {
     if (total === 0) {
       return {
         ratio: 0,
-        description: '无数据',
+        description: t('project.weekend.noData'),
       }
     }
 
@@ -316,11 +316,11 @@ export class ProjectClassifier {
 
     let description = ''
     if (ratio >= 0.30) {
-      description = `${(ratio * 100).toFixed(1)}% (很高周末活跃度)`
+      description = t('project.weekend.veryHigh')
     } else if (ratio >= 0.15) {
-      description = `${(ratio * 100).toFixed(1)}% (高周末活跃度)`
+      description = t('project.weekend.high')
     } else {
-      description = `${(ratio * 100).toFixed(1)}% (低周末活跃度)`
+      description = t('project.weekend.low')
     }
 
     return {
@@ -352,7 +352,7 @@ export class ProjectClassifier {
         isActive: false,
         eveningToMorningRatio: 0,
         nightRatio: 0,
-        description: '无数据',
+        description: t('project.moonlighting.noData'),
       }
     }
 
@@ -363,14 +363,15 @@ export class ProjectClassifier {
     const isActive = nightRatio >= 0.25
 
     let description = ''
+    const ratioText = (nightRatio * 100).toFixed(1)
     if (nightRatio >= 0.40) {
-      description = `晚间高度活跃 (${(nightRatio * 100).toFixed(1)}%)`
+      description = t('project.moonlighting.veryHigh', { ratio: ratioText })
     } else if (nightRatio >= 0.30) {
-      description = `晚间活跃度较高 (${(nightRatio * 100).toFixed(1)}%)`
+      description = t('project.moonlighting.high', { ratio: ratioText })
     } else if (nightRatio >= 0.25) {
-      description = `晚间活跃 (${(nightRatio * 100).toFixed(1)}%)`
+      description = t('project.moonlighting.active', { ratio: ratioText })
     } else {
-      description = `晚间活跃度低 (${(nightRatio * 100).toFixed(1)}%)`
+      description = t('project.moonlighting.low', { ratio: ratioText })
     }
 
     return {
@@ -403,7 +404,7 @@ export class ProjectClassifier {
       return {
         projectType: ProjectType.OPEN_SOURCE,
         confidence: 90,
-        reasoning: `工作时间完全无规律 (${regularity.score}/100)，典型的开源项目特征`,
+        reasoning: t('project.reason.noRegularity', { score: regularity.score }),
       }
     }
 
@@ -414,31 +415,31 @@ export class ProjectClassifier {
     // 规律性得分分析
     if (regularity.score < 30) {
       ossScore += 60
-      reasons.push(`工作时间规律性极低 (${regularity.score}/100)`)
+      reasons.push(t('project.reason.veryLowRegularity', { score: regularity.score }))
     } else if (regularity.score < 50) {
       ossScore += 40
-      reasons.push(`工作时间规律性低 (${regularity.score}/100)`)
+      reasons.push(t('project.reason.lowRegularity', { score: regularity.score }))
     } else if (regularity.score < 75) {
       ossScore += 20
-      reasons.push(`工作时间规律性中等 (${regularity.score}/100)`)
+      reasons.push(t('project.reason.mediumRegularity', { score: regularity.score }))
     }
 
     // 周末活跃度分析
     if (weekend.ratio >= 0.30) {
       ossScore += 30
-      reasons.push(`周末活跃度高 (${(weekend.ratio * 100).toFixed(1)}%)`)
+      reasons.push(t('project.reason.highWeekend', { ratio: (weekend.ratio * 100).toFixed(1) }))
     } else if (weekend.ratio >= 0.20) {
       ossScore += 20
-      reasons.push(`周末活跃度较高 (${(weekend.ratio * 100).toFixed(1)}%)`)
+      reasons.push(t('project.reason.higherWeekend', { ratio: (weekend.ratio * 100).toFixed(1) }))
     } else if (weekend.ratio >= 0.15) {
       ossScore += 10
-      reasons.push(`周末活跃度中等 (${(weekend.ratio * 100).toFixed(1)}%)`)
+      reasons.push(t('project.reason.mediumWeekend', { ratio: (weekend.ratio * 100).toFixed(1) }))
     }
 
     // 月光族模式
     if (moonlighting.isActive) {
       ossScore += 20
-      reasons.push('晚上提交量超过白天')
+      reasons.push(t('project.reason.moonlighting'))
     }
 
     // 决策逻辑
@@ -449,15 +450,15 @@ export class ProjectClassifier {
     if (ossScore >= 60) {
       projectType = ProjectType.OPEN_SOURCE
       confidence = Math.min(95, 50 + ossScore / 2)
-      reasoning = `开源项目特征明显：${reasons.join('；')}`
+      reasoning = t('project.reason.openSourceObvious', { reasons: reasons.join(t('project.reason.separator')) })
     } else if (ossScore >= 40) {
       projectType = ProjectType.UNCERTAIN
       confidence = 50
-      reasoning = `项目特征不明确：${reasons.join('；')}`
+      reasoning = t('project.reason.unclear', { reasons: reasons.join(t('project.reason.separator')) })
     } else {
       projectType = ProjectType.CORPORATE
       confidence = Math.min(95, 80 - ossScore)
-      reasoning = '符合公司项目特征'
+      reasoning = t('project.reason.corporate')
     }
 
     return {
