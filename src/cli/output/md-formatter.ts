@@ -14,6 +14,17 @@ function formatWeekday(day: string): string {
   return WEEKDAY_LABELS[day] ?? day
 }
 
+const INTENSITY_LABELS: Record<string, string> = {
+  normal: '正常',
+  moderate: '适度加班',
+  heavy: '严重加班',
+}
+
+function formatIntensityLevel(level?: string): string {
+  if (!level) return '-'
+  return INTENSITY_LABELS[level] ?? level
+}
+
 function mdTable(headers: string[], rows: string[][]): string {
   const separator = headers.map(() => '---').join(' | ')
   const headerRow = headers.join(' | ')
@@ -134,7 +145,7 @@ export function buildMarkdown(data: StructuredOutput): string {
       pct(c.commitPercentage),
       String(c.overtimeStats?.totalOvertime ?? '-'),
       String(c.overtimeStats?.weekendOvertime ?? '-'),
-      c.intensityLevel ?? '-',
+      formatIntensityLevel(c.intensityLevel),
     ])
     sections.push(mdTable(headers, rows))
     sections.push('')

@@ -1,6 +1,6 @@
 import chalk from 'chalk'
 import Table from 'cli-table3'
-import { TeamAnalysis } from '../../../../types/git-types'
+import { TeamAnalysis, WorkIntensityLevel } from '../../../../types/git-types'
 import { getTerminalWidth } from '../../../../utils/terminal'
 import { getIndexColor } from '../../../../utils/formatter'
 import { calculatePercentile } from '../../../../utils/statistics'
@@ -37,7 +37,7 @@ export function printTeamAnalysis(analysis: TeamAnalysis): void {
 }
 
 /**
- * 打印核心贡献者名单（姓名与邮箱）
+ * 打印核心贡献者名单
  */
 function printCoreContributorsList(analysis: TeamAnalysis): void {
   const contributors = [...analysis.coreContributors].sort((a, b) => b.totalCommits - a.totalCommits)
@@ -55,8 +55,12 @@ function printCoreContributorsList(analysis: TeamAnalysis): void {
       chalk.bold(t('team.contributors.name')),
       chalk.bold(t('team.contributors.email')),
       chalk.bold(t('team.contributors.commits')),
+      chalk.bold(t('team.contributors.percentage')),
+      chalk.bold(t('team.contributors.overtime')),
+      chalk.bold(t('team.contributors.weekend')),
+      chalk.bold(t('team.contributors.intensity')),
     ],
-    colWidths: [5, 20, 32, 10],
+    colWidths: [4, 14, 26, 8, 8, 10, 10, 12],
     wordWrap: true,
     style: {
       head: [],
@@ -70,11 +74,23 @@ function printCoreContributorsList(analysis: TeamAnalysis): void {
       contributor.author || t('collector.unknownUser'),
       contributor.email || '-',
       String(contributor.totalCommits),
+      `${contributor.commitPercentage.toFixed(1)}%`,
+      String(contributor.overtimeStats?.totalOvertime ?? '-'),
+      String(contributor.overtimeStats?.weekendOvertime ?? '-'),
+      formatIntensityLevel(contributor.intensityLevel),
     ])
   })
 
   console.log(table.toString())
   console.log()
+}
+
+function formatIntensityLevel(level?: WorkIntensityLevel): string {
+  if (!level) {
+    return '-'
+  }
+
+  return t(`team.contributors.intensity.${level}`)
 }
 
 /**
