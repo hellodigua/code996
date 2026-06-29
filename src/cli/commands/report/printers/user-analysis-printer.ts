@@ -1,4 +1,5 @@
 import chalk from 'chalk'
+import Table from 'cli-table3'
 import { TeamAnalysis } from '../../../../types/git-types'
 import { getTerminalWidth } from '../../../../utils/terminal'
 import { getIndexColor } from '../../../../utils/formatter'
@@ -20,6 +21,8 @@ export function printTeamAnalysis(analysis: TeamAnalysis): void {
   console.log(chalk.gray(`━`.repeat(Math.min(getTerminalWidth(), 80))))
   console.log()
 
+  printCoreContributorsList(analysis)
+
   // 1. 每日首次提交分布
   printStartTimeDistribution(analysis)
 
@@ -31,6 +34,47 @@ export function printTeamAnalysis(analysis: TeamAnalysis): void {
 
   // 4. 团队健康度评估
   printHealthAssessment(analysis)
+}
+
+/**
+ * 打印核心贡献者名单（姓名与邮箱）
+ */
+function printCoreContributorsList(analysis: TeamAnalysis): void {
+  const contributors = [...analysis.coreContributors].sort((a, b) => b.totalCommits - a.totalCommits)
+
+  if (contributors.length === 0) {
+    return
+  }
+
+  console.log(chalk.yellow.bold(`👤 ${t('team.contributors.title')}`))
+  console.log()
+
+  const table = new Table({
+    head: [
+      chalk.bold('#'),
+      chalk.bold(t('team.contributors.name')),
+      chalk.bold(t('team.contributors.email')),
+      chalk.bold(t('team.contributors.commits')),
+    ],
+    colWidths: [5, 20, 32, 10],
+    wordWrap: true,
+    style: {
+      head: [],
+      border: [],
+    },
+  })
+
+  contributors.forEach((contributor, index) => {
+    table.push([
+      String(index + 1),
+      contributor.author || t('collector.unknownUser'),
+      contributor.email || '-',
+      String(contributor.totalCommits),
+    ])
+  })
+
+  console.log(table.toString())
+  console.log()
 }
 
 /**

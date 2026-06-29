@@ -124,10 +124,12 @@ export function buildMarkdown(data: StructuredOutput): string {
 
   // 团队贡献者
   if (data.team && data.team.contributors.length) {
-    sections.push('## 团队贡献者\n')
-    const headers = ['贡献者', '提交数', '占比', '加班提交', '周末提交', '强度等级']
-    const rows = data.team.contributors.map((c) => [
+    sections.push('## 核心贡献者\n')
+    const contributors = [...data.team.contributors].sort((a, b) => b.totalCommits - a.totalCommits)
+    const headers = ['姓名', '邮箱', '提交数', '占比', '加班提交', '周末提交', '强度等级']
+    const rows = contributors.map((c) => [
       c.author,
+      c.email,
       String(c.totalCommits),
       pct(c.commitPercentage),
       String(c.overtimeStats?.totalOvertime ?? '-'),
