@@ -77,6 +77,31 @@ npm i -g code996
 code996
 ```
 
+## 🤖 Generate Reports with AI Coding Agents
+
+Use with AI coding agents that support [Agent Skills](https://agentskills.io/) (Codex / Claude Code / WorkBuddy, etc.) to generate a narrative work-intensity report in one sentence — including overtime semantics, contributor comparison, and improvement suggestions.
+
+```bash
+# Requires Node.js ≥ 18; the installer detects AI agents on your machine and lets you choose targets
+npx skills add hellodigua/code996 --skill code996 -g
+```
+
+If the Skill does not appear after install, restart the corresponding agent. Open the target repo in the agent and send something like:
+
+```
+Analyze the team work intensity of the current project using code996 and generate a 996 report
+```
+
+You can also specify a year, compare multiple repos, or ask for Markdown / HTML output:
+
+```
+Analyze our team's overtime situation for 2025 and generate a report
+Compare the overtime intensity of /workspace/proj-a and /workspace/proj-b
+Analyze this repo with code996 and save the report as an HTML file
+```
+
+> The code996 CLI itself still supports Node.js ≥ 16.
+
 ## 🤖 Smart Analysis Mode
 
 code996 automatically selects the most suitable analysis mode based on context:
