@@ -79,6 +79,31 @@ npm i -g code996
 code996
 ```
 
+## 🤖 用 AI 助手生成分析报告
+
+用 Codex、Claude Code、WorkBuddy 等支持 [Agent Skills](https://agentskills.io/) 的 AI 编程工具时，可以装上 code996 的 skill：一句话让 AI 帮你跑分析，并写出人能看懂的报告——不只是数字，还会说清加班在干什么、谁加班多、怎么改进。
+
+```bash
+# 需要 Node.js 18 及以上；会检测本机装了哪些 AI 工具，让你选装到哪里
+npx skills add hellodigua/code996 --skill code996 -g
+```
+
+装完如果还没生效，重启一下对应的 AI 工具。然后打开要分析的项目，对 AI 说：
+
+```
+帮我用 code996 分析当前项目团队的工作强度，生成一份 996 分析报告
+```
+
+也可以这样说：
+
+```
+分析我们团队 2025 年的加班情况，出一份报告
+帮我对比 /workspace/proj-a 和 /workspace/proj-b 的加班强度
+用 code996 分析这个仓库，报告保存成 HTML 文件
+```
+
+> 装 skill 需要 Node.js 18+；单独用命令行 `npx code996` 仍支持 Node.js 16+。
+
 ## 🤖 智能分析模式
 
 code996 会根据上下文自动选择最合适的分析模式：
