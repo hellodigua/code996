@@ -38,9 +38,9 @@
 
 ### 周末加班
 
-- 周六加班天数：{weekendOvertime.saturdayDays} 天
+- 周六加班天数（中国节假日模式下还包含工作日法定节假日）：{weekendOvertime.saturdayDays} 天
 - 周日加班天数：{weekendOvertime.sundayDays} 天
-- 其中真正加班（≥3 次提交）：{weekendOvertime.realOvertimeDays} 天
+- 其中真正加班（一天内提交覆盖 ≥3 个不同小时段）：{weekendOvertime.realOvertimeDays} 天
 
 ### 深夜加班
 
