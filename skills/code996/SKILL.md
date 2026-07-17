@@ -65,6 +65,7 @@ git -C "<path>" rev-parse --show-toplevel
 ### 1b. 识别时间范围
 
 从用户请求或对话中提取，支持口述转换：
+
 - 「2025 年」→ `-y 2025`
 - 「最近半年」→ `-s <6个月前的 YYYY-MM-DD>`
 - 未指定 → 不传参，使用 code996 默认（最后提交回溯 365 天）
@@ -81,7 +82,7 @@ git -C "<path>" rev-parse --show-toplevel
 
 ## 步骤 2 — 采集结构化数据
 
-优先使用环境中已有的 `code996` 命令；若不可用，则使用 `npx --yes code996@latest`。不要把可执行命令和参数保存为依赖 shell 字符串拆分的变量。
+优先使用环境中已有且支持 `--json` 的 `code996` 命令；若命令不可用、不支持 `--json`、执行时拒绝该参数或 stdout 不是可解析的 JSON，则使用 `npx --yes code996@latest` 重新执行。不要把可执行命令和参数保存为依赖 shell 字符串拆分的变量。
 
 根据对话语言直接传递 locale：中文使用 `--lang zh-CN`，英文使用 `--lang en`。下面以 npx 后备方式为例：
 
@@ -113,20 +114,20 @@ npx --yes code996@latest "<path>" --json --lang zh-CN -y 2025
 
 **解析 JSON 输出**，提取以下字段用于后续分析：
 
-| 字段 | 用途 |
-|------|------|
-| `core.index996` / `core.rating` / `core.overTimeRatio` | 核心指标 |
-| `workTime.startHour` / `workTime.endHour` | 推测上下班时间 |
-| `hourlyDistribution[]` | 24 小时提交分布 |
-| `weekdayDistribution[]` | 周一至周日分布 |
-| `weekdayOvertime` | 工作日加班分布（peakDay） |
-| `weekendOvertime` | 周末加班（realOvertimeDays） |
-| `lateNight.midnightRate` / `lateNight.midnight` | 深夜加班比例 |
-| `trend.summary` | 趋势（若有） |
-| `team.contributors[]` | 各贡献者加班占比 |
-| 多个单仓库结果中的 `core` / `team` | 多仓库横向对比与聚合 |
+| 字段                                                   | 用途                         |
+| ------------------------------------------------------ | ---------------------------- |
+| `core.index996` / `core.rating` / `core.overTimeRatio` | 核心指标                     |
+| `workTime.startHour` / `workTime.endHour`              | 推测上下班时间               |
+| `hourlyDistribution[]`                                 | 24 小时提交分布              |
+| `weekdayDistribution[]`                                | 周一至周日分布               |
+| `weekdayOvertime`                                      | 工作日加班分布（peakDay）    |
+| `weekendOvertime`                                      | 周末加班（realOvertimeDays） |
+| `lateNight.midnightRate` / `lateNight.midnight`        | 深夜加班比例 / 深夜加班天数  |
+| `trend.summary`                                        | 趋势（若有）                 |
+| `team.contributors[]`                                  | 各贡献者加班占比             |
+| 多个单仓库结果中的 `core` / `team`                     | 多仓库横向对比与聚合         |
 
-若 code996 执行失败（如提交数不足），告知用户原因并停止。
+使用全局 `code996` 失败时，先按上述规则使用 `npx --yes code996@latest` 重试。只有最新版后备命令仍执行失败（如提交数不足）时，才告知用户原因并停止；多仓库模式则记录该仓库的失败原因并继续其他仓库。
 
 ---
 
@@ -142,13 +143,16 @@ git -C "<path>" log --after="<since>" --before="<until>" --format="%cI|||%s" --m
 
 根据 `%cI` 中保留的提交本地日期、时间和时区进行筛选，使语义样本与 code996 使用的提交时间口径保持一致：
 
+- 工作日晚间提交：本地日期为周一至周五，本地时间从 `ceil(workTime.endHour)` 起至 22:59，最多取最近 50 条。
 - 周末提交：本地日期为周六或周日，最多取最近 50 条。
 - 深夜提交：本地时间为 23:00–02:59，最多取最近 50 条。
+- 合并以上样本时按 commit 去重，避免同一条周末深夜提交被重复计入。
 - 若最近 500 条提交不足以覆盖分析区间中的加班样本，可按时间窗口分段查询；避免一次输出完整大型仓库历史。
 
 **多仓库时对每个仓库分别执行**，再合并归纳。
 
 根据 commit message 将加班内容分类（可能重叠）：
+
 - **赶需求 / 功能开发**：含 feat / add / implement / 新增 等
 - **修线上 Bug**：含 fix / hotfix / bug / 修复 / 紧急 等
 - **重构 / 技术债**：含 refactor / chore / clean / 优化 等
@@ -185,7 +189,7 @@ git -C "<path>" log --after="<since>" --before="<until>" --format="%cI|||%s" --m
 
 ## 注意事项
 
-- 若 `lateNight.midnightRate` 为 0 且周末提交极少，跳过加班语义分析步骤，说明「未发现明显加班痕迹」。
+- 仅当 `lateNight.midnightRate` 为 0、`weekdayOvertime` 周一至周五的提交数合计为 0，且 `weekendOvertime.realOvertimeDays` 为 0 时，才跳过加班语义分析步骤，说明「未发现明显加班痕迹」。
 - 若 `team` 字段为 null（如开源项目或 `--skip-user-analysis`），跳过贡献者对比章节。
 - 仅分析一个仓库时跳过多仓库视图；分析多个仓库时使用各自的独立 JSON 聚合，不依赖 `multiRepo` 字段。
 - 报告语言始终与对话语言一致，`--lang` 参数确保 code996 数据标签语言对齐。
