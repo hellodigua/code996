@@ -123,6 +123,7 @@ npx --yes code996@latest "<path>" --json --lang zh-CN -y 2025
 
 | 字段                                                   | 用途                         |
 | ------------------------------------------------------ | ---------------------------- |
+| `meta.repos[]` / `meta.since` / `meta.until`           | 仓库路径与实际分析区间       |
 | `core.index996` / `core.rating` / `core.overTimeRatio` | 核心指标                     |
 | `workTime.startHour` / `workTime.endHour`              | 推测上下班时间               |
 | `hourlyDistribution[]`                                 | 24 小时提交分布              |
@@ -142,11 +143,21 @@ npx --yes code996@latest "<path>" --json --lang zh-CN -y 2025
 
 基于步骤 2 的 JSON 数据，识别加班高峰窗口，对同一仓库执行 git log 获取实际 commit message，归纳「加班都在干什么」。
 
-对每个仓库获取带 ISO 时间的 commit message。始终引用仓库路径，不依赖 POSIX 管道：
+对每个仓库获取带 ISO 时间的 commit message。执行前必须从该仓库对应的 JSON 中读取 `meta.since` 和 `meta.until`，作为 code996 实际采用的有效区间；不要继续使用用户原始口述值或未赋值的占位符。
+
+正常默认区间和自定义区间使用：
 
 ```bash
-git -C "<path>" log --no-merges --after="<since>" --before="<until>" --format="%cI|||%s" --max-count=500
+git -C "<path>" log --no-merges --after="<meta.since>" --before="<meta.until>" --format="%cI|||%s" --max-count=500
 ```
+
+若用户使用 `--all-time`，JSON 中的 `meta.since` 和 `meta.until` 会缺失，此时必须同时省略 `--after`、`--before`，不能传空字符串或保留字面占位符：
+
+```bash
+git -C "<path>" log --no-merges --format="%cI|||%s" --max-count=500
+```
+
+始终引用仓库路径，不依赖 POSIX 管道。
 
 `--no-merges` 必须保留，使定性样本与 code996 定量分析默认排除合并提交的口径一致。
 
