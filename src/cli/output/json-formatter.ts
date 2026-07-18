@@ -113,14 +113,22 @@ function buildWeekdayOvertime(parsedData: ParsedGitData): StructuredOutput['week
   const overtime = parsedData.weekdayOvertime
   if (!overtime) return null
 
+  // 不复用分析层已经翻译过的 peakDay，并避免零加班时把周一误判为高峰。
+  const counts = {
+    monday: overtime.monday,
+    tuesday: overtime.tuesday,
+    wednesday: overtime.wednesday,
+    thursday: overtime.thursday,
+    friday: overtime.friday,
+  }
   const weekdays = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'] as const
-  const peakDay = weekdays.reduce((peak, day) => (overtime[day] > overtime[peak] ? day : peak), weekdays[0])
+  const peakDay = weekdays.reduce((peak, day) => (counts[day] > counts[peak] ? day : peak), weekdays[0])
+  const peakCount = counts[peakDay]
 
   return {
-    ...overtime,
-    // 内部分析对象会为终端提前翻译 peakDay；ReportData 必须保持语言中性，供 Web 自行切换语言。
-    peakDay,
-    peakCount: overtime[peakDay],
+    ...counts,
+    // ReportData 只在确有加班时提供语言中性的峰值，供 Web 自行切换语言。
+    ...(peakCount > 0 ? { peakDay, peakCount } : {}),
   }
 }
 

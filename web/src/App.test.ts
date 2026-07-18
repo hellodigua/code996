@@ -164,6 +164,9 @@ describe('单仓库 Web 报告', () => {
     })
 
     expect(wrapper.get('[data-testid="repo-name"]').text()).toContain('3 个仓库')
+    expect(wrapper.find('[data-testid="score"]').exists()).toBe(false)
+    expect(wrapper.find('#report-details').exists()).toBe(false)
+    expect(wrapper.get('[data-testid="open-source-notice"]').text()).toContain('所选仓库包含开源项目')
     expect(wrapper.get('[data-testid="multi-repo"]').text()).toContain('backend')
     expect(wrapper.get('[data-testid="multi-repo"]').text()).toContain('81')
     expect(wrapper.get('[data-testid="multi-repo"]').text()).toContain('开源项目，不评分')
