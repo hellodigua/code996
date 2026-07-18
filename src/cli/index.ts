@@ -8,6 +8,7 @@ import { AnalyzeOptions } from '../types/git-types'
 import { getLocale, initializeLocale, t, UnsupportedLocaleError } from '../i18n'
 import { resolveOutputMode } from './output/output-mode'
 import { printAnalysisFooter } from './output/web-report-notice'
+import { handleWebReportOpen, resetCode996Config } from './output/web-report-open'
 
 // Re-export types for convenience
 export { AnalyzeOptions }
@@ -35,6 +36,7 @@ export class CLIManager {
 
     // 注册根命令默认行为，直接执行分析逻辑
     this.setupDefaultAnalyzeAction()
+    this.addConfigCommand()
     this.addHelpCommand()
 
     // 错误处理
@@ -62,6 +64,7 @@ export class CLIManager {
       .option('--json', t('cli.option.json'))
       .option('--md', t('cli.option.md'))
       .option('--open', t('cli.option.open'))
+      .option('--no-open', t('cli.option.noOpen'))
       .option('--output [path]', t('cli.option.output'))
       .action(async (paths: string[], options: AnalyzeOptions, command: Command) => {
         if (options.lang) {
@@ -95,6 +98,20 @@ export class CLIManager {
     })
 
     this.program.addCommand(helpCmd)
+  }
+
+  /** 注册用户偏好重置命令。 */
+  private addConfigCommand(): void {
+    const configCommand = new Command('config').description(t('cli.config.command'))
+    configCommand
+      .command('reset')
+      .description(t('cli.config.reset'))
+      .action(() => {
+        resetCode996Config()
+        console.log(chalk.green(`✓ ${t('cli.config.resetDone')}`))
+      })
+
+    this.program.addCommand(configCommand)
   }
 
   /** 统一注册错误处理逻辑，提升用户体验 */
@@ -192,6 +209,7 @@ export class CLIManager {
     const { AnalyzeExecutor } = await import('./commands/analyze')
     const webReport = await AnalyzeExecutor.execute(targetPath, mergedOptions)
     printAnalysisFooter(resolveOutputMode(mergedOptions) === 'terminal', webReport)
+    await handleWebReportOpen(webReport, mergedOptions.open)
   }
 
   /** 处理多仓库分析流程的执行逻辑 */
@@ -200,6 +218,7 @@ export class CLIManager {
     const { MultiExecutor } = await import('./commands/multi')
     const webReport = await MultiExecutor.execute(dirs, mergedOptions, preScannedRepos)
     printAnalysisFooter(resolveOutputMode(mergedOptions) === 'terminal', webReport)
+    await handleWebReportOpen(webReport, mergedOptions.open)
   }
 
   /** 合并全局选项（解决子命令无法直接读取根命令参数的问题） */
@@ -356,6 +375,7 @@ ${chalk.bold(t('cli.help.usage'))}
 
 ${chalk.bold(t('cli.help.commands'))}
   help              ${t('cli.help.command')}
+  config reset      ${t('cli.config.reset')}
 
 ${chalk.bold(t('cli.help.smartMode'))}
   ${t('cli.help.smartDesc')}
@@ -386,6 +406,7 @@ ${chalk.bold(t('cli.help.analysisOptions'))}
   --ignore-msg <regex>    ${t('cli.option.ignoreMsg')}
   --lang <locale>         ${t('cli.option.lang')}
   --open                   ${t('cli.option.open')}
+  --no-open                ${t('cli.option.noOpen')}
   --json                   ${t('cli.option.json')}
   --md                     ${t('cli.option.md')}
   --output [path]          ${t('cli.option.output')}
