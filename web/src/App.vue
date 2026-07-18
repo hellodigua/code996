@@ -356,10 +356,11 @@ const hourlyChartData = computed(() =>
 const weekdayOvertimeChartData = computed(() => {
   const overtime = activeReport.value?.weekdayOvertime
   if (!overtime) return []
-  return ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'].map((day) => ({
+  const data = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'].map((day) => ({
     time: t(`weekday.${day}`),
     count: overtime[day as keyof Pick<typeof overtime, 'monday' | 'tuesday' | 'wednesday' | 'thursday' | 'friday'>],
   }))
+  return data.some((item) => item.count > 0) ? data : []
 })
 
 function lateNightFrequency(count: number): string {

@@ -194,6 +194,26 @@ describe('单仓库 Web 报告', () => {
     expect(wrapper.find('.chart-card').exists()).toBe(false)
   })
 
+  test('工作日加班全部为零时隐藏空图表，但保留星期提交分布', () => {
+    const report = createReport()
+    report.weekdayOvertime = {
+      monday: 0,
+      tuesday: 0,
+      wednesday: 0,
+      thursday: 0,
+      friday: 0,
+    }
+
+    const wrapper = mount(App, {
+      props: { report },
+      global: { stubs: { BarChart: true } },
+    })
+
+    expect(wrapper.find('.overtime-card').exists()).toBe(false)
+    expect(wrapper.find('.rhythm-grid').exists()).toBe(true)
+    expect(wrapper.findAllComponents(BarChart).some((chart) => chart.props('data').length === 7)).toBe(true)
+  })
+
   test('少量提交不展示可靠性不足的评分，但保留客观分布', () => {
     const report = createReport({ type: 'uncertain', confidence: 40 })
     report.core.totalCommits = 12
