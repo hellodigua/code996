@@ -1,5 +1,6 @@
 import { ProjectClassificationResult, ProjectType } from '../core/project-classifier'
 import { buildMultiRepoOutput, buildSingleRepoOutput } from '../cli/output/json-formatter'
+import { buildMarkdown } from '../cli/output/md-formatter'
 import {
   GitLogData,
   ParsedGitData,
@@ -139,6 +140,25 @@ describe('ReportData', () => {
     expect(report.timezone).toEqual(timezoneAnalysis)
     expect(report.core.rating).toBe('bad')
     expect(report.weekdayOvertime?.peakDay).toBe('tuesday')
+  })
+
+  test('Markdown 将工作日加班峰值的中性星期键转换为中文标签', () => {
+    const report = buildSingleRepoOutput({
+      result,
+      parsedData,
+      rawData,
+      teamAnalysis: null,
+      trendResult: null,
+      options: {},
+      path: '/workspace/demo',
+      classification,
+      holidayMode: false,
+      timezoneAnalysis: null,
+    })
+
+    const markdown = buildMarkdown(report)
+    expect(markdown).toContain('| 加班最多 | 星期二（6 次） |')
+    expect(markdown).not.toContain('tuesday（6 次）')
   })
 
   test('保留 CLI 项目分类依据与完整团队分析，而不是只输出摘要字段', () => {
