@@ -5,7 +5,8 @@ const Intro = () => import('@/view/intro/index.vue')
 const Result = () => import('@/view/result/index.vue')
 
 export const router = createRouter({
-  history: createWebHashHistory('/'),
+  // 不固定为站点根目录，让 GitHub Pages 下的 hash 导航继承当前 /code996/ 子路径。
+  history: createWebHashHistory(),
   routes: [
     // 根路径重定向
     {
