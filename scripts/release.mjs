@@ -179,7 +179,7 @@ async function main() {
   run(npmCommand, ['run', 'format:check'])
   run(npmCommand, ['test'])
   run(npmCommand, ['run', 'build'])
-  run('git', ['diff', '--check'])
+  run('git', ['--no-pager', 'diff', '--check'])
   assertChangedFiles(['package-lock.json', 'package.json'])
 
   console.log(`\n✅ 质量检查全部通过，自动创建 release commit 和 ${tag}\n`)
