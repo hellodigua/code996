@@ -182,8 +182,9 @@ describe('CLI i18n', () => {
     expect(logSpy).toHaveBeenCalledWith(expect.stringContaining('使用方法:'))
     expect(logSpy).toHaveBeenCalledWith(expect.stringContaining('智能分析模式:'))
     expect(logSpy).toHaveBeenCalledWith(expect.stringContaining('--open'))
+    expect(logSpy).toHaveBeenCalledWith(expect.stringContaining('--no-open'))
+    expect(logSpy).toHaveBeenCalledWith(expect.stringContaining('config reset'))
     expect(logSpy).not.toHaveBeenCalledWith(expect.stringContaining('--web'))
-    expect(logSpy).not.toHaveBeenCalledWith(expect.stringContaining('--no-open'))
   })
 
   it('--lang en 可以覆盖中文环境的 help 输出', async () => {

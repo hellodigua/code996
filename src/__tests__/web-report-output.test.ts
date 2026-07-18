@@ -7,6 +7,14 @@ import path from 'path'
 import type { ReportData } from '../report/report-data'
 import { resolveLocalWebReportBehavior, resolveOutputMode } from '../cli/output/output-mode'
 import { printAnalysisFooter } from '../cli/output/web-report-notice'
+import {
+  handleWebReportOpen,
+  parseWebReportOpenChoice,
+  readWebReportOpenPreference,
+  resetCode996Config,
+  resolveConfigPath,
+  writeWebReportOpenPreference,
+} from '../cli/output/web-report-open'
 import { openLocalFile, writeLocalWebReport } from '../cli/output/web-report-writer'
 import { setLocale } from '../i18n'
 
@@ -41,9 +49,10 @@ describe('Web 报告输出模式', () => {
     expect(resolveOutputMode({ md: true })).toBe('md')
   })
 
-  test('默认保存但不打开 HTML，--open 才打开，结构化输出不生成 HTML', () => {
+  test('默认先保存 HTML，显式参数决定是否直接打开，结构化输出不生成 HTML', () => {
     expect(resolveLocalWebReportBehavior({})).toEqual({ generate: true, open: false })
     expect(resolveLocalWebReportBehavior({ open: true })).toEqual({ generate: true, open: true })
+    expect(resolveLocalWebReportBehavior({ open: false })).toEqual({ generate: true, open: false })
     expect(resolveLocalWebReportBehavior({ json: true })).toEqual({ generate: false, open: false })
     expect(resolveLocalWebReportBehavior({ md: true })).toEqual({ generate: false, open: false })
   })
@@ -75,6 +84,91 @@ describe('Web 报告输出模式', () => {
       chalk.level = previousColorLevel
       logSpy.mockRestore()
     }
+  })
+})
+
+describe('Web 报告打开偏好', () => {
+  test('四个选项和空输入按约定解析，默认打开本次报告', () => {
+    expect(parseWebReportOpenChoice('')).toEqual({ open: true })
+    expect(parseWebReportOpenChoice('1')).toEqual({ open: true })
+    expect(parseWebReportOpenChoice('2')).toEqual({ open: false })
+    expect(parseWebReportOpenChoice('3')).toEqual({ open: true, remember: 'always' })
+    expect(parseWebReportOpenChoice('4')).toEqual({ open: false, remember: 'never' })
+    expect(parseWebReportOpenChoice('5')).toBeUndefined()
+  })
+
+  test('按平台解析配置路径，并可保存和重置偏好', async () => {
+    const configRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'code996-config-test-'))
+    const configPath = path.join(configRoot, 'code996', 'config.json')
+
+    try {
+      expect(resolveConfigPath({}, 'linux', '/home/demo')).toBe('/home/demo/.config/code996/config.json')
+      expect(resolveConfigPath({ XDG_CONFIG_HOME: '/tmp/config' }, 'linux', '/home/demo')).toBe(
+        '/tmp/config/code996/config.json'
+      )
+      expect(resolveConfigPath({ APPDATA: '/tmp/app-data' }, 'win32', 'C:\\Users\\demo')).toBe(
+        '/tmp/app-data/code996/config.json'
+      )
+
+      expect(readWebReportOpenPreference(configPath)).toBe('ask')
+      writeWebReportOpenPreference('always', configPath)
+      expect(readWebReportOpenPreference(configPath)).toBe('always')
+      resetCode996Config(configPath)
+      expect(readWebReportOpenPreference(configPath)).toBe('ask')
+    } finally {
+      await fs.rm(configRoot, { recursive: true, force: true })
+    }
+  })
+
+  test('交互选择可记住偏好并打开报告，显式 --no-open 优先跳过', async () => {
+    const report = {
+      directory: '/tmp/code996-report/demo',
+      indexPath: '/tmp/code996-report/demo/index.html',
+      opened: false,
+    }
+    const openFile = jest.fn(async () => undefined)
+    const writePreference = jest.fn()
+
+    await handleWebReportOpen(report, undefined, {
+      isInteractive: true,
+      readPreference: () => 'ask',
+      prompt: async () => ({ open: true, remember: 'always' }),
+      openFile,
+      writePreference,
+    })
+
+    expect(writePreference).toHaveBeenCalledWith('always')
+    expect(openFile).toHaveBeenCalledWith(report.indexPath)
+
+    openFile.mockClear()
+    await handleWebReportOpen(report, false, {
+      isInteractive: true,
+      readPreference: () => 'always',
+      openFile,
+    })
+    expect(openFile).not.toHaveBeenCalled()
+  })
+
+  test('持久偏好直接生效，非交互环境在 ask 状态下保持静默', async () => {
+    const report = {
+      directory: '/tmp/code996-report/demo',
+      indexPath: '/tmp/code996-report/demo/index.html',
+      opened: false,
+    }
+    const openFile = jest.fn(async () => undefined)
+    const prompt = jest.fn(async () => ({ open: true }))
+
+    await handleWebReportOpen(report, undefined, { isInteractive: true, readPreference: () => 'always', openFile })
+    expect(openFile).toHaveBeenCalledTimes(1)
+
+    await handleWebReportOpen(report, undefined, {
+      isInteractive: false,
+      readPreference: () => 'ask',
+      openFile,
+      prompt,
+    })
+    expect(openFile).toHaveBeenCalledTimes(1)
+    expect(prompt).not.toHaveBeenCalled()
   })
 })
 

@@ -15,6 +15,7 @@ src/
 │       ├── multi.ts       # 多仓库分析命令 - 扫描、选择、合并多个仓库数据、默认包含月度趋势分析
 │       ├── report/        # 报表输出模块
 │       └── output/        # ReportData 构建、输出模式、本地 HTML 生成
+│       │   ├── web-report-open.ts # 浏览器打开交互、持久偏好与参数覆盖
 │       │   ├── printers/  # 打印器模块
 │       │   │   ├── core-printer.ts  # 核心结果打印
 │       │   │   ├── time-distribution-printer.ts # 时间分布打印
@@ -80,7 +81,9 @@ scripts/
 
 - **命令注册**：使用 Commander.js 注册默认根命令、多仓库分析命令和帮助命令
 - **参数解析**：支持年份快捷方式（`-y`）、日期范围（`--since/--until`）、全量分析（`--all-time`）、作者过滤（`--self`）、半小时粒度展示（`--half-hour`）、时区过滤（`--timezone`）、节假日调休（`--cn`）、多仓库扫描（`--max`）等选项
-- **用户交互**：默认输出传统彩色终端报告并保存但不打开本地网页；显式传入 `--open` 时自动打开
+- **用户交互**：默认输出传统彩色终端报告并保存本地网页；交互终端随后提供“本次打开/不打开、始终打开/不打开”四个选项，默认打开本次报告
+- **打开优先级**：`--open` / `--no-open` 只覆盖本次运行，其次读取 `always` / `never` 持久偏好，未保存偏好时才询问；非 TTY 环境不询问也不自动打开，显式 `--open` 除外
+- **偏好管理**：Unix 默认保存到 `~/.config/code996/config.json`（尊重 `XDG_CONFIG_HOME`），Windows 保存到 `%APPDATA%/code996/config.json`；`code996 config reset` 恢复询问状态
 - **报告保存**：本地 Web 默认写入 `Downloads/code996-report/YYYY-MM-DD_HH-mm-ss_项目名/`，按名称排序即可按生成时间排列，同秒冲突追加序号；Downloads 不可写时提示并降级系统临时目录
 - **多仓库支持**：`multi` 命令支持交互式仓库选择、批量数据采集、结果合并、作者过滤和默认的月度趋势分析
 - **报表输出**：`ReportData` 作为统一契约，支持本地双语 Web、传统终端、JSON 和 Markdown
