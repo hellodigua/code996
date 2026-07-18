@@ -209,8 +209,8 @@ Web 构建与测试使用 Vue 3、Vite 8、chart.xkcd、vue-router、vue-i18n、
 ### 本地 Web 报告
 
 - **统一契约**: `src/report/report-data.ts` 不引入 Node 模块，可被 CLI 与浏览器共同引用
-- **输出判断**: 默认终端；显式 `--web` 才生成本地 Web，避免 SSH、CI 和 AI 编程工具意外打开浏览器
-- **本地生成**: `web-report-writer.ts` 复制 `dist/web` 到系统临时目录并安全注入数据
+- **输出判断**: 默认终端并保存本地 Web 但不打开；显式 `--web` 自动打开；JSON/Markdown 不额外生成网页
+- **本地生成**: `web-report-writer.ts` 复制 `dist/web` 到 `Downloads/code996-report` 并安全注入数据，Downloads 不可用时降级到系统临时目录
 - **安全边界**: JSON 中的 `<`、`>`、`&`、U+2028、U+2029 会转义，系统打开器使用参数数组且不经过 shell
 - **测试**: Jest 验证输出模式、注入与降级；Vitest 验证双语、项目类型、多仓库和低样本状态
 

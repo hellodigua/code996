@@ -27,8 +27,8 @@ import { buildSingleRepoOutput } from '../output/json-formatter'
 import { writeStructuredOutput } from '../output/file-writer'
 import { createSpinner } from '../output/spinner'
 import { TeamAnalysis } from '../../types/git-types'
-import { resolveOutputMode } from '../output/output-mode'
-import { writeLocalWebReport } from '../output/web-report-writer'
+import { resolveLocalWebReportBehavior, resolveOutputMode } from '../output/output-mode'
+import { LocalWebReportResult, writeLocalWebReport } from '../output/web-report-writer'
 
 type TimeRangeMode = 'all-time' | 'custom' | 'auto-last-commit' | 'fallback'
 
@@ -40,8 +40,9 @@ interface AuthorFilterInfo {
 /** 分析执行器，集中处理采集、解析与渲染流程 */
 export class AnalyzeExecutor {
   /** 执行分析的主流程 */
-  static async execute(path: string, options: AnalyzeOptions): Promise<void> {
+  static async execute(path: string, options: AnalyzeOptions): Promise<LocalWebReportResult | undefined> {
     const outputMode = resolveOutputMode(options)
+    const webReportBehavior = resolveLocalWebReportBehavior(options)
     const isStructured = outputMode === 'json' || outputMode === 'md'
     const isTerminalReport = outputMode === 'terminal'
     try {
@@ -121,7 +122,7 @@ export class AnalyzeExecutor {
       const hasEnoughCommits = await ensureCommitSamples(
         collector,
         collectOptions,
-        outputMode === 'web' ? 1 : 50,
+        50,
         t('guard.scene.analysis'),
         isStructured
       )
@@ -277,17 +278,8 @@ export class AnalyzeExecutor {
 
       if (isStructured) {
         await writeStructuredOutput(payload, options)
-      } else if (outputMode === 'web') {
-        const webReport = await writeLocalWebReport(payload, { open: options.open !== false })
-        const messageKey = webReport.opened ? 'analyze.web.opened' : 'analyze.web.saved'
-        console.log(chalk.green(`🌐 ${t(messageKey, { path: webReport.indexPath })}`))
-        console.log(chalk.gray(`📁 ${t('analyze.web.directory', { path: webReport.directory })}`))
-        if (webReport.storageFallback) {
-          console.log(chalk.yellow(t('analyze.web.storageFallback', { message: webReport.storageFallback.message })))
-        }
-        if (webReport.openError) {
-          console.log(chalk.yellow(t('analyze.web.openFailed', { message: webReport.openError.message })))
-        }
+      } else if (webReportBehavior.generate) {
+        return await writeLocalWebReport(payload, { open: webReportBehavior.open })
       }
     } catch (error) {
       console.error(chalk.red(`❌ ${t('analyze.failed')}`), (error as Error).message)

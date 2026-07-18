@@ -5,7 +5,7 @@
 官方站点部署在 `https://hellodigua.github.io/code996/`，提供项目介绍、双语切换、示例结果和历史 URL 结果页。源码位于 `website/`，与 CLI 的本地完整报告 `web/` 相互独立：
 
 - `website/` 是可公开访问的静态站点，继续兼容早期 shell 脚本生成的 URL 参数。
-- `web/` 只随 `code996 --web` 在用户本地生成，展示当前 CLI 的完整 `ReportData`，不上传仓库数据。
+- `web/` 随默认 CLI 分析保存到用户本地，显式 `code996 --web` 时自动打开，展示当前 CLI 的完整 `ReportData`，不上传仓库数据。
 - 官方站点不承担当前 CLI 报告托管职责，也不会接收 CLI 自动上传的数据。
 
 ## 路由兼容

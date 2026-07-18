@@ -4,10 +4,10 @@ import fs from 'fs'
 import path from 'path'
 import { execSync } from 'child_process'
 import { getPackageVersion } from '../utils/version'
-import { printGlobalNotices } from './common/notices'
 import { AnalyzeOptions } from '../types/git-types'
 import { getLocale, initializeLocale, t, UnsupportedLocaleError } from '../i18n'
 import { resolveOutputMode } from './output/output-mode'
+import { printAnalysisFooter } from './output/web-report-notice'
 
 // Re-export types for convenience
 export { AnalyzeOptions }
@@ -61,8 +61,7 @@ export class CLIManager {
       .option('--lang <locale>', t('cli.option.lang'))
       .option('--json', t('cli.option.json'))
       .option('--md', t('cli.option.md'))
-      .option('--web', t('cli.option.web'))
-      .option('--no-open', t('cli.option.noOpen'))
+      .option('--open', t('cli.option.open'))
       .option('--output [path]', t('cli.option.output'))
       .action(async (paths: string[], options: AnalyzeOptions, command: Command) => {
         if (options.lang) {
@@ -73,13 +72,12 @@ export class CLIManager {
           }
         }
 
-        const explicitOutputModes = [options.json, options.md, options.web].filter(Boolean).length
-        if (explicitOutputModes > 1) {
-          command.error(t('cli.error.conflictingOutputModes'))
+        if (options.json && options.md) {
+          command.error(t('cli.error.conflictingOutputFormats'))
           return
         }
-        if (options.open === false && !options.web) {
-          command.error(t('cli.error.noOpenRequiresWeb'))
+        if (options.open && (options.json || options.md)) {
+          command.error(t('cli.error.openWithStructuredOutput'))
           return
         }
 
@@ -192,16 +190,16 @@ export class CLIManager {
   private async handleAnalyze(targetPath: string, options: AnalyzeOptions): Promise<void> {
     const mergedOptions = this.mergeGlobalOptions(options)
     const { AnalyzeExecutor } = await import('./commands/analyze')
-    await AnalyzeExecutor.execute(targetPath, mergedOptions)
-    if (resolveOutputMode(mergedOptions) === 'terminal') printGlobalNotices()
+    const webReport = await AnalyzeExecutor.execute(targetPath, mergedOptions)
+    printAnalysisFooter(resolveOutputMode(mergedOptions) === 'terminal', webReport)
   }
 
   /** 处理多仓库分析流程的执行逻辑 */
   private async handleMulti(dirs: string[], options: AnalyzeOptions, preScannedRepos?: any[]): Promise<void> {
     const mergedOptions = this.mergeGlobalOptions(options)
     const { MultiExecutor } = await import('./commands/multi')
-    await MultiExecutor.execute(dirs, mergedOptions, preScannedRepos)
-    if (resolveOutputMode(mergedOptions) === 'terminal') printGlobalNotices()
+    const webReport = await MultiExecutor.execute(dirs, mergedOptions, preScannedRepos)
+    printAnalysisFooter(resolveOutputMode(mergedOptions) === 'terminal', webReport)
   }
 
   /** 合并全局选项（解决子命令无法直接读取根命令参数的问题） */
@@ -222,7 +220,6 @@ export class CLIManager {
       timezone: options.timezone ?? globalOpts.timezone,
       json: options.json ?? globalOpts.json,
       md: options.md ?? globalOpts.md,
-      web: options.web ?? globalOpts.web,
       open: options.open ?? globalOpts.open,
       output: options.output ?? globalOpts.output,
     }
@@ -388,8 +385,7 @@ ${chalk.bold(t('cli.help.analysisOptions'))}
   --ignore-author <regex> ${t('cli.option.ignoreAuthor')}
   --ignore-msg <regex>    ${t('cli.option.ignoreMsg')}
   --lang <locale>         ${t('cli.option.lang')}
-  --web                    ${t('cli.option.web')}
-  --no-open                ${t('cli.option.noOpen')}
+  --open                   ${t('cli.option.open')}
   --json                   ${t('cli.option.json')}
   --md                     ${t('cli.option.md')}
   --output [path]          ${t('cli.option.output')}

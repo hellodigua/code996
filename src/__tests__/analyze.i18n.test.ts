@@ -1,11 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, jest } from '@jest/globals'
 import { AnalyzeExecutor } from '../cli/commands/analyze'
+import { writeLocalWebReport } from '../cli/output/web-report-writer'
 import { setLocale } from '../i18n'
-import {
-  createFullReportFixtureRepo,
-  createLightWorkloadFixtureRepo,
-  FixtureRepo,
-} from '../test-utils/git-fixture'
+import { createFullReportFixtureRepo, createLightWorkloadFixtureRepo, FixtureRepo } from '../test-utils/git-fixture'
 
 jest.mock('ora', () => ({
   __esModule: true,
@@ -32,12 +29,21 @@ jest.mock('ora', () => ({
   })),
 }))
 
+jest.mock('../cli/output/web-report-writer', () => ({
+  writeLocalWebReport: jest.fn(async () => ({
+    directory: '/tmp/code996-report/test-report',
+    indexPath: '/tmp/code996-report/test-report/index.html',
+    opened: false,
+  })),
+}))
+
 describe('AnalyzeExecutor i18n', () => {
   let fixtureRepo: FixtureRepo | null = null
   let logSpy: ReturnType<typeof jest.spyOn>
   let errorSpy: ReturnType<typeof jest.spyOn>
 
   beforeEach(() => {
+    jest.mocked(writeLocalWebReport).mockClear()
     logSpy = jest.spyOn(console, 'log').mockImplementation(() => undefined)
     errorSpy = jest.spyOn(console, 'error').mockImplementation(() => undefined)
   })
@@ -88,5 +94,6 @@ describe('AnalyzeExecutor i18n', () => {
     expect(combinedOutput).toContain('Monthly trend report')
     expect(combinedOutput).toContain('Late-night overtime analysis:')
     expect(combinedOutput).not.toMatch(/[\u4e00-\u9fff]/)
-  })
+    expect(writeLocalWebReport).toHaveBeenCalledWith(expect.any(Object), { open: false })
+  }, 15_000)
 })

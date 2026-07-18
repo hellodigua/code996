@@ -77,7 +77,7 @@ website/
 
 - **命令注册**：使用 Commander.js 注册默认根命令、多仓库分析命令和帮助命令
 - **参数解析**：支持年份快捷方式（`-y`）、日期范围（`--since/--until`）、全量分析（`--all-time`）、作者过滤（`--self`）、半小时粒度展示（`--half-hour`）、时区过滤（`--timezone`）、节假日调休（`--cn`）、多仓库扫描（`--max`）等选项
-- **用户交互**：默认输出传统彩色终端报告；只有显式传入 `--web` 才生成本地网页
+- **用户交互**：默认输出传统彩色终端报告并保存但不打开本地网页；显式传入 `--open` 时自动打开
 - **报告保存**：本地 Web 默认写入 `Downloads/code996-report/YYYY-MM-DD_HH-mm-ss_项目名/`，按名称排序即可按生成时间排列，同秒冲突追加序号；Downloads 不可写时提示并降级系统临时目录
 - **多仓库支持**：`multi` 命令支持交互式仓库选择、批量数据采集、结果合并、作者过滤和默认的月度趋势分析
 - **报表输出**：`ReportData` 作为统一契约，支持本地双语 Web、传统终端、JSON 和 Markdown
@@ -86,7 +86,7 @@ website/
 
 ### 2. 官方站点
 
-- **独立边界**：`website/` 是公开官网和历史结果链接的兼容层，不读取本地 CLI 的 `ReportData`；`web/` 仍只负责 `--web` 生成的离线完整报告。
+- **独立边界**：`website/` 是公开官网和历史结果链接的兼容层，不读取本地 CLI 的 `ReportData`；`web/` 负责默认分析和 `--open` 共用的离线完整报告。
 - **历史兼容**：使用 hash 路由保留 `#/zh/result?...`、`#/en/result?...` 和旧 `#/result?...` 地址。
 - **站内依赖**：Vue、vue-router、vue-i18n、chart.xkcd 与字体均由 Vite 构建或复制，不从 CDN 加载运行时资源。
 - **部署归属**：主仓库 `main` 的 `website/` 变化触发 `.github/workflows/pages.yml`，构建 `dist/website` 并通过 GitHub Pages artifact 部署；不再依赖 `code996-web` 仓库或跨仓库部署密钥。

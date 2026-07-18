@@ -28,8 +28,8 @@ import { printTeamAnalysis } from './report/printers/user-analysis-printer'
 import { t } from '../../i18n'
 import { buildMultiRepoOutput } from '../output/json-formatter'
 import { writeStructuredOutput } from '../output/file-writer'
-import { resolveOutputMode } from '../output/output-mode'
-import { writeLocalWebReport } from '../output/web-report-writer'
+import { resolveLocalWebReportBehavior, resolveOutputMode } from '../output/output-mode'
+import { LocalWebReportResult, writeLocalWebReport } from '../output/web-report-writer'
 import { TeamAnalysis } from '../../types/git-types'
 
 /**
@@ -82,8 +82,13 @@ export class MultiExecutor {
    * @param options 分析选项
    * @param preScannedRepos 可选：已经扫描好的仓库列表（智能模式使用）
    */
-  static async execute(inputDirs: string[], options: AnalyzeOptions, preScannedRepos?: RepoInfo[]): Promise<void> {
+  static async execute(
+    inputDirs: string[],
+    options: AnalyzeOptions,
+    preScannedRepos?: RepoInfo[]
+  ): Promise<LocalWebReportResult | undefined> {
     const outputMode = resolveOutputMode(options)
+    const webReportBehavior = resolveLocalWebReportBehavior(options)
     const isStructured = outputMode === 'json' || outputMode === 'md'
     const isTerminalReport = outputMode === 'terminal'
     try {
@@ -456,17 +461,8 @@ export class MultiExecutor {
 
       if (isStructured) {
         await writeStructuredOutput(payload, options)
-      } else if (outputMode === 'web') {
-        const webReport = await writeLocalWebReport(payload, { open: options.open !== false })
-        const messageKey = webReport.opened ? 'analyze.web.opened' : 'analyze.web.saved'
-        console.log(chalk.green(`🌐 ${t(messageKey, { path: webReport.indexPath })}`))
-        console.log(chalk.gray(`📁 ${t('analyze.web.directory', { path: webReport.directory })}`))
-        if (webReport.storageFallback) {
-          console.log(chalk.yellow(t('analyze.web.storageFallback', { message: webReport.storageFallback.message })))
-        }
-        if (webReport.openError) {
-          console.log(chalk.yellow(t('analyze.web.openFailed', { message: webReport.openError.message })))
-        }
+      } else if (webReportBehavior.generate) {
+        return await writeLocalWebReport(payload, { open: webReportBehavior.open })
       }
     } catch (error) {
       console.error(chalk.red(`❌ ${t('multi.failed')}`), (error as Error).message)

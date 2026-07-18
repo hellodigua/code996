@@ -2,13 +2,14 @@
 
 ## 目标
 
-用户显式运行 `code996 --web` 后，看到由本次分析数据生成的本地网页。页面复用历史 `code996-web` 的像素终端视觉，但数据来自当前 CLI 的统一计算结果，不再维护第二套分析逻辑。
+用户正常运行 `code996` 后，会在终端报告之外得到由同一份分析数据生成的本地网页，但默认不打开浏览器。页面复用历史 `code996-web` 的像素终端视觉，但数据来自当前 CLI 的统一计算结果，不再维护第二套分析逻辑。
 
 ## 用户行为
 
-- 默认输出传统终端报告，在 SSH、CI 和 AI 编程工具中也不会意外创建文件或打开浏览器。
-- `--web`：生成并打开本地 Web；`--no-open`：仅生成并打印 HTML 路径。
-- `--json`、`--md`、`--web` 互斥；JSON/Markdown 的 `--output` 行为保持不变。
+- 默认输出传统终端报告，同时保存本地 Web 并打印 HTML 路径，不自动打开浏览器。
+- `--open`：保留终端文字报告，同时在生成完成后自动打开本地 Web。
+- `--json` 和 `--md` 互斥，且不能与 `--open` 同时使用；JSON/Markdown 的 `--output` 行为保持不变。
+- JSON 和 Markdown 是纯结构化输出，不额外生成本地 Web 文件。
 
 ## 开发预览
 
@@ -21,7 +22,7 @@
 
 1. CLI 完成 Git 采集、工时推断、项目分类、趋势和团队分析。
 2. `src/cli/output/json-formatter.ts` 构建语言中性的 `ReportData`。
-3. `src/cli/output/output-mode.ts` 根据显式参数、TTY 和 CI 判断渲染器。
+3. `src/cli/output/output-mode.ts` 决定终端、JSON、Markdown 主输出，以及本地 Web 的生成和打开行为。
 4. `src/cli/output/web-report-writer.ts` 复制 `dist/web` 到 `Downloads/code996-report/日期_时间_项目名/`，内联模块脚本并注入 ReportData。
 5. `web/src/App.vue` 组织单仓库、多仓库、开源项目、失败仓库和低样本状态。
 6. `web/src/components/DiagnosticInsights.vue`、`ClassificationEvidence.vue`、`TimezoneEvidence.vue`、`TrendAnalysis.vue`、`TeamAnalysis.vue` 分别渲染 CLI 的诊断与完整证据。
