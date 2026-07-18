@@ -23,6 +23,7 @@ Instead of suffering for three months, better see the truth early! Don't wait un
 - **📈 Monthly Trend Tracking**: Identify whether the project is "getting more intense" or "stabilizing" through trends
 - **📅 Multi-dimensional Overtime Profile**: Comprehensive analysis, identifying not only weekday/weekend overtime peaks but also the overtime ratio of team members
 - **📦 Multi-repo Comparison**: One-click scan and analyze multiple repositories under a folder, auto-generate comparisons
+- **🖥️ Local Web Report**: Use `--web` to generate and open an offline bilingual visualization without uploading data or keeping a local server running
 - **🌍 Cross-timezone Detection**: Automatically identify timezone distribution, support specified timezone for precise analysis
 - **🇨🇳 Chinese Holiday Support**: Built-in Chinese holiday and makeup workday logic, precisely exclude holiday interference
 - **🔒 Privacy Safe**: Pure local execution, offline analysis based on git log
@@ -60,12 +61,14 @@ Instead of suffering for three months, better see the truth early! Don't wait un
 
 ## 🚀 Quick Start
 
-First make sure you have Node.js installed locally, then:
+First make sure Node.js 18 or newer is installed, then:
 
 ```bash
 # Run in current repo or parent directory of repos
 npx code996
 ```
+
+By default, code996 prints the traditional text report in the terminal. Run `npx code996 --web` when you want the visual report. Its HTML, scripts, styles, and fonts are generated together under `Downloads/code996-report/date_time_project/`, for example `Downloads/code996-report/2026-07-18_10-11-46_demo/`. The report remains available after the CLI exits, and deleting that directory removes the whole report. Repository data is never uploaded and no localhost server is required.
 
 You can also install it first so you don't have to re-download every time:
 
@@ -97,10 +100,10 @@ You can also specify a year, compare multiple repos, or ask for Markdown / HTML 
 ```
 Analyze our team's overtime situation for 2025 and generate a report
 Compare the overtime intensity of /workspace/proj-a and /workspace/proj-b
-Analyze this repo with code996 and save the report as an HTML file
+Analyze this repo with code996 and open the local Web report
 ```
 
-> The code996 CLI itself still supports Node.js ≥ 16.
+> Installing the Skill and running the code996 CLI both require Node.js ≥ 18.
 
 ## 🤖 Smart Analysis Mode
 
@@ -140,6 +143,18 @@ code996 /workspace         # Auto-scan subdirectories
 | `--ignore-author <regex>` | -     | Exclude authors matching regex (e.g., `bot\|jenkins`)                               |
 | `--ignore-msg <regex>`    | -     | Exclude commits matching regex (e.g., `^Merge\|lint`)                               |
 | `--lang <locale>`         | -     | Specify interface language (`zh-CN`, `en`, and common aliases)                      |
+
+### Report Output Modes
+
+| Option            | Behavior                                                                        |
+| ----------------- | ------------------------------------------------------------------------------- |
+| Default           | Print the traditional text report in the terminal                               |
+| `--web`           | Generate and open the local Web report                                          |
+| `--web --no-open` | Generate the Web report without opening a browser and print the local HTML path |
+| `--json` / `--md` | Emit stable JSON data or Markdown tables without opening a Web report           |
+| `--output [path]` | Save `--json` or `--md` to a path; omit the path to use the default filename    |
+
+`--json`, `--md`, and `--web` are mutually exclusive, and `--no-open` can only be used with `--web`. The Web report can switch between Chinese and English from the top-right control; `--lang` selects the initial language.
 
 ### Interface Language
 
@@ -204,6 +219,13 @@ code996 -y 2025 --ignore-author "renovate|dependabot" --ignore-msg "^Merge" # Co
 # Specify interface language
 code996 --lang zh-CN          # Force Chinese UI
 code996 --lang en             # Force English UI
+
+# Report output
+code996                       # Use the traditional terminal report by default
+code996 --web                 # Generate and open the Web report
+code996 --web --no-open       # Generate only and print the local HTML path
+code996 --json --output report.json
+code996 --md --output report.md
 ```
 
 **Common Exclusion Scenarios**:
@@ -225,7 +247,8 @@ code996 --lang en             # Force English UI
 ## How It Works
 
 1. Use git-log to get project commit related data
-2. Local computation and analysis, then print display results
+2. Compute the analysis locally and build one shared ReportData payload
+3. Print the terminal report by default, or generate Web / JSON / Markdown output when explicitly requested
 
 ### Data Collection Flow
 

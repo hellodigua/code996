@@ -1,6 +1,10 @@
 # 任务：为 code996 增加「团队工作强度 / 996 分析报告」Claude Code Skill
 
-> 创建日期：2026-06-02 · 状态：待开发 · 类型：新功能（Claude Code Skill）
+> 创建日期：2026-06-02 · 状态：已完成（最终方案已调整） · 类型：Agent Skill
+
+## 现状修订（2026-07-18）
+
+最终交付与本文最初草案不同：skill 名称为 `code996`，面向支持 Agent Skills 的多种 AI 工具，通过 `npx skills add hellodigua/code996 --skill code996 -g` 安装。正式 JSON Schema 已落地为 `ReportData` v1；CLI 也已内置本地双语 Web 报告，因此 skill 继续负责需要语义解读的叙事报告，而不再自行维护基础 HTML 可视化模板。下文保留为早期需求与决策演进记录。
 
 ## 一、背景（Context）
 
@@ -32,17 +36,17 @@ code996 目前只能在终端输出彩色报表（chalk + cli-table3），数据
 
 **skill 消费 `--json` 所需的字段清单**（实现前置任务时需覆盖，对应现有计算模块）：
 
-| 字段 | 含义 | 对应模块 |
-| --- | --- | --- |
-| `meta` | 仓库路径、时间范围、过滤条件、locale、版本 | `cli/commands/analyze.ts` |
-| `core` | 996 指数 / 核心结论 | `report/printer.ts#printCoreResults` |
-| `hourlyDistribution` | 0–23 时各时段提交量 | `printTimeDistribution` |
-| `weekdayDistribution` | 周一至周日提交量 | — |
-| `workTimeSummary` | 推算上班/下班/工作跨度 | `core/work-span-calculator.ts` / `printWorkTimeSummary` |
-| `weekdayOvertime` / `weekendOvertime` / `lateNight` | 加班统计 | `core/overtime-analyzer.ts` 及三个 print 函数 |
-| `trend` | 趋势数据 | `core/trend-analyzer.ts` / `trend-printer.ts` |
-| `contributors` | 各贡献者提交量、活跃时段、加班占比 | `core/user-analyzer.ts`、`git/collectors/*` |
-| `multiRepo` | 多仓库聚合结果 | `git/multi-repo-team-analyzer.ts`、`git/git-data-merger.ts` |
+| 字段                                                | 含义                                       | 对应模块                                                    |
+| --------------------------------------------------- | ------------------------------------------ | ----------------------------------------------------------- |
+| `meta`                                              | 仓库路径、时间范围、过滤条件、locale、版本 | `cli/commands/analyze.ts`                                   |
+| `core`                                              | 996 指数 / 核心结论                        | `report/printer.ts#printCoreResults`                        |
+| `hourlyDistribution`                                | 0–23 时各时段提交量                        | `printTimeDistribution`                                     |
+| `weekdayDistribution`                               | 周一至周日提交量                           | —                                                           |
+| `workTimeSummary`                                   | 推算上班/下班/工作跨度                     | `core/work-span-calculator.ts` / `printWorkTimeSummary`     |
+| `weekdayOvertime` / `weekendOvertime` / `lateNight` | 加班统计                                   | `core/overtime-analyzer.ts` 及三个 print 函数               |
+| `trend`                                             | 趋势数据                                   | `core/trend-analyzer.ts` / `trend-printer.ts`               |
+| `contributors`                                      | 各贡献者提交量、活跃时段、加班占比         | `core/user-analyzer.ts`、`git/collectors/*`                 |
+| `multiRepo`                                         | 多仓库聚合结果                             | `git/multi-repo-team-analyzer.ts`、`git/git-data-merger.ts` |
 
 > 说明：上述数据 code996 内部均已计算并用于终端打印，前置任务核心是把中间结果**序列化为 JSON** 并支持落盘，而非新增分析逻辑。
 
@@ -58,10 +62,12 @@ code996 目前只能在终端输出彩色报表（chalk + cli-table3），数据
 ### 2. SKILL.md 内容设计
 
 **Frontmatter**
+
 - `name: code996-report`
 - `description`：明确触发场景，包含「996 / 加班 / 工作强度 / 团队 / 报告」等关键词，例如：「分析 Git 仓库的团队工作强度 / 996 / 加班文化并生成分析报告时使用。当用户要求统计团队工作时间分布、加班情况、做 996 分析或生成工作强度报告时触发。」
 
 **指令体（Claude 执行流程）**
+
 1. **确认范围与背景**：识别目标仓库（单/多路径，默认当前目录）、时间范围（默认沿用 code996）；询问 3 个口述背景问题：团队规模、是否弹性工作制、法定/约定工时。
 2. **采集结构化数据**：`npx code996@latest <paths...> --json --lang <locale>`（多路径自动进入多仓库模式）；检测到全局 `code996` 则直接用。
 3. **加班时段语义分析**：基于 JSON 识别的加班窗口（深夜 / 周末），对目标仓库执行限定时间段的 `git log`（输出 commit message），归纳「加班都在干什么」（赶需求 / 修线上 bug / 重构等）。
@@ -70,6 +76,7 @@ code996 目前只能在终端输出彩色报表（chalk + cli-table3），数据
 6. **语言**：报告语言跟随对话语言，并据此设置 `--lang`。
 
 **报告章节骨架**（写入 references 模板）
+
 - 概览与核心结论（996 指数 / 一句话定性）
 - 工作时间分布（每日时段、工作日 vs 周末）
 - 加班分析（工作日 / 周末 / 深夜）+ 加班在干什么（git log 语义）
@@ -80,6 +87,7 @@ code996 目前只能在终端输出彩色报表（chalk + cli-table3），数据
 ### 3. README 增补
 
 `README.md` / `README_en.md` 新增「在 Claude Code 中生成分析报告」章节：
+
 - 手动复制安装：复制 `skills/code996-report` 到 `~/.claude/skills/code996-report` 或项目 `.claude/skills/`。
 - 触发示例：「用 code996 分析这个团队的工作强度并生成报告」。
 - 前置：Node ≥ 16（npx 可用）。
