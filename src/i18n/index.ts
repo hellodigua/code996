@@ -179,13 +179,17 @@ function isLocaleLike(input?: string): input is string {
 function readOsLocale(platform: NodeJS.Platform): string | undefined {
   try {
     if (platform === 'darwin') {
-      return readCommand('defaults read -g AppleLanguages 2>/dev/null') ?? readCommand('defaults read -g AppleLocale 2>/dev/null')
+      return (
+        readCommand('defaults read -g AppleLanguages 2>/dev/null') ??
+        readCommand('defaults read -g AppleLocale 2>/dev/null')
+      )
     }
 
     if (platform === 'win32') {
-      return readCommand(
-        'powershell -NoProfile -Command "(Get-WinUserLanguageList)[0].LanguageTag"'
-      ) ?? readCommand('powershell -NoProfile -Command "(Get-Culture).Name"')
+      return (
+        readCommand('powershell -NoProfile -Command "(Get-WinUserLanguageList)[0].LanguageTag"') ??
+        readCommand('powershell -NoProfile -Command "(Get-Culture).Name"')
+      )
     }
   } catch {
     return undefined

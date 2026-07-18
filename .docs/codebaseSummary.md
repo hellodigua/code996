@@ -69,6 +69,9 @@ website/
 ├── src/i18n/              # 官方站点中英文文案
 ├── public/                # 字体、favicon 与历史预览资产
 └── vite.config.mts        # GitHub Pages 站点构建到 dist/website
+scripts/
+├── release.mjs            # 发版预检、锁文件同步、版本提交、Tag 与原子推送
+└── release.test.mjs       # 发版脚本的纯逻辑测试
 ```
 
 ## 🎯 核心功能模块
@@ -91,7 +94,14 @@ website/
 - **站内依赖**：Vue、vue-router、vue-i18n、chart.xkcd 与字体均由 Vite 构建或复制，不从 CDN 加载运行时资源。
 - **部署归属**：主仓库 `main` 的 `website/` 变化触发 `.github/workflows/pages.yml`，构建 `dist/website` 并通过 GitHub Pages artifact 部署；不再依赖 `code996-web` 仓库或跨仓库部署密钥。
 
-### 3. 数据采集层 (Git Collector)
+### 3. 自动发版
+
+- **唯一手工输入**：维护者只修改 `package.json.version`，然后在同步后的 `main` 上运行 `npm run release`。
+- **本地预检**：脚本同步 `package-lock.json`，执行格式检查、完整测试、CLI/Web/官网构建和 npm 打包检查。
+- **Git 边界**：脚本创建 `release: vX.Y.Z` 和 annotated Tag，并通过 atomic push 同时推送 main 与 Tag。
+- **远端发布**：Tag 触发 `.github/workflows/release.yml`，再次验证版本和质量后发布 npm 包并创建 GitHub Release。
+
+### 4. 数据采集层 (Git Collector)
 
 - **数据收集**: 收集仓库的所有提交数据（默认忽略合并提交）
 - **Git命令执行**: 执行 git log、git rev-list 等命令获取提交数据，采用分钟级时间格式（`%H:%M`）和 ISO 8601 格式（`%ai`）
@@ -100,7 +110,7 @@ website/
 - **粒度聚合**: 自动将分钟级数据聚合为48个半小时点，保留精细信息
 - **时区检测**: 收集所有提交的时区偏移信息，用于跨时区协作检测
 
-### 4. 核心算法层 (Calculator)
+### 5. 核心算法层 (Calculator)
 
 - **996 指数计算**：基于加班比例的数学模型，输出数值与描述
 - **工作时间识别**：利用每日首提分位数与晚间拐点推断上下班区间，并在加班计算阶段只保留上班后的前 9 小时作为正常工时
@@ -109,7 +119,7 @@ website/
 - **节假日调休识别**：当主要时区为 +0800 且占比超过 50% 时，自动启用中国节假日调休判断（工作日/周末会考虑法定节假日和调休），其他时区可通过 `--cn` 参数手动开启
 - **附加模块**：`end-hour-detector.ts` 封装下班时间窗口推断逻辑，`timezone-analyzer.ts` 封装跨时区检测逻辑，`project-classifier.ts` 封装项目类型识别逻辑，`workday-checker.ts` 封装节假日调休判断逻辑
 
-### 5. 数据解析层 (Git Parser)
+### 6. 数据解析层 (Git Parser)
 
 - **数据清洗**：解析 git log 输出，转换为结构化数据
 - **时间分析**：按半小时（48点）、按星期统计提交分布

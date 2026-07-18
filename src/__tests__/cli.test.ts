@@ -43,80 +43,102 @@ describe('CLI i18n', () => {
   })
 
   it('未指定语言时优先按 OS 语言识别中文', () => {
-    const locale = resolveRequestedLocale([], {
-      ...process.env,
-      CODE996_LANG: '',
-      LC_ALL: 'en_US.UTF-8',
-      LC_MESSAGES: '',
-      LANG: 'en_US.UTF-8',
-    }, {
-      platform: 'darwin',
-      readOsLocale: () => 'zh-Hans-CN',
-    })
+    const locale = resolveRequestedLocale(
+      [],
+      {
+        ...process.env,
+        CODE996_LANG: '',
+        LC_ALL: 'en_US.UTF-8',
+        LC_MESSAGES: '',
+        LANG: 'en_US.UTF-8',
+      },
+      {
+        platform: 'darwin',
+        readOsLocale: () => 'zh-Hans-CN',
+      }
+    )
 
     expect(locale).toBe('zh-CN')
   })
 
   it('能识别 macOS AppleLanguages 列表输出', () => {
-    const locale = resolveRequestedLocale([], {
-      ...process.env,
-      CODE996_LANG: '',
-      LC_ALL: 'en_US.UTF-8',
-      LC_MESSAGES: '',
-      LANG: 'en_US.UTF-8',
-    }, {
-      platform: 'darwin',
-      readOsLocale: () => '(\n    "zh-Hans-CN"\n)',
-    })
+    const locale = resolveRequestedLocale(
+      [],
+      {
+        ...process.env,
+        CODE996_LANG: '',
+        LC_ALL: 'en_US.UTF-8',
+        LC_MESSAGES: '',
+        LANG: 'en_US.UTF-8',
+      },
+      {
+        platform: 'darwin',
+        readOsLocale: () => '(\n    "zh-Hans-CN"\n)',
+      }
+    )
 
     expect(locale).toBe('zh-CN')
   })
 
   it('OS 语言读取失败时回退到终端 locale', () => {
-    const locale = resolveRequestedLocale([], {
-      ...process.env,
-      CODE996_LANG: '',
-      LC_ALL: 'zh_CN.UTF-8',
-      LC_MESSAGES: '',
-      LANG: 'en_US.UTF-8',
-    }, {
-      platform: 'darwin',
-      readOsLocale: () => undefined,
-    })
+    const locale = resolveRequestedLocale(
+      [],
+      {
+        ...process.env,
+        CODE996_LANG: '',
+        LC_ALL: 'zh_CN.UTF-8',
+        LC_MESSAGES: '',
+        LANG: 'en_US.UTF-8',
+      },
+      {
+        platform: 'darwin',
+        readOsLocale: () => undefined,
+      }
+    )
 
     expect(locale).toBe('zh-CN')
   })
 
   it('--lang 优先级高于系统语言', () => {
-    const locale = resolveRequestedLocale(['node', 'code996', '--lang', 'en-US'], {
-      ...process.env,
-      CODE996_LANG: 'zh-CN',
-      LC_ALL: 'zh_CN.UTF-8',
-    }, {
-      platform: 'darwin',
-      readOsLocale: () => 'zh-Hans-CN',
-    })
+    const locale = resolveRequestedLocale(
+      ['node', 'code996', '--lang', 'en-US'],
+      {
+        ...process.env,
+        CODE996_LANG: 'zh-CN',
+        LC_ALL: 'zh_CN.UTF-8',
+      },
+      {
+        platform: 'darwin',
+        readOsLocale: () => 'zh-Hans-CN',
+      }
+    )
 
     expect(locale).toBe('en')
   })
 
   it('CODE996_LANG 优先级高于自动检测', () => {
-    const locale = resolveRequestedLocale([], {
-      ...process.env,
-      CODE996_LANG: 'zh_CN',
-      LC_ALL: 'en_US.UTF-8',
-    }, {
-      platform: 'win32',
-      readOsLocale: () => 'en-US',
-    })
+    const locale = resolveRequestedLocale(
+      [],
+      {
+        ...process.env,
+        CODE996_LANG: 'zh_CN',
+        LC_ALL: 'en_US.UTF-8',
+      },
+      {
+        platform: 'win32',
+        readOsLocale: () => 'en-US',
+      }
+    )
 
     expect(locale).toBe('zh-CN')
   })
 
   it('显式指定不支持的语言时报错', () => {
-    expect(() => resolveRequestedLocale(['node', 'code996', '--lang', 'ja'], {
-      ...process.env,
-    })).toThrow('Unsupported locale')
+    expect(() =>
+      resolveRequestedLocale(['node', 'code996', '--lang', 'ja'], {
+        ...process.env,
+      })
+    ).toThrow('Unsupported locale')
   })
 
   it('CLI 显式指定不支持的语言时输出错误并退出', () => {
@@ -132,17 +154,21 @@ describe('CLI i18n', () => {
   })
 
   it('自动检测到不支持的语言时回退英文', () => {
-    const locale = resolveRequestedLocale([], {
-      ...process.env,
-      CODE996_LANG: '',
-      LC_ALL: '',
-      LC_MESSAGES: '',
-      LANG: '',
-    }, {
-      platform: 'win32',
-      readOsLocale: () => 'ja-JP',
-      intlLocale: 'fr-FR',
-    })
+    const locale = resolveRequestedLocale(
+      [],
+      {
+        ...process.env,
+        CODE996_LANG: '',
+        LC_ALL: '',
+        LC_MESSAGES: '',
+        LANG: '',
+      },
+      {
+        platform: 'win32',
+        readOsLocale: () => 'ja-JP',
+        intlLocale: 'fr-FR',
+      }
+    )
 
     expect(locale).toBe('en')
   })

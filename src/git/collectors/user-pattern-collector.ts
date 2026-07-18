@@ -237,7 +237,11 @@ export class UserPatternCollector extends BaseCollector {
    * - 上班时间范围：08:00-12:00
    * @param monthsBack 时间窗口（月数），默认6个月
    */
-  async getUserDailyFirstCommits(email: string, options: GitLogOptions, monthsBack: number = 6): Promise<DailyCommitTime[]> {
+  async getUserDailyFirstCommits(
+    email: string,
+    options: GitLogOptions,
+    monthsBack: number = 6
+  ): Promise<DailyCommitTime[]> {
     const { path } = options
 
     // 计算N个月前的日期
@@ -247,7 +251,13 @@ export class UserPatternCollector extends BaseCollector {
 
     // 格式: "YYYY-MM-DD HH:MM|ISO_TIMESTAMP"
     // 使用提交时的原始时区
-    const args = ['log', '--format=%cd|%ai', `--date=format:%Y-%m-%d %H:%M`, `--author=${email}`, `--since=${sinceDate}`]
+    const args = [
+      'log',
+      '--format=%cd|%ai',
+      `--date=format:%Y-%m-%d %H:%M`,
+      `--author=${email}`,
+      `--since=${sinceDate}`,
+    ]
     this.applyCommonFilters(args, options)
 
     const output = await this.execGitCommand(args, path)
@@ -318,7 +328,11 @@ export class UserPatternCollector extends BaseCollector {
    * - 下班时间范围：16:00-02:00（次日）
    * @param monthsBack 时间窗口（月数），默认6个月
    */
-  async getUserDailyLatestCommits(email: string, options: GitLogOptions, monthsBack: number = 6): Promise<DailyCommitTime[]> {
+  async getUserDailyLatestCommits(
+    email: string,
+    options: GitLogOptions,
+    monthsBack: number = 6
+  ): Promise<DailyCommitTime[]> {
     const { path } = options
 
     // 计算N个月前的日期
@@ -328,7 +342,13 @@ export class UserPatternCollector extends BaseCollector {
 
     // 格式: "YYYY-MM-DD HH:MM|ISO_TIMESTAMP"
     // 使用提交时的原始时区
-    const args = ['log', '--format=%cd|%ai', `--date=format:%Y-%m-%d %H:%M`, `--author=${email}`, `--since=${sinceDate}`]
+    const args = [
+      'log',
+      '--format=%cd|%ai',
+      `--date=format:%Y-%m-%d %H:%M`,
+      `--author=${email}`,
+      `--since=${sinceDate}`,
+    ]
     this.applyCommonFilters(args, options)
 
     const output = await this.execGitCommand(args, path)
@@ -425,4 +445,3 @@ export class UserPatternCollector extends BaseCollector {
     return results
   }
 }
-

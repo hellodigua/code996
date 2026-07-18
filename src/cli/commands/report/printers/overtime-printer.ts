@@ -90,7 +90,9 @@ export function printWeekendOvertime(parsedData: ParsedGitData): void {
     const countText = count.toString().padStart(3)
     const percentOfTotal = totalDays > 0 ? ((count / totalDays) * 100).toFixed(1) : '0.0'
 
-    console.log(`${name}: ${bar} ${t('overtime.weekend.dayCount', { count: countText.trim(), percent: percentOfTotal })}`)
+    console.log(
+      `${name}: ${bar} ${t('overtime.weekend.dayCount', { count: countText.trim(), percent: percentOfTotal })}`
+    )
   })
 
   console.log()

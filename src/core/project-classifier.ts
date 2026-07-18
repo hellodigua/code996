@@ -171,11 +171,7 @@ export class ProjectClassifier {
    * @param dayHourCommits 按星期和小时的详细分布（如果可用）
    * @returns 24小时数组，只包含工作日的提交
    */
-  private static extractWorkdayHourlyData(
-    byHour: TimeCount[],
-    byDay: TimeCount[],
-    dayHourCommits?: any[]
-  ): number[] {
+  private static extractWorkdayHourlyData(byHour: TimeCount[], byDay: TimeCount[], dayHourCommits?: any[]): number[] {
     // 如果有 dayHourCommits，使用精确数据
     if (dayHourCommits && dayHourCommits.length > 0) {
       const hourCounts = new Array(24).fill(0)
@@ -315,7 +311,7 @@ export class ProjectClassifier {
     const ratio = weekendCount / total
 
     let description = ''
-    if (ratio >= 0.30) {
+    if (ratio >= 0.3) {
       description = t('project.weekend.veryHigh')
     } else if (ratio >= 0.15) {
       description = t('project.weekend.high')
@@ -364,9 +360,9 @@ export class ProjectClassifier {
 
     let description = ''
     const ratioText = (nightRatio * 100).toFixed(1)
-    if (nightRatio >= 0.40) {
+    if (nightRatio >= 0.4) {
       description = t('project.moonlighting.veryHigh', { ratio: ratioText })
-    } else if (nightRatio >= 0.30) {
+    } else if (nightRatio >= 0.3) {
       description = t('project.moonlighting.high', { ratio: ratioText })
     } else if (nightRatio >= 0.25) {
       description = t('project.moonlighting.active', { ratio: ratioText })
@@ -425,10 +421,10 @@ export class ProjectClassifier {
     }
 
     // 周末活跃度分析
-    if (weekend.ratio >= 0.30) {
+    if (weekend.ratio >= 0.3) {
       ossScore += 30
       reasons.push(t('project.reason.highWeekend', { ratio: (weekend.ratio * 100).toFixed(1) }))
-    } else if (weekend.ratio >= 0.20) {
+    } else if (weekend.ratio >= 0.2) {
       ossScore += 20
       reasons.push(t('project.reason.higherWeekend', { ratio: (weekend.ratio * 100).toFixed(1) }))
     } else if (weekend.ratio >= 0.15) {

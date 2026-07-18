@@ -82,10 +82,6 @@ function printWorkHourCapNotice(detection: ParsedGitData['detectedWorkTime']): v
   }
 
   const spanText = actualSpan.toFixed(1)
-  console.log(
-    chalk.yellow(
-      `⚠️  ${t('workTime.capNotice', { hours: spanText })}`
-    )
-  )
+  console.log(chalk.yellow(`⚠️  ${t('workTime.capNotice', { hours: spanText })}`))
   console.log()
 }

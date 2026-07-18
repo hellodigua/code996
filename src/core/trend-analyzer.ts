@@ -132,7 +132,14 @@ export class TrendAnalyzer {
       if (progressCallback) {
         progressCallback(i + 1, months.length, months[i])
       }
-      const data = await this.analyzeMonthMultiRepo(collector, paths, months[i], authorPattern, timezone, enableHolidayMode)
+      const data = await this.analyzeMonthMultiRepo(
+        collector,
+        paths,
+        months[i],
+        authorPattern,
+        timezone,
+        enableHolidayMode
+      )
       monthlyData.push(data)
     }
 

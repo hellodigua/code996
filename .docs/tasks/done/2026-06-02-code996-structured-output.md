@@ -1,7 +1,7 @@
 # 任务：code996 结构化输出（--json / --md / --output）
 
 > 创建日期：2026-06-02 · 完成日期：2026-06-02 · 状态：**已完成** · 类型：新功能（前置依赖）
-> 
+>
 > **注意**：本任务是 [code996-report-skill.md](./code996-report-skill.md) 的前置依赖，skill 消费 `--json` 的结构化数据。
 
 ## 一、背景
@@ -10,15 +10,15 @@ code996 目前只有彩色终端输出（chalk + cli-table3），无法被 AI / 
 
 ## 二、决策记录（已确认）
 
-| 项目 | 决策 |
-|------|------|
-| `--json` 时终端报表 | 静默，只输出 JSON |
-| JSON 落盘 | `--json` → stdout；`--json --output <path>` → 文件 |
-| `--md` 内容 | 纯数据型 Markdown 表格（无叙事，AI 负责结论） |
-| `--md` 落盘 | 同 JSON，默认 stdout，`--output` 落盘 |
-| 默认文件名 | `code996-report-YYYY-MM-DD.json` / `.md`，保存到 CWD |
-| Schema 版本 | `schemaVersion: "experimental"`，不承诺稳定 |
-| CLI 入口 | 加到现有根命令选项，不新增子命令 |
+| 项目                | 决策                                                 |
+| ------------------- | ---------------------------------------------------- |
+| `--json` 时终端报表 | 静默，只输出 JSON                                    |
+| JSON 落盘           | `--json` → stdout；`--json --output <path>` → 文件   |
+| `--md` 内容         | 纯数据型 Markdown 表格（无叙事，AI 负责结论）        |
+| `--md` 落盘         | 同 JSON，默认 stdout，`--output` 落盘                |
+| 默认文件名          | `code996-report-YYYY-MM-DD.json` / `.md`，保存到 CWD |
+| Schema 版本         | `schemaVersion: "experimental"`，不承诺稳定          |
+| CLI 入口            | 加到现有根命令选项，不新增子命令                     |
 
 ## 三、CLI 变更
 
@@ -32,6 +32,7 @@ code996 目前只有彩色终端输出（chalk + cli-table3），无法被 AI / 
 ```
 
 调用示例：
+
 ```bash
 code996 --json                          # JSON → stdout
 code996 --json | jq '.core.index996'    # 管道处理
@@ -76,26 +77,33 @@ code996 /proj1 /proj2 --json            # 多仓库 JSON
     "confidence": 87.3,
     "detectionMethod": "quantile-window"
   },
-  "hourlyDistribution": [
-    { "hour": "09", "count": 42 }
-  ],
-  "weekdayDistribution": [
-    { "day": "monday", "count": 180 }
-  ],
+  "hourlyDistribution": [{ "hour": "09", "count": 42 }],
+  "weekdayDistribution": [{ "day": "monday", "count": 180 }],
   "weekdayOvertime": {
-    "monday": 12, "tuesday": 8, "wednesday": 15,
-    "thursday": 10, "friday": 20,
-    "peakDay": "friday", "peakCount": 20
+    "monday": 12,
+    "tuesday": 8,
+    "wednesday": 15,
+    "thursday": 10,
+    "friday": 20,
+    "peakDay": "friday",
+    "peakCount": 20
   },
   "weekendOvertime": {
-    "saturdayDays": 8, "sundayDays": 4,
-    "casualFixDays": 5, "realOvertimeDays": 7
+    "saturdayDays": 8,
+    "sundayDays": 4,
+    "casualFixDays": 5,
+    "realOvertimeDays": 7
   },
   "lateNight": {
-    "evening": 120, "lateNight": 45, "midnight": 12, "dawn": 3,
-    "midnightDays": 10, "totalWorkDays": 240,
+    "evening": 120,
+    "lateNight": 45,
+    "midnight": 12,
+    "dawn": 3,
+    "midnightDays": 10,
+    "totalWorkDays": 240,
     "midnightRate": 4.2,
-    "totalWeeks": 52, "totalMonths": 12
+    "totalWeeks": 52,
+    "totalMonths": 12
   },
   "trend": null,
   "team": null,
@@ -104,6 +112,7 @@ code996 /proj1 /proj2 --json            # 多仓库 JSON
 ```
 
 **特殊处理**：
+
 - `DailyCommitHours.hours` 是 `Set<number>` → 序列化为 `number[]`。
 - `team` / `multiRepo` / `trend` 在不可用时为 `null`。
 
@@ -148,33 +157,41 @@ code996 /proj1 /proj2 --json            # 多仓库 JSON
 # code996 分析报告 · 2026-06-02
 
 ## 基本信息
-| 项目 | 值 |
-|------|----|
-| 仓库 | /path/to/repo |
+
+| 项目     | 值                      |
+| -------- | ----------------------- |
+| 仓库     | /path/to/repo           |
 | 分析区间 | 2025-06-02 → 2026-06-02 |
-| 总提交数 | 1024 |
-| 996 指数 | 142 |
-| 加班比例 | 38.5% |
+| 总提交数 | 1024                    |
+| 996 指数 | 142                     |
+| 加班比例 | 38.5%                   |
 
 ## 每日提交时段分布
-| 时段 | 提交数 |
-|------|-------|
-| 09:00 | 42 |
+
+| 时段  | 提交数 |
+| ----- | ------ |
+| 09:00 | 42     |
+
 ...
 
 ## 工作日加班分布
+
 ...
 
 ## 周末加班统计
+
 ...
 
 ## 深夜加班统计
+
 ...
 
 ## 团队贡献者（可选）
+
 ...
 
 ## 各仓库对比（多仓库，可选）
+
 ...
 ```
 
@@ -182,20 +199,20 @@ code996 /proj1 /proj2 --json            # 多仓库 JSON
 
 ### 需修改
 
-| 文件 | 改动说明 |
-|------|---------|
-| `src/cli/index.ts` | 根命令新增 `--json`、`--md`、`--output` 选项；传入 `handleSmartMode` → `handleAnalyze` / `handleMulti` |
-| `src/types/git-types.ts` | 新增 `AnalyzeOutput` / `JsonOutput` 等接口；为 `AnalyzeOptions` 新增 `json?`, `md?`, `output?` 字段 |
-| `src/cli/commands/analyze.ts` | 在 `printResults` 调用前，若 `--json`/`--md` 则走结构化输出路径（跳过 print 函数）|
-| `src/cli/commands/multi.ts` | 同上，多仓库场景序列化 `repoRecords[]` 和合并后的 `parsedData` |
+| 文件                          | 改动说明                                                                                               |
+| ----------------------------- | ------------------------------------------------------------------------------------------------------ |
+| `src/cli/index.ts`            | 根命令新增 `--json`、`--md`、`--output` 选项；传入 `handleSmartMode` → `handleAnalyze` / `handleMulti` |
+| `src/types/git-types.ts`      | 新增 `AnalyzeOutput` / `JsonOutput` 等接口；为 `AnalyzeOptions` 新增 `json?`, `md?`, `output?` 字段    |
+| `src/cli/commands/analyze.ts` | 在 `printResults` 调用前，若 `--json`/`--md` 则走结构化输出路径（跳过 print 函数）                     |
+| `src/cli/commands/multi.ts`   | 同上，多仓库场景序列化 `repoRecords[]` 和合并后的 `parsedData`                                         |
 
 ### 需新增
 
-| 文件 | 说明 |
-|------|------|
-| `src/cli/commands/output/json-formatter.ts` | 把 `{result, parsedData, rawData, teamAnalysis?, repoRecords?}` 序列化为上述 JSON schema（含 `Set → Array` 处理）|
-| `src/cli/commands/output/md-formatter.ts` | 把同样的数据集渲染为纯数据 Markdown 表格 |
-| `src/cli/commands/output/file-writer.ts` | 统一处理 stdout 输出 vs 文件落盘（含默认文件名生成）|
+| 文件                                        | 说明                                                                                                              |
+| ------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| `src/cli/commands/output/json-formatter.ts` | 把 `{result, parsedData, rawData, teamAnalysis?, repoRecords?}` 序列化为上述 JSON schema（含 `Set → Array` 处理） |
+| `src/cli/commands/output/md-formatter.ts`   | 把同样的数据集渲染为纯数据 Markdown 表格                                                                          |
+| `src/cli/commands/output/file-writer.ts`    | 统一处理 stdout 输出 vs 文件落盘（含默认文件名生成）                                                              |
 
 ## 七、Set 序列化处理
 
@@ -204,7 +221,7 @@ code996 /proj1 /proj2 --json            # 多仓库 JSON
 ```typescript
 // json-formatter.ts 内部
 function serializeDailyCommitHours(arr: DailyCommitHours[]): object[] {
-  return arr.map(item => ({
+  return arr.map((item) => ({
     ...item,
     hours: Array.from(item.hours).sort((a, b) => a - b),
   }))
@@ -244,21 +261,22 @@ code996 --self --year 2025  # 正常输出
 ```
 
 ### 类型检查
+
 ```bash
 npx tsc --noEmit   # 必须通过，新增接口不引入类型错误
 ```
 
 ## 十、skill 所需的字段映射（衔接 code996-report-skill.md）
 
-| skill 要求的字段 | JSON schema 路径 | 来源模块 |
-|-----------------|-----------------|---------|
-| 996 指数 | `.core.index996` | `Result996.index996` |
-| 加班比例 | `.core.overTimeRatio` | `Result996.overTimeRadio` |
-| 时段分布 | `.hourlyDistribution[]` | `ParsedGitData.hourData` |
-| 工作日加班 | `.weekdayOvertime` | `ParsedGitData.weekdayOvertime` |
-| 周末加班 | `.weekendOvertime` | `ParsedGitData.weekendOvertime` |
-| 深夜加班 | `.lateNight` | `ParsedGitData.lateNightAnalysis` |
-| 推测工时 | `.workTime` | `ParsedGitData.detectedWorkTime` |
-| 趋势 | `.trend` | `TrendAnalyzer` |
-| 贡献者对比 | `.team.contributors[]` | `GitTeamAnalyzer.analyzeTeam()` |
-| 多仓库对比 | `.multiRepo.repos[]` | `RepoAnalysisRecord[]` |
+| skill 要求的字段 | JSON schema 路径        | 来源模块                          |
+| ---------------- | ----------------------- | --------------------------------- |
+| 996 指数         | `.core.index996`        | `Result996.index996`              |
+| 加班比例         | `.core.overTimeRatio`   | `Result996.overTimeRadio`         |
+| 时段分布         | `.hourlyDistribution[]` | `ParsedGitData.hourData`          |
+| 工作日加班       | `.weekdayOvertime`      | `ParsedGitData.weekdayOvertime`   |
+| 周末加班         | `.weekendOvertime`      | `ParsedGitData.weekendOvertime`   |
+| 深夜加班         | `.lateNight`            | `ParsedGitData.lateNightAnalysis` |
+| 推测工时         | `.workTime`             | `ParsedGitData.detectedWorkTime`  |
+| 趋势             | `.trend`                | `TrendAnalyzer`                   |
+| 贡献者对比       | `.team.contributors[]`  | `GitTeamAnalyzer.analyzeTeam()`   |
+| 多仓库对比       | `.multiRepo.repos[]`    | `RepoAnalysisRecord[]`            |
