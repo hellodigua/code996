@@ -8,8 +8,7 @@ export function printLocalWebReportResult(webReport?: LocalWebReportResult): voi
   if (!webReport) return
 
   const messageKey = webReport.opened ? 'analyze.web.opened' : 'analyze.web.saved'
-  console.log(chalk.cyanBright.bold(`🌐 ${t(messageKey, { path: webReport.indexPath })}`))
-  console.log(chalk.gray(`📁 ${t('analyze.web.directory', { path: webReport.directory })}`))
+  console.log(`🌐 ${t(messageKey, { path: chalk.cyanBright.bold(webReport.indexPath) })}`)
 
   if (webReport.storageFallback) {
     console.log(chalk.yellow(t('analyze.web.storageFallback', { message: webReport.storageFallback.message })))

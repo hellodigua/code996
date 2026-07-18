@@ -106,7 +106,6 @@ export const messages: Record<Locale, Record<string, string>> = {
     'analyze.failed': 'Analysis failed:',
     'analyze.web.opened': 'Local Web report opened: {{path}}',
     'analyze.web.saved': 'Local Web report generated: {{path}}',
-    'analyze.web.directory': 'Report directory: {{path}} (delete this directory to remove the report)',
     'analyze.web.storageFallback':
       'Downloads was unavailable ({{message}}). The report was saved in the system temporary directory instead.',
     'analyze.web.openFailed': 'Unable to open a browser automatically ({{message}}). Open the file above manually.',
@@ -538,7 +537,6 @@ export const messages: Record<Locale, Record<string, string>> = {
     'analyze.failed': '分析失败:',
     'analyze.web.opened': '已打开本地 Web 报告：{{path}}',
     'analyze.web.saved': '已生成本地 Web 报告：{{path}}',
-    'analyze.web.directory': '报告目录：{{path}}（删除此目录即可完整移除报告）',
     'analyze.web.storageFallback': 'Downloads 目录不可用（{{message}}），报告已改存到系统临时目录。',
     'analyze.web.openFailed': '无法自动打开浏览器（{{message}}），请手动打开上面的文件。',
     'analyze.year.invalidRange': '年份格式错误: 起始年份不能大于结束年份，且年份必须 >= 1970',

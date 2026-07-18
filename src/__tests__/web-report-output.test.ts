@@ -48,7 +48,7 @@ describe('Web 报告输出模式', () => {
     expect(resolveLocalWebReportBehavior({ md: true })).toEqual({ generate: false, open: false })
   })
 
-  test('终端模式在使用提示之后以亮蓝色报告生成结果收尾', () => {
+  test('终端模式在使用提示之后以亮蓝色报告链接收尾', () => {
     const previousColorLevel = chalk.level
     const logSpy = jest.spyOn(console, 'log').mockImplementation(() => undefined)
     chalk.level = 3
@@ -68,9 +68,9 @@ describe('Web 报告输出模式', () => {
       expect(noticeIndex).toBeGreaterThanOrEqual(0)
       expect(reportIndex).toBeGreaterThan(noticeIndex)
       expect(lines[reportIndex]).toBe(
-        chalk.cyanBright.bold('🌐 已生成本地 Web 报告：/tmp/code996-report/demo/index.html')
+        `🌐 已生成本地 Web 报告：${chalk.cyanBright.bold('/tmp/code996-report/demo/index.html')}`
       )
-      expect(lines[lines.length - 1]).toContain('报告目录：/tmp/code996-report/demo')
+      expect(lines.some((line) => line.includes('报告目录'))).toBe(false)
     } finally {
       chalk.level = previousColorLevel
       logSpy.mockRestore()
