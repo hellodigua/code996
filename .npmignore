@@ -35,6 +35,12 @@ tests/
 .cursor/
 .claude/
 public/
+web/
+scripts/
+!dist/web/**
+
+# 仅用于测试的编译产物不进入发布包
+dist/test-utils/
 
 # Git 相关
 .git

@@ -9,6 +9,7 @@ export function printGlobalNotices(): void {
   console.log(`  ● ${t('notices.privacy')}`)
   console.log(`  ● ${t('notices.limit')}`)
   console.log(`  ● ${chalk.bold(t('notices.usage'))}`)
+  console.log(`  ● ${chalk.bold(t('notices.web'))}`)
   console.log(`  ● ${t('notices.help')}`)
   console.log()
   console.log(`  ${t('notices.github')} ${chalk.cyan.bold('https://github.com/hellodigua/code996')}`)

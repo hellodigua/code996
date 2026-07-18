@@ -64,14 +64,24 @@ export function buildMarkdown(data: StructuredOutput): string {
   // 每日提交时段分布
   if (data.hourlyDistribution.length) {
     sections.push('## 每日提交时段分布\n')
-    sections.push(mdTable(['时段', '提交数'], data.hourlyDistribution.map((d) => [d.hour + ':00', String(d.count)])))
+    sections.push(
+      mdTable(
+        ['时段', '提交数'],
+        data.hourlyDistribution.map((d) => [d.hour + ':00', String(d.count)])
+      )
+    )
     sections.push('')
   }
 
   // 工作日分布
   if (data.weekdayDistribution.length) {
     sections.push('## 工作日提交分布\n')
-    sections.push(mdTable(['星期', '提交数'], data.weekdayDistribution.map((d) => [formatWeekday(d.day), String(d.count)])))
+    sections.push(
+      mdTable(
+        ['星期', '提交数'],
+        data.weekdayDistribution.map((d) => [formatWeekday(d.day), String(d.count)])
+      )
+    )
     sections.push('')
   }
 
@@ -141,13 +151,13 @@ export function buildMarkdown(data: StructuredOutput): string {
   // 多仓库对比
   if (data.multiRepo && data.multiRepo.repos.length) {
     sections.push('## 各仓库对比\n')
-    const headers = ['仓库', '996 指数', '加班比例', '总提交数']
-    const rows = data.multiRepo.repos.map((r) => [
-      r.name,
-      String(r.core.index996),
-      pct(r.core.overTimeRatio),
-      String(r.totalCommits),
-    ])
+    const headers = ['仓库', '996 指数', '加班比例', '总提交数', '状态']
+    const rows = data.multiRepo.repos.map((r) => {
+      if (r.status === 'failed' || !r.core) {
+        return [r.name, '-', '-', '-', `失败：${r.error || '未知错误'}`]
+      }
+      return [r.name, String(r.core.index996), pct(r.core.overTimeRatio), String(r.totalCommits), '成功']
+    })
     sections.push(mdTable(headers, rows))
     sections.push('')
   }

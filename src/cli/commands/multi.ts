@@ -28,6 +28,8 @@ import { printTeamAnalysis } from './report/printers/user-analysis-printer'
 import { t } from '../../i18n'
 import { buildMultiRepoOutput } from '../output/json-formatter'
 import { writeStructuredOutput } from '../output/file-writer'
+import { resolveOutputMode } from '../output/output-mode'
+import { writeLocalWebReport } from '../output/web-report-writer'
 import { TeamAnalysis } from '../../types/git-types'
 
 /**
@@ -36,10 +38,7 @@ import { TeamAnalysis } from '../../types/git-types'
  * @param options 用户选项
  * @returns 是否启用及原因
  */
-function shouldEnableHolidayMode(
-  rawData: GitLogData,
-  options: AnalyzeOptions
-): { enabled: boolean; reason: string } {
+function shouldEnableHolidayMode(rawData: GitLogData, options: AnalyzeOptions): { enabled: boolean; reason: string } {
   // 如果用户强制开启，直接启用
   if (options.cn) {
     return {
@@ -84,7 +83,9 @@ export class MultiExecutor {
    * @param preScannedRepos 可选：已经扫描好的仓库列表（智能模式使用）
    */
   static async execute(inputDirs: string[], options: AnalyzeOptions, preScannedRepos?: RepoInfo[]): Promise<void> {
-    const isStructured = !!(options.json || options.md)
+    const outputMode = resolveOutputMode(options)
+    const isStructured = outputMode === 'json' || outputMode === 'md'
+    const isTerminalReport = outputMode === 'terminal'
     try {
       // ========== 步骤 1: 扫描仓库 ==========
       let repos: RepoInfo[]
@@ -198,7 +199,7 @@ export class MultiExecutor {
         console.log(
           chalk.blue(
             `📅 ${t('multi.range.labelCustom', {
-              since: effectiveSince || (t('core.result.period.from', { since: '' }).trim() || 'earliest'),
+              since: effectiveSince || t('core.result.period.from', { since: '' }).trim() || 'earliest',
               until: effectiveUntil || 'latest',
             })}`
           )
@@ -280,7 +281,9 @@ export class MultiExecutor {
       }
 
       console.log()
-      console.log(chalk.green(`✓ ${t('multi.success', { success: successfulData.length, total: selectedRepos.length })}`))
+      console.log(
+        chalk.green(`✓ ${t('multi.success', { success: successfulData.length, total: selectedRepos.length })}`)
+      )
       console.log()
 
       // ========== 步骤 4: 合并数据 ==========
@@ -317,72 +320,18 @@ export class MultiExecutor {
       )
 
       // 如果有任意一个开源项目，显示项目类型对比表
-      if (hasOpenSourceProject) {
+      if (isTerminalReport && hasOpenSourceProject) {
         this.printProjectTypeComparison(repoRecords)
       }
 
-      if (isStructured) {
-        // 结构化输出模式：采集团队数据 + 趋势（均 silent）后序列化输出
-        const successfulRepoPaths = selectedRepos
-          .filter((_, index) => repoRecords[index].status === 'success')
-          .map((repo) => repo.path)
+      const successfulRepoPaths = selectedRepos
+        .filter((_, index) => repoRecords[index].status === 'success')
+        .map((repo) => repo.path)
+      const timezoneAnalysis = mergedData.timezoneData
+        ? TimezoneAnalyzer.analyzeTimezone(mergedData.timezoneData, mergedData.byHour)
+        : null
 
-        let teamAnalysis: TeamAnalysis | null = null
-        if (!hasOpenSourceProject && GitTeamAnalyzer.shouldAnalyzeTeam(options) && successfulRepoPaths.length > 0) {
-          try {
-            const collectOptionsMulti: GitLogOptions = {
-              path: '',
-              since: effectiveSince,
-              until: effectiveUntil,
-              authorPattern,
-              ignoreAuthor: options.ignoreAuthor,
-              ignoreMsg: options.ignoreMsg,
-            }
-            const maxUsers = options.maxUsers ? parseInt(String(options.maxUsers), 10) : 30
-            teamAnalysis =
-              (await MultiRepoTeamAnalyzer.analyzeAggregatedTeam(
-                successfulRepoPaths,
-                collectOptionsMulti,
-                20,
-                maxUsers,
-                result.index996
-              )) ?? null
-          } catch {
-            // 静默忽略
-          }
-        }
-
-        let trendResult = null
-        if (successfulRepoPaths.length > 0) {
-          try {
-            trendResult = await TrendAnalyzer.analyzeMultiRepoTrend(
-              successfulRepoPaths,
-              effectiveSince ?? null,
-              effectiveUntil ?? null,
-              authorPattern,
-              () => {},
-              options.timezone,
-              shouldEnableHoliday3.enabled
-            )
-          } catch {
-            // 静默忽略
-          }
-        }
-
-        const payload = buildMultiRepoOutput({
-          result,
-          parsedData,
-          mergedData,
-          repoRecords,
-          teamAnalysis,
-          trendResult,
-          options,
-          since: effectiveSince,
-          until: effectiveUntil,
-          rangeMode,
-        })
-        await writeStructuredOutput(payload, options)
-      } else {
+      if (isTerminalReport) {
         // ========== 步骤 6: 输出汇总结果 ==========
         console.log(chalk.cyan.bold(`📊 ${t('multi.summary.title')}`))
         console.log()
@@ -408,84 +357,115 @@ export class MultiExecutor {
 
         // ========== 步骤 7: 输出各仓库对比表 ==========
         MultiComparisonPrinter.print(repoRecords)
+      }
 
-        // ========== 步骤 8: 月度趋势分析 ==========
-        if (selectedRepos.length > 0) {
+      // 扩展分析只计算一次，所有输出格式共用结果。
+      let trendResult = null
+      if (successfulRepoPaths.length > 0) {
+        if (!isTerminalReport) {
+          try {
+            trendResult = await TrendAnalyzer.analyzeMultiRepoTrend(
+              successfulRepoPaths,
+              effectiveSince ?? null,
+              effectiveUntil ?? null,
+              authorPattern,
+              () => {},
+              options.timezone,
+              shouldEnableHoliday3.enabled
+            )
+          } catch {
+            // 结构化输出保持纯净，缺失模块由 null 表达。
+          }
+        } else {
           console.log()
           const trendSpinner = ora(`📈 ${t('multi.trend.start')}`).start()
           try {
-            const successfulRepoPaths = selectedRepos
-              .filter((_, index) => repoRecords[index].status === 'success')
-              .map((repo) => repo.path)
-
-            if (successfulRepoPaths.length === 0) {
-              trendSpinner.warn(t('multi.trend.skip'))
-            } else {
-              const trendResult = await TrendAnalyzer.analyzeMultiRepoTrend(
-                successfulRepoPaths,
-                effectiveSince ?? null,
-                effectiveUntil ?? null,
-                authorPattern,
-                (current, total, month) => {
-                  trendSpinner.text = `📈 ${t('analyze.trend.progress', { current, total, month })}`
-                },
-                options.timezone,
-                shouldEnableHoliday3.enabled
-              )
-              trendSpinner.succeed()
-              printTrendReport(trendResult)
-            }
+            trendResult = await TrendAnalyzer.analyzeMultiRepoTrend(
+              successfulRepoPaths,
+              effectiveSince ?? null,
+              effectiveUntil ?? null,
+              authorPattern,
+              (current, total, month) => {
+                trendSpinner.text = `📈 ${t('analyze.trend.progress', { current, total, month })}`
+              },
+              options.timezone,
+              shouldEnableHoliday3.enabled
+            )
+            trendSpinner.succeed()
+            printTrendReport(trendResult)
           } catch (error) {
             trendSpinner.fail(t('analyze.trend.failed'))
             console.error(chalk.red(`⚠️  ${t('analyze.trend.error')}`), (error as Error).message)
           }
         }
+      }
 
-        // ========== 步骤 9: 团队工作模式分析 ==========
-        if (!hasOpenSourceProject && GitTeamAnalyzer.shouldAnalyzeTeam(options) && selectedRepos.length > 0) {
-          const successfulRepoPaths = selectedRepos
-            .filter((_, index) => repoRecords[index].status === 'success')
-            .map((repo) => repo.path)
-
-          if (successfulRepoPaths.length > 0) {
-            console.log()
-            console.log(chalk.gray(`💡 ${t('multi.team.aggregate', { count: successfulRepoPaths.length })}`))
-
-            try {
-              const collectOptions: GitLogOptions = {
-                path: '',
-                since: effectiveSince,
-                until: effectiveUntil,
-                authorPattern,
-                ignoreAuthor: options.ignoreAuthor,
-                ignoreMsg: options.ignoreMsg,
-              }
-
-              const maxUsers = options.maxUsers ? parseInt(String(options.maxUsers), 10) : 30
-              const teamAnalysis = await MultiRepoTeamAnalyzer.analyzeAggregatedTeam(
-                successfulRepoPaths,
-                collectOptions,
-                20,
-                maxUsers,
-                result.index996
-              )
-
-              if (teamAnalysis) {
-                printTeamAnalysis(teamAnalysis)
-              }
-            } catch (error) {
-              console.log(chalk.yellow(`⚠️  ${t('analyze.team.failed')}`), (error as Error).message)
-            }
-          }
+      let teamAnalysis: TeamAnalysis | null = null
+      if (!hasOpenSourceProject && GitTeamAnalyzer.shouldAnalyzeTeam(options) && successfulRepoPaths.length > 0) {
+        if (isTerminalReport) {
+          console.log()
+          console.log(chalk.gray(`💡 ${t('multi.team.aggregate', { count: successfulRepoPaths.length })}`))
         }
 
-        // ========== 步骤 10: 检测跨时区并显示警告 ==========
-        if (mergedData.timezoneData && !options.timezone) {
-          const tzAnalysis = TimezoneAnalyzer.analyzeTimezone(mergedData.timezoneData, mergedData.byHour)
-          if (tzAnalysis.isCrossTimezone) {
-            console.log()
-            console.log(chalk.yellow(TimezoneAnalyzer.generateWarningMessage(tzAnalysis)))
+        try {
+          const collectOptions: GitLogOptions = {
+            path: '',
+            since: effectiveSince,
+            until: effectiveUntil,
+            authorPattern,
+            ignoreAuthor: options.ignoreAuthor,
+            ignoreMsg: options.ignoreMsg,
           }
+          const maxUsers = options.maxUsers ? parseInt(String(options.maxUsers), 10) : 30
+          teamAnalysis =
+            (await MultiRepoTeamAnalyzer.analyzeAggregatedTeam(
+              successfulRepoPaths,
+              collectOptions,
+              20,
+              maxUsers,
+              result.index996
+            )) ?? null
+
+          if (isTerminalReport && teamAnalysis) printTeamAnalysis(teamAnalysis)
+        } catch (error) {
+          if (isTerminalReport) {
+            console.log(chalk.yellow(`⚠️  ${t('analyze.team.failed')}`), (error as Error).message)
+          }
+        }
+      }
+
+      if (isTerminalReport && !options.timezone && timezoneAnalysis?.isCrossTimezone) {
+        console.log()
+        console.log(chalk.yellow(TimezoneAnalyzer.generateWarningMessage(timezoneAnalysis)))
+      }
+
+      const payload = buildMultiRepoOutput({
+        result,
+        parsedData,
+        mergedData,
+        repoRecords,
+        teamAnalysis,
+        trendResult,
+        options,
+        since: effectiveSince,
+        until: effectiveUntil,
+        rangeMode,
+        holidayMode: shouldEnableHoliday3.enabled,
+        timezoneAnalysis,
+      })
+
+      if (isStructured) {
+        await writeStructuredOutput(payload, options)
+      } else if (outputMode === 'web') {
+        const webReport = await writeLocalWebReport(payload, { open: options.open !== false })
+        const messageKey = webReport.opened ? 'analyze.web.opened' : 'analyze.web.saved'
+        console.log(chalk.green(`🌐 ${t(messageKey, { path: webReport.indexPath })}`))
+        console.log(chalk.gray(`📁 ${t('analyze.web.directory', { path: webReport.directory })}`))
+        if (webReport.storageFallback) {
+          console.log(chalk.yellow(t('analyze.web.storageFallback', { message: webReport.storageFallback.message })))
+        }
+        if (webReport.openError) {
+          console.log(chalk.yellow(t('analyze.web.openFailed', { message: webReport.openError.message })))
         }
       }
     } catch (error) {
