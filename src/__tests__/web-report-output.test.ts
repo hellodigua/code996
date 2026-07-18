@@ -1,9 +1,11 @@
+import { EventEmitter } from 'events'
+import { spawn, type ChildProcess } from 'child_process'
 import fs from 'fs/promises'
 import os from 'os'
 import path from 'path'
 import type { ReportData } from '../report/report-data'
 import { resolveOutputMode } from '../cli/output/output-mode'
-import { writeLocalWebReport } from '../cli/output/web-report-writer'
+import { openLocalFile, writeLocalWebReport } from '../cli/output/web-report-writer'
 
 function createReport(repoPath = '/workspace/demo'): ReportData {
   return {
@@ -113,5 +115,39 @@ describe('本地 Web 报告生成', () => {
     expect(degraded.opened).toBe(false)
     expect(degraded.openError?.message).toBe('no browser')
     await expect(fs.access(degraded.indexPath)).resolves.toBeUndefined()
+  })
+})
+
+describe('系统打开器', () => {
+  test('仅在系统打开器正常退出后报告成功', async () => {
+    const child = new EventEmitter()
+    const spawnProcess = jest.fn(() => child as ChildProcess) as unknown as typeof spawn
+
+    const opening = openLocalFile('/tmp/code996 report/index.html', 'linux', spawnProcess)
+    child.emit('spawn')
+
+    let settled = false
+    void opening.finally(() => {
+      settled = true
+    })
+    await Promise.resolve()
+    expect(settled).toBe(false)
+
+    child.emit('close', 0, null)
+    await expect(opening).resolves.toBeUndefined()
+    expect(spawnProcess).toHaveBeenCalledWith('xdg-open', ['/tmp/code996 report/index.html'], {
+      stdio: 'ignore',
+    })
+  })
+
+  test('系统打开器以非零状态退出时报告失败', async () => {
+    const child = new EventEmitter()
+    const spawnProcess = jest.fn(() => child as ChildProcess) as unknown as typeof spawn
+
+    const opening = openLocalFile('/tmp/report/index.html', 'linux', spawnProcess)
+    child.emit('spawn')
+    child.emit('close', 3, null)
+
+    await expect(opening).rejects.toThrow('xdg-open failed with exit code 3.')
   })
 })

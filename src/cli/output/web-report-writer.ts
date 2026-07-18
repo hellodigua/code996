@@ -174,18 +174,26 @@ async function inlineModuleScripts(template: string, reportDirectory: string): P
 }
 
 /** 使用参数数组调用系统打开器，避免通过 shell 拼接用户可控的文件路径。 */
-export async function openLocalFile(filePath: string, platform: NodeJS.Platform = process.platform): Promise<void> {
+export async function openLocalFile(
+  filePath: string,
+  platform: NodeJS.Platform = process.platform,
+  spawnProcess: typeof spawn = spawn
+): Promise<void> {
   const command = platform === 'darwin' ? 'open' : platform === 'win32' ? 'explorer.exe' : 'xdg-open'
 
   await new Promise<void>((resolve, reject) => {
-    const child = spawn(command, [filePath], {
-      detached: true,
+    const child = spawnProcess(command, [filePath], {
       stdio: 'ignore',
     })
     child.once('error', reject)
-    child.once('spawn', () => {
-      child.unref()
-      resolve()
+    child.once('close', (code, signal) => {
+      if (code === 0) {
+        resolve()
+        return
+      }
+
+      const reason = signal ? `signal ${signal}` : `exit code ${code ?? 'unknown'}`
+      reject(new Error(`${command} failed with ${reason}.`))
     })
   })
 }
