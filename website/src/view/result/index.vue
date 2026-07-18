@@ -1,5 +1,5 @@
 <template>
-  <div class="result">
+  <div v-if="hasValidQuery" class="result">
     <div class="top-bar">
       <div class="wrapper">
         <span class="button back" @click="goBack">{{ t('common.back') }}</span>
@@ -132,9 +132,9 @@ const goBack = () => {
   router.push({ name: routeName })
 }
 
-checkUrlQueryAndRedirect()
+const hasValidQuery = checkUrlQueryAndRedirect()
 
 onMounted(() => {
-  init()
+  if (hasValidQuery) init()
 })
 </script>
