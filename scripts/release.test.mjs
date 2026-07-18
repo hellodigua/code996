@@ -3,6 +3,7 @@ import test from 'node:test'
 import {
   assertOnlyPackageVersionChanged,
   compareStableVersions,
+  matchesChangedFiles,
   parsePorcelainStatus,
   parseStableVersion,
   syncPackageLockVersion,
@@ -44,4 +45,13 @@ test('解析 git porcelain 的暂存、未暂存和未跟踪文件', () => {
     { status: 'M ', path: 'package-lock.json' },
     { status: '??', path: 'note.md' },
   ])
+})
+
+test('仅允许版本文件，并支持同步 lock 后重试', () => {
+  assert.equal(matchesChangedFiles(['package.json'], ['package.json'], ['package-lock.json']), true)
+  assert.equal(
+    matchesChangedFiles(['package-lock.json', 'package.json'], ['package.json'], ['package-lock.json']),
+    true
+  )
+  assert.equal(matchesChangedFiles(['package.json', 'README.md'], ['package.json'], ['package-lock.json']), false)
 })

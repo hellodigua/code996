@@ -97,7 +97,7 @@ scripts/
 ### 3. 自动发版
 
 - **唯一手工输入**：维护者只修改 `package.json.version`，然后在同步后的 `main` 上运行 `npm run release`。
-- **本地预检**：脚本同步 `package-lock.json`，执行格式检查、完整测试、CLI/Web/官网构建和 npm 打包检查。
+- **本地预检**：脚本同步 `package-lock.json`，执行格式检查、完整测试和 CLI/Web 构建。
 - **Git 边界**：脚本创建 `release: vX.Y.Z` 和 annotated Tag，并通过 atomic push 同时推送 main 与 Tag。
 - **远端发布**：Tag 触发 `.github/workflows/release.yml`，再次验证版本和质量后发布 npm 包并创建 GitHub Release。
 

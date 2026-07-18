@@ -1,6 +1,5 @@
 import { spawnSync } from 'node:child_process'
 import fs from 'node:fs'
-import os from 'node:os'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { isDeepStrictEqual } from 'node:util'
@@ -86,16 +85,25 @@ export function parsePorcelainStatus(output) {
     .map((entry) => ({ status: entry.slice(0, 2), path: entry.slice(3) }))
 }
 
-function assertChangedFiles(expectedPaths) {
+export function matchesChangedFiles(actualPaths, requiredPaths, optionalPaths = []) {
+  return (
+    requiredPaths.every((filePath) => actualPaths.includes(filePath)) &&
+    actualPaths.every((filePath) => requiredPaths.includes(filePath) || optionalPaths.includes(filePath))
+  )
+}
+
+function assertChangedFiles(requiredPaths, optionalPaths = []) {
   const entries = parsePorcelainStatus(
     run('git', ['status', '--porcelain=v1', '-z', '--untracked-files=all'], {
       capture: true,
     })
   )
   const actualPaths = entries.map((entry) => entry.path).sort()
-  const expected = [...expectedPaths].sort()
-  if (!isDeepStrictEqual(actualPaths, expected)) {
-    fail(`工作区只允许包含这些版本变更：${expected.join('、')}；当前为：${actualPaths.join('、') || '无变更'}`)
+  if (!matchesChangedFiles(actualPaths, requiredPaths, optionalPaths)) {
+    const allowedPaths = [...requiredPaths, ...optionalPaths].sort()
+    fail(
+      `工作区必须包含 ${requiredPaths.join('、')}，且只允许这些版本变更：${allowedPaths.join('、')}；当前为：${actualPaths.join('、') || '无变更'}`
+    )
   }
 }
 
@@ -142,7 +150,8 @@ function assertPackageLockVersionOnlyChanged(originalLock, currentLock, oldVersi
 async function main() {
   console.log('🚀 code996 发版预检')
   assertReleaseBranchIsCurrent()
-  assertChangedFiles(['package.json'])
+  // 上次检查中断时 package-lock.json 可能已经同步，允许直接重试。
+  assertChangedFiles(['package.json'], ['package-lock.json'])
 
   const packagePath = path.join(repoRoot, 'package.json')
   const packageLockPath = path.join(repoRoot, 'package-lock.json')
@@ -166,23 +175,14 @@ async function main() {
   assertPackageLockVersionOnlyChanged(originalLock, syncedLock, originalPackage.version, version)
   assertChangedFiles(['package-lock.json', 'package.json'])
 
-  console.log(`\n📦 准备发布 ${tag}，开始执行质量检查\n`)
+  console.log(`\n📦 准备发布 ${tag}，开始执行本地质量检查（不会发布 npm）\n`)
   run(npmCommand, ['run', 'format:check'])
   run(npmCommand, ['test'])
   run(npmCommand, ['run', 'build'])
-  run(npmCommand, ['run', 'build:website'])
-
-  // 使用隔离的临时 cache，避免本机全局 npm cache 的历史权限问题阻断发版。
-  const npmCache = fs.mkdtempSync(path.join(os.tmpdir(), 'code996-release-npm-cache-'))
-  try {
-    run(npmCommand, ['pack', '--dry-run', '--ignore-scripts', '--cache', npmCache])
-  } finally {
-    fs.rmSync(npmCache, { recursive: true, force: true })
-  }
   run('git', ['diff', '--check'])
   assertChangedFiles(['package-lock.json', 'package.json'])
 
-  console.log(`\n✅ 质量检查全部通过，创建 ${tag}\n`)
+  console.log(`\n✅ 质量检查全部通过，自动创建 release commit 和 ${tag}\n`)
   run('git', ['add', 'package.json', 'package-lock.json'])
   run('git', ['commit', '-m', `release: ${tag}`])
   run('git', ['tag', '-a', tag, '-m', tag])

@@ -166,7 +166,7 @@ Web 构建与测试使用 Vue 3、Vite 8、chart.xkcd、vue-router、vue-i18n、
 
 1. 在与 `origin/main` 同步的 `main` 上只修改 `package.json.version`
 2. 执行 `npm run release`
-3. 本地脚本同步 `package-lock.json`，运行格式、测试、构建和打包检查
+3. 本地脚本同步 `package-lock.json`，运行格式、测试和 npm 包构建检查
 4. 脚本创建 release commit 与 annotated Tag，并原子推送到 GitHub
 5. Tag 触发 GitHub Actions，通过 provenance 发布 npm 包并创建 GitHub Release
 
