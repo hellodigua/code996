@@ -75,6 +75,14 @@ describe('官方站点迁移', () => {
     expect(workflow).not.toContain('ACTIONS_DEPLOY_KEY')
   })
 
+  test('官网开发服务使用独立固定端口', () => {
+    const viteConfig = readProjectFile('website/vite.config.mts')
+
+    expect(viteConfig).toContain('port: 3310')
+    expect(viteConfig).toContain('strictPort: true')
+    expect(viteConfig).toContain('open: true')
+  })
+
   test('官网源码和产物不会进入 CLI npm 包', () => {
     const npmIgnore = readProjectFile('.npmignore')
 

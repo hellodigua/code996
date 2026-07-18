@@ -10,6 +10,13 @@
 - `--web`：生成并打开本地 Web；`--no-open`：仅生成并打印 HTML 路径。
 - `--json`、`--md`、`--web` 互斥；JSON/Markdown 的 `--output` 行为保持不变。
 
+## 开发预览
+
+- `npm run dev` 在 `http://localhost:3300/` 启动 Vite 开发服务器并自动打开浏览器，同时默认注入一份匿名的完整 `ReportData`，用于热更新检查整页布局和交互；`npm run dev:web` 保留为含义明确的别名。
+- 在开发地址后添加 `?empty=1` 可关闭示例数据，专门检查“没有可展示的报告”状态。
+- 示例数据插件只在 Vite `serve` 模式生效，不进入 `dist/web`；生产报告仍只能由 CLI 在生成 HTML 时注入真实数据。
+- 需要监听 CLI TypeScript 编译时使用 `npm run dev:cli`。
+
 ## 架构
 
 1. CLI 完成 Git 采集、工时推断、项目分类、趋势和团队分析。

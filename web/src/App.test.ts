@@ -3,6 +3,7 @@ import { describe, expect, test } from 'vitest'
 import type { ReportData } from '../../src/report/report-data'
 import App from './App.vue'
 import BarChart from './components/charts/BarChart.vue'
+import { devReportFixture } from './dev/report-fixture'
 
 function createReport(projectType: ReportData['project'] = { type: 'corporate', confidence: 88 }): ReportData {
   return {
@@ -86,6 +87,19 @@ function createReport(projectType: ReportData['project'] = { type: 'corporate', 
 }
 
 describe('单仓库 Web 报告', () => {
+  test('开发示例数据能够渲染完整报告', () => {
+    const wrapper = mount(App, {
+      props: { report: devReportFixture },
+      global: { stubs: { BarChart: true } },
+    })
+
+    expect(wrapper.get('[data-testid="repo-name"]').text()).toBe('code996-demo')
+    expect(wrapper.find('[data-testid="classification-evidence"]').exists()).toBe(true)
+    expect(wrapper.find('[data-testid="timezone-analysis"]').exists()).toBe(true)
+    expect(wrapper.get('[data-testid="trend-analysis"]').text()).toContain('2025-12')
+    expect(wrapper.get('[data-testid="team-analysis"]').text()).toContain('Developer A')
+  })
+
   test('展示 CLI 已计算的数据，切换语言时数值保持不变', async () => {
     const wrapper = mount(App, {
       props: { report: createReport({ type: 'corporate', confidence: 88 }) },

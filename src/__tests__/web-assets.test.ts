@@ -38,6 +38,21 @@ describe('Web 报告资产', () => {
     expect(viteConfig).not.toMatch(/external\s*:/)
   })
 
+  test('开发服务器默认注入完整示例报告，并可显式检查空状态', () => {
+    const viteConfig = readProjectFile('web/vite.config.mts')
+    const fixture = readProjectFile('web/src/dev/report-fixture.ts')
+
+    expect(viteConfig).toContain("apply: 'serve'")
+    expect(viteConfig).toContain("searchParams.get('empty') === '1'")
+    expect(viteConfig).toContain('window.__CODE996_REPORT__')
+    expect(viteConfig).toContain('port: 3300')
+    expect(viteConfig).toContain('strictPort: true')
+    expect(viteConfig).toContain('open: true')
+    expect(fixture).toContain("email: 'developer-a@example.invalid'")
+    expect(fixture).toContain('monthlyData:')
+    expect(fixture).toContain('contributors:')
+  })
+
   test('主构建会同时生成 CLI 和 Web 产物', () => {
     const packageJson = JSON.parse(readProjectFile('package.json')) as {
       scripts?: Record<string, string>
@@ -49,5 +64,7 @@ describe('Web 报告资产', () => {
     expect(packageJson.scripts?.['build:web']).toBeTruthy()
     expect(packageJson.scripts?.build).toContain('build:cli')
     expect(packageJson.scripts?.build).toContain('build:web')
+    expect(packageJson.scripts?.dev).toBe(packageJson.scripts?.['dev:web'])
+    expect(packageJson.scripts?.['dev:cli']).toBe('tsc -w')
   })
 })

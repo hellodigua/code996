@@ -88,6 +88,9 @@ Web 构建与测试使用 Vue 3、Vite 8、chart.xkcd、vue-router、vue-i18n、
 
 3. **测试验证**
    ```bash
+   npm run dev           # 在 3300 端口使用匿名完整报告预览本地 Web
+   npm run dev:cli       # 监听 CLI TypeScript 编译
+   npm run dev:website   # 在 3310 端口预览官方站点
    npm test              # Jest + Vitest
    npm run build         # CLI + 本地 Web 生产构建
    npm run build:website # 官方站点生产构建
