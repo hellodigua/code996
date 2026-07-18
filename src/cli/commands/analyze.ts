@@ -27,6 +27,8 @@ import { buildSingleRepoOutput } from '../output/json-formatter'
 import { writeStructuredOutput } from '../output/file-writer'
 import { createSpinner } from '../output/spinner'
 import { TeamAnalysis } from '../../types/git-types'
+import { resolveOutputMode } from '../output/output-mode'
+import { writeLocalWebReport } from '../output/web-report-writer'
 
 type TimeRangeMode = 'all-time' | 'custom' | 'auto-last-commit' | 'fallback'
 
@@ -39,7 +41,9 @@ interface AuthorFilterInfo {
 export class AnalyzeExecutor {
   /** 执行分析的主流程 */
   static async execute(path: string, options: AnalyzeOptions): Promise<void> {
-    const isStructured = !!(options.json || options.md)
+    const outputMode = resolveOutputMode(options)
+    const isStructured = outputMode === 'json' || outputMode === 'md'
+    const isTerminalReport = outputMode === 'terminal'
     try {
       // 重置 WorkdayChecker 以应用新的配置
       resetWorkdayChecker()
@@ -56,7 +60,7 @@ export class AnalyzeExecutor {
 
       // 显示分析开始信息
       if (!isStructured) console.log(chalk.blue(`🔍 ${t('analyze.repo')}`), path || process.cwd())
-      if (!isStructured) {
+      if (isTerminalReport) {
         switch (rangeMode) {
           case 'all-time':
             console.log(chalk.blue(`📅 ${t('analyze.range')}`), t('analyze.range.all'))
@@ -114,7 +118,13 @@ export class AnalyzeExecutor {
       }
 
       // 在正式分析前，先检查 commit 样本量是否达到最低要求
-      const hasEnoughCommits = await ensureCommitSamples(collector, collectOptions, 50, t('guard.scene.analysis'), isStructured)
+      const hasEnoughCommits = await ensureCommitSamples(
+        collector,
+        collectOptions,
+        outputMode === 'web' ? 1 : 50,
+        t('guard.scene.analysis'),
+        isStructured
+      )
       if (!hasEnoughCommits) {
         return
       }
@@ -160,8 +170,11 @@ export class AnalyzeExecutor {
       // ========== 项目类型识别 ==========
       const classification = ProjectClassifier.classify(rawData, parsedData)
       const isOpenSource = classification.projectType === ProjectType.OPEN_SOURCE
+      const timezoneAnalysis = rawData.timezoneData
+        ? TimezoneAnalyzer.analyzeTimezone(rawData.timezoneData, rawData.byHour)
+        : null
 
-      if (!isStructured) {
+      if (isTerminalReport) {
         // 显示时区过滤提示（如果有）
         if (options.timezone) {
           console.log(chalk.blue(`⚙️  ${t('analyze.timezoneFilter')}`))
@@ -183,13 +196,30 @@ export class AnalyzeExecutor {
         }
 
         printResults(result, parsedData, rawData, options, effectiveSince, effectiveUntil, rangeMode, classification)
+      }
 
-        // 步骤 4: 月度趋势分析
-        if (effectiveSince && effectiveUntil && shouldShowTrendAnalysis(effectiveSince, effectiveUntil)) {
+      // 扩展分析只计算一次，终端与结构化渲染共用同一份结果。
+      let trendResult = null
+      if (effectiveSince && effectiveUntil && shouldShowTrendAnalysis(effectiveSince, effectiveUntil)) {
+        if (!isTerminalReport) {
+          try {
+            trendResult = await TrendAnalyzer.analyzeTrend(
+              path,
+              effectiveSince,
+              effectiveUntil,
+              collectOptions.authorPattern,
+              () => {},
+              options.timezone,
+              shouldEnableHoliday.enabled
+            )
+          } catch {
+            // 结构化输出保持纯净，缺失模块由 null 表达。
+          }
+        } else {
           console.log()
           const trendSpinner = ora(`📈 ${t('analyze.trend.start')}`).start()
           try {
-            const trendResult = await TrendAnalyzer.analyzeTrend(
+            trendResult = await TrendAnalyzer.analyzeTrend(
               path,
               effectiveSince,
               effectiveUntil,
@@ -207,68 +237,57 @@ export class AnalyzeExecutor {
             console.error(chalk.red(`⚠️  ${t('analyze.trend.error')}`), (error as Error).message)
           }
         }
+      }
 
-        // 步骤 5: 团队工作模式分析
-        if (!isOpenSource && GitTeamAnalyzer.shouldAnalyzeTeam(options)) {
-          try {
-            const maxUsers = options.maxUsers ? parseInt(String(options.maxUsers), 10) : 30
-            const teamAnalysis = await GitTeamAnalyzer.analyzeTeam(collectOptions, result.index996, 20, maxUsers, false)
-            if (teamAnalysis) printTeamAnalysis(teamAnalysis)
-          } catch (error) {
+      let teamAnalysis: TeamAnalysis | null = null
+      if (!isOpenSource && GitTeamAnalyzer.shouldAnalyzeTeam(options)) {
+        try {
+          const maxUsers = options.maxUsers ? parseInt(String(options.maxUsers), 10) : 30
+          teamAnalysis =
+            (await GitTeamAnalyzer.analyzeTeam(collectOptions, result.index996, 20, maxUsers, !isTerminalReport)) ??
+            null
+          if (isTerminalReport && teamAnalysis) printTeamAnalysis(teamAnalysis)
+        } catch (error) {
+          if (isTerminalReport) {
             console.log(chalk.yellow(`⚠️  ${t('analyze.team.failed')}`), (error as Error).message)
           }
         }
+      }
 
-        // 步骤 6: 跨时区警告
-        if (rawData.timezoneData && !options.timezone) {
-          const tzAnalysis = TimezoneAnalyzer.analyzeTimezone(rawData.timezoneData, rawData.byHour)
-          if (tzAnalysis.isCrossTimezone) {
-            console.log()
-            console.log(chalk.yellow(TimezoneAnalyzer.generateWarningMessage(tzAnalysis)))
-          }
-        }
-      } else {
-        // 结构化输出模式：采集团队数据 + 趋势（均 silent）后序列化输出
-        let teamAnalysis: TeamAnalysis | null = null
-        if (!isOpenSource && GitTeamAnalyzer.shouldAnalyzeTeam(options)) {
-          try {
-            const maxUsers = options.maxUsers ? parseInt(String(options.maxUsers), 10) : 30
-            teamAnalysis = (await GitTeamAnalyzer.analyzeTeam(collectOptions, result.index996, 20, maxUsers, true)) ?? null
-          } catch {
-            // 静默忽略
-          }
-        }
+      if (isTerminalReport && !options.timezone && timezoneAnalysis?.isCrossTimezone) {
+        console.log()
+        console.log(chalk.yellow(TimezoneAnalyzer.generateWarningMessage(timezoneAnalysis)))
+      }
 
-        let trendResult = null
-        if (effectiveSince && effectiveUntil && shouldShowTrendAnalysis(effectiveSince, effectiveUntil)) {
-          try {
-            trendResult = await TrendAnalyzer.analyzeTrend(
-              path,
-              effectiveSince,
-              effectiveUntil,
-              collectOptions.authorPattern,
-              () => {},
-              options.timezone,
-              shouldEnableHoliday.enabled
-            )
-          } catch {
-            // 静默忽略
-          }
-        }
+      const payload = buildSingleRepoOutput({
+        result,
+        parsedData,
+        rawData,
+        teamAnalysis,
+        trendResult,
+        options,
+        since: effectiveSince,
+        until: effectiveUntil,
+        rangeMode,
+        path,
+        classification,
+        holidayMode: shouldEnableHoliday.enabled,
+        timezoneAnalysis,
+      })
 
-        const payload = buildSingleRepoOutput({
-          result,
-          parsedData,
-          rawData,
-          teamAnalysis,
-          trendResult,
-          options,
-          since: effectiveSince,
-          until: effectiveUntil,
-          rangeMode,
-          path,
-        })
+      if (isStructured) {
         await writeStructuredOutput(payload, options)
+      } else if (outputMode === 'web') {
+        const webReport = await writeLocalWebReport(payload, { open: options.open !== false })
+        const messageKey = webReport.opened ? 'analyze.web.opened' : 'analyze.web.saved'
+        console.log(chalk.green(`🌐 ${t(messageKey, { path: webReport.indexPath })}`))
+        console.log(chalk.gray(`📁 ${t('analyze.web.directory', { path: webReport.directory })}`))
+        if (webReport.storageFallback) {
+          console.log(chalk.yellow(t('analyze.web.storageFallback', { message: webReport.storageFallback.message })))
+        }
+        if (webReport.openError) {
+          console.log(chalk.yellow(t('analyze.web.openFailed', { message: webReport.openError.message })))
+        }
       }
     } catch (error) {
       console.error(chalk.red(`❌ ${t('analyze.failed')}`), (error as Error).message)

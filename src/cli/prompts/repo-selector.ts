@@ -18,8 +18,8 @@ export async function promptRepoSelection(repos: RepoInfo[]): Promise<RepoInfo[]
     return repos
   }
 
-  // 动态导入 @inquirer/prompts
-  const { checkbox } = await import('@inquirer/prompts')
+  // 仅加载实际使用的多选组件，避免引入 editor 等无关依赖。
+  const { default: checkbox } = await import('@inquirer/checkbox')
 
   // 获取当前工作目录，用于计算相对路径
   const cwd = process.cwd()

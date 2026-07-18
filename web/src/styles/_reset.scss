@@ -1,0 +1,23 @@
+html {
+  min-height: 100%;
+  box-sizing: border-box;
+  scroll-behavior: smooth;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: inherit;
+}
+
+body,
+h1,
+h2,
+p {
+  margin: 0;
+}
+
+button,
+a {
+  font: inherit;
+}

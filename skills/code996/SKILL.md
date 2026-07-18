@@ -219,4 +219,4 @@ git -C "<path>" log --no-merges --format="%cI|||%s" --max-count=500
 - 若 `team` 字段为 null（如开源项目或 `--skip-user-analysis`），跳过贡献者对比章节。
 - 仅分析一个仓库时跳过多仓库视图；分析多个仓库时使用各自的独立 JSON 聚合，不依赖 `multiRepo` 字段。
 - 报告语言始终与对话语言一致，`--lang` 参数确保 code996 数据标签语言对齐。
-- 不要把 `schemaVersion: "experimental"` 暴露给用户——这是内部版本标识。
+- 不要把 `schemaVersion` 暴露给用户——这是供报告渲染器校验兼容性的内部版本标识。

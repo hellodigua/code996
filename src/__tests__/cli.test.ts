@@ -181,4 +181,30 @@ describe('CLI i18n', () => {
 
     exitSpy.mockRestore()
   })
+
+  it('--web 与结构化输出参数同时使用时报错', async () => {
+    process.env.CODE996_LANG = 'zh-CN'
+    const exitSpy = jest.spyOn(process, 'exit').mockImplementation((() => {
+      throw new Error('process.exit')
+    }) as never)
+    const cli = new CLIManager(['node', 'code996', '--web', '--json'])
+
+    await expect(cli.parseAsync(['node', 'code996', '--web', '--json'])).rejects.toThrow('process.exit')
+    expect(exitSpy).toHaveBeenCalledWith(1)
+
+    exitSpy.mockRestore()
+  })
+
+  it('--no-open 未与 --web 一起使用时报错', async () => {
+    process.env.CODE996_LANG = 'zh-CN'
+    const exitSpy = jest.spyOn(process, 'exit').mockImplementation((() => {
+      throw new Error('process.exit')
+    }) as never)
+    const cli = new CLIManager(['node', 'code996', '--no-open'])
+
+    await expect(cli.parseAsync(['node', 'code996', '--no-open'])).rejects.toThrow('process.exit')
+    expect(exitSpy).toHaveBeenCalledWith(1)
+
+    exitSpy.mockRestore()
+  })
 })

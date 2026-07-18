@@ -7,6 +7,7 @@ import { getPackageVersion } from '../utils/version'
 import { printGlobalNotices } from './common/notices'
 import { AnalyzeOptions } from '../types/git-types'
 import { getLocale, initializeLocale, t, UnsupportedLocaleError } from '../i18n'
+import { resolveOutputMode } from './output/output-mode'
 
 // Re-export types for convenience
 export { AnalyzeOptions }
@@ -60,6 +61,8 @@ export class CLIManager {
       .option('--lang <locale>', t('cli.option.lang'))
       .option('--json', t('cli.option.json'))
       .option('--md', t('cli.option.md'))
+      .option('--web', t('cli.option.web'))
+      .option('--no-open', t('cli.option.noOpen'))
       .option('--output [path]', t('cli.option.output'))
       .action(async (paths: string[], options: AnalyzeOptions, command: Command) => {
         if (options.lang) {
@@ -70,8 +73,13 @@ export class CLIManager {
           }
         }
 
-        if (options.json && options.md) {
-          command.error(t('cli.error.conflictingOutputFormats'))
+        const explicitOutputModes = [options.json, options.md, options.web].filter(Boolean).length
+        if (explicitOutputModes > 1) {
+          command.error(t('cli.error.conflictingOutputModes'))
+          return
+        }
+        if (options.open === false && !options.web) {
+          command.error(t('cli.error.noOpenRequiresWeb'))
           return
         }
 
@@ -185,7 +193,7 @@ export class CLIManager {
     const mergedOptions = this.mergeGlobalOptions(options)
     const { AnalyzeExecutor } = await import('./commands/analyze')
     await AnalyzeExecutor.execute(targetPath, mergedOptions)
-    if (!mergedOptions.json && !mergedOptions.md) printGlobalNotices()
+    if (resolveOutputMode(mergedOptions) === 'terminal') printGlobalNotices()
   }
 
   /** 处理多仓库分析流程的执行逻辑 */
@@ -193,7 +201,7 @@ export class CLIManager {
     const mergedOptions = this.mergeGlobalOptions(options)
     const { MultiExecutor } = await import('./commands/multi')
     await MultiExecutor.execute(dirs, mergedOptions, preScannedRepos)
-    if (!mergedOptions.json && !mergedOptions.md) printGlobalNotices()
+    if (resolveOutputMode(mergedOptions) === 'terminal') printGlobalNotices()
   }
 
   /** 合并全局选项（解决子命令无法直接读取根命令参数的问题） */
@@ -214,6 +222,8 @@ export class CLIManager {
       timezone: options.timezone ?? globalOpts.timezone,
       json: options.json ?? globalOpts.json,
       md: options.md ?? globalOpts.md,
+      web: options.web ?? globalOpts.web,
+      open: options.open ?? globalOpts.open,
       output: options.output ?? globalOpts.output,
     }
   }
@@ -331,11 +341,15 @@ export class CLIManager {
     const exampleSelf = isZh ? '只统计当前用户的提交' : "Only count the current user's commits"
     const exampleIgnoreBot = isZh ? '排除机器人提交' : 'Exclude bot commits'
     const exampleMultiPaths = isZh ? '传入多个路径，自动分析多个仓库' : 'Pass multiple paths and analyze multiple repos'
-    const exampleMultiWorkspace = isZh ? '子目录有多个仓库，自动进入多仓库模式' : 'Auto-enter multi-repo mode when subdirectories contain repos'
+    const exampleMultiWorkspace = isZh
+      ? '子目录有多个仓库，自动进入多仓库模式'
+      : 'Auto-enter multi-repo mode when subdirectories contain repos'
     const exampleMultiSelf = isZh ? '组合使用，分析2024年自己的提交' : 'Combine options to analyze your 2024 commits'
     const exampleFilterAuthor = isZh ? '排除所有包含 "bot" 的作者' : 'Exclude all authors containing "bot"'
     const exampleFilterAuthors = isZh ? '排除多个作者（使用 | 分隔）' : 'Exclude multiple authors (separate with |)'
-    const exampleFilterMsg = isZh ? '排除所有以 "Merge" 开头的提交消息' : 'Exclude commit messages starting with "Merge"'
+    const exampleFilterMsg = isZh
+      ? '排除所有以 "Merge" 开头的提交消息'
+      : 'Exclude commit messages starting with "Merge"'
     const exampleFilterMsgs = isZh ? '排除多个关键词' : 'Exclude multiple keywords'
 
     console.log(`${t('cli.help.tagline')}
@@ -374,6 +388,11 @@ ${chalk.bold(t('cli.help.analysisOptions'))}
   --ignore-author <regex> ${t('cli.option.ignoreAuthor')}
   --ignore-msg <regex>    ${t('cli.option.ignoreMsg')}
   --lang <locale>         ${t('cli.option.lang')}
+  --web                    ${t('cli.option.web')}
+  --no-open                ${t('cli.option.noOpen')}
+  --json                   ${t('cli.option.json')}
+  --md                     ${t('cli.option.md')}
+  --output [path]          ${t('cli.option.output')}
 
 ${chalk.bold(t('cli.help.defaultPolicy'))}
   ${t('cli.help.defaultPolicyLine')}
