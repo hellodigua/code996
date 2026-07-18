@@ -14,6 +14,7 @@
 - **[技术栈文档](techStack.md)** - 技术选型、关键库及配置说明
 - **[代码库概览](codebaseSummary.md)** - 项目的目录结构、核心模块和架构概述
 - **[本地 Web 报告](features/web-report.md)** - Web 报告的数据契约、生成方式、安全边界和降级策略
+- **[官方站点](features/public-website.md)** - 官网源码、历史路由兼容与 GitHub Pages 部署边界
 
 ### 规则与流程 (Rules & Process) 文档
 
@@ -73,7 +74,7 @@
 
 ### 设计标准
 
-- **输出方式**: 交互终端默认打开本地 Web；CI/管道回退终端；另支持 JSON 与 Markdown
+- **输出方式**: 默认输出终端报告；显式 `--web` 生成本地 Web；另支持 JSON 与 Markdown
 - **设计语言**: 延续 code996 的像素终端视觉，重点突出 996 指数和 24 小时提交脉冲
 - **布局原则**: Web 响应式适配桌面和移动端；终端表格继续自适应宽度
 - **输出格式**: Vue Web 报告、自适应终端表格、JSON、Markdown
@@ -109,6 +110,7 @@
 - [ ] Prettier 代码格式化检查（`npx prettier --check src/`）
 - [ ] Jest 单元测试通过（`npm test`）
 - [ ] Web 类型检查和生产构建通过（`npm run build:web`）
+- [ ] 官方站点类型检查和生产构建通过（`npm run build:website`）
 - [ ] 桌面与移动端无页面级横向溢出，语言切换后标签同步更新
 - [ ] CLI 命令功能正常（手动测试各种参数组合）
 - [ ] 输出格式正确（表格对齐、颜色显示、自适应宽度）

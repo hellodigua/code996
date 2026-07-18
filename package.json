@@ -10,8 +10,10 @@
     "build": "npm run build:cli && npm run build:web",
     "build:cli": "node scripts/clean-cli-dist.mjs && tsc && node scripts/finalize-cli-dist.mjs",
     "build:web": "vue-tsc -p web/tsconfig.json --noEmit && vite build --config web/vite.config.mts",
+    "build:website": "vue-tsc -p website/tsconfig.json --noEmit && vite build --config website/vite.config.mts",
     "dev": "tsc -w",
     "dev:web": "vite --config web/vite.config.mts",
+    "dev:website": "vite --config website/vite.config.mts",
     "start": "node dist/index.js",
     "test": "npm run test:cli && npm run test:web",
     "test:cli": "jest",
@@ -48,6 +50,8 @@
     "vite": "^8.1.5",
     "vitest": "^4.1.10",
     "vue": "^3.5.40",
+    "vue-i18n": "^11.4.6",
+    "vue-router": "^4.6.4",
     "vue-tsc": "^2.2.12"
   },
   "dependencies": {

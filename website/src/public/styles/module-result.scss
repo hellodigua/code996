@@ -1,0 +1,229 @@
+.result {
+  height: 100%;
+  width: 100%;
+
+  .top-bar {
+    padding: 40px 0;
+    width: 100%;
+    background: #2a2a2a;
+    .wrapper {
+      display: flex;
+      flex-direction: row;
+      justify-content: flex-start;
+      align-items: flex-start;
+    }
+    .button {
+      display: inline-block;
+      font-size: 1em;
+      cursor: pointer;
+      padding: 10px 20px;
+      background-color: #444;
+      color: #fff;
+      box-shadow:
+        0px 0px 0px rgb(255 255 255 / 0%),
+        8px 8px 0px rgb(0 0 0 / 20%);
+      transition: 0.3s all;
+      &:hover {
+        background-color: #4a4a4a;
+        box-shadow:
+          0px 0px 0px rgb(255 255 255 / 0%),
+          5px 5px 0px rgb(0 0 0 / 20%);
+      }
+      margin-right: 30px;
+    }
+    h1 {
+      line-height: 48px;
+      color: #999;
+      font-family: vcr-osd;
+      font-weight: normal;
+      text-shadow:
+        0px 0px 0px rgba(255, 255, 255, 0),
+        6px 6px 0px rgba(0, 0, 0, 0.2);
+    }
+  }
+
+  .main {
+    padding-top: 0;
+    &.wrapper {
+      position: relative;
+    }
+    .title {
+      margin-bottom: 20px;
+    }
+  }
+
+  .top-result {
+    h1 {
+      font-size: 2em;
+      color: #de335e;
+      text-shadow:
+        0px 0px 0px rgb(255 255 255 / 0%),
+        6px 6px 0px rgb(0 0 0 / 20%);
+      margin-bottom: 40px;
+    }
+    .result-line {
+      display: flex;
+    }
+    .score-box {
+      position: relative;
+      display: inline-block;
+      margin-right: 60px;
+    }
+    .score-number {
+      display: inline-block;
+      background-color: #de335e;
+      color: #fff;
+      font-size: 8em;
+      text-shadow:
+        0px 0px 0px rgb(255 255 255 / 0%),
+        10px 10px 0px rgb(0 0 0 / 20%);
+      box-shadow:
+        0px 0px 0px rgb(255 255 255 / 0%),
+        10px 10px 0px rgb(0 0 0 / 20%);
+      font-family: 'vcr-osd';
+      line-height: 1;
+      padding: 30px 30px;
+    }
+    .subtitle {
+      position: absolute;
+      right: -20%;
+      bottom: 0;
+      font-size: 1.2em;
+      color: #fff;
+      transform: rotate(-10deg);
+      animation: subtitleAni 1s alternate infinite ease-in-out;
+    }
+    .content {
+      font-size: 1em;
+      .p1 {
+        color: #de335e;
+        font-size: 1.5em;
+      }
+      .p2 {
+        color: #999;
+        font-size: 0.9em;
+        margin-left: 8px;
+      }
+    }
+    .exp {
+      margin-top: 40px;
+      font-size: 0.85em;
+      opacity: 0.46;
+    }
+  }
+
+  .content {
+    .section {
+      display: flex;
+      justify-content: space-between;
+      .item {
+        width: 48%;
+        background-color: #2a2a2a;
+        box-sizing: border-box;
+        padding: 10px;
+        margin-bottom: 40px;
+        box-shadow:
+          0px 0px 0px rgb(255 255 255 / 0%),
+          10px 10px 0px rgb(0 0 0 / 10%);
+        .bar-chart {
+          width: 100%;
+          background-color: #2a2a2a !important;
+        }
+        h2 {
+          margin: 0;
+          margin-left: 10px;
+          font-weight: normal;
+        }
+      }
+    }
+  }
+
+  .table-box {
+    width: 100%;
+    overflow: auto;
+    margin-top: 10px;
+
+    .table {
+      width: 100%;
+      border-collapse: collapse;
+      border-spacing: 0;
+      .l {
+        min-width: 10em;
+      }
+      tr {
+        border-bottom: 1px solid #555;
+        td {
+          padding: 10px;
+          text-align: center;
+        }
+      }
+      th {
+        text-align: center;
+        padding: 10px;
+        border-bottom: 1px solid #999;
+      }
+      td {
+        text-align: center;
+        padding: 10px;
+      }
+      .active {
+        color: #de335e;
+      }
+    }
+    .tips {
+      font-size: 14px;
+      color: #999;
+      margin-top: 10px;
+    }
+  }
+}
+
+@keyframes subtitleAni {
+  from {
+    transform: rotate(-12deg) scale(1);
+    color: #ffffd1;
+  }
+
+  to {
+    transform: rotate(-8deg) scale(1.2);
+    color: #ffff6d;
+  }
+}
+
+@media screen and (max-width: 700px) {
+  .result {
+    .top-bar {
+      padding: 30px 0;
+      .wrapper {
+        flex-direction: column;
+        .button {
+          margin-bottom: 20px;
+        }
+      }
+    }
+    .result-line {
+      flex-direction: column;
+      .score-box {
+        text-align: center;
+        margin-bottom: 40px;
+        display: flex;
+        margin-right: 0;
+        .score-number {
+          margin: 0 auto;
+        }
+        .subtitle {
+          right: 0;
+        }
+      }
+    }
+    .content {
+      .section {
+        width: 100%;
+        flex-direction: column;
+        .item {
+          width: 100%;
+        }
+      }
+    }
+  }
+}
