@@ -80,7 +80,8 @@ export function parseWeekData(list: TimeCount[]): TimeCount[] {
  */
 export function checkUrlQueryAndRedirect(): void {
   const router = useRouter()
-  const { query } = router.currentRoute.value
+  const { query, meta } = router.currentRoute.value
+  const indexRouteName = meta.locale === 'en-US' ? 'en-index' : 'zh-index'
 
   // 检查所有必要参数是否存在
   const requiredParams = ['time', 'hour', 'week']
@@ -89,7 +90,7 @@ export function checkUrlQueryAndRedirect(): void {
   if (missingParams.length > 0) {
     console.error(`缺少必要的URL参数: ${missingParams.join(', ')}`)
     router.push({
-      name: 'index',
+      name: indexRouteName,
       query: {
         error: 'url_query_error',
         missing: missingParams.join(','),
@@ -103,7 +104,7 @@ export function checkUrlQueryAndRedirect(): void {
   if (!timeStr.includes('_') || timeStr.split('_').length !== 2) {
     console.error('无效的时间参数格式')
     router.push({
-      name: 'index',
+      name: indexRouteName,
       query: {
         error: 'invalid_time_format',
       },
