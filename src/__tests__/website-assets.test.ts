@@ -32,10 +32,16 @@ describe('官方站点迁移', () => {
 
   test('无效结果地址按当前语言返回存在的介绍页路由', () => {
     const urlHelper = readProjectFile('website/src/view/result/core/url-helper.ts')
+    const resultView = readProjectFile('website/src/view/result/index.vue')
 
     expect(urlHelper).toContain("meta.locale === 'en-US' ? 'en-index' : 'zh-index'")
     expect(urlHelper).not.toContain("name: 'index'")
     expect(urlHelper.match(/name: indexRouteName/g)).toHaveLength(2)
+    expect(urlHelper).toContain('checkUrlQueryAndRedirect(): boolean')
+    expect(urlHelper.match(/return false/g)).toHaveLength(2)
+    expect(urlHelper).toContain('return true')
+    expect(resultView).toContain('v-if="hasValidQuery"')
+    expect(resultView).toContain('if (hasValidQuery) init()')
   })
 
   test('站点运行时和字体不依赖 CDN', () => {

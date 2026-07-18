@@ -78,7 +78,7 @@ export function parseWeekData(list: TimeCount[]): TimeCount[] {
 /**
  * 检查路由参数是否合法并跳转
  */
-export function checkUrlQueryAndRedirect(): void {
+export function checkUrlQueryAndRedirect(): boolean {
   const router = useRouter()
   const { query, meta } = router.currentRoute.value
   const indexRouteName = meta.locale === 'en-US' ? 'en-index' : 'zh-index'
@@ -96,7 +96,7 @@ export function checkUrlQueryAndRedirect(): void {
         missing: missingParams.join(','),
       },
     })
-    return
+    return false
   }
 
   // 检查时间参数格式
@@ -109,5 +109,8 @@ export function checkUrlQueryAndRedirect(): void {
         error: 'invalid_time_format',
       },
     })
+    return false
   }
+
+  return true
 }
