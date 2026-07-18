@@ -96,7 +96,7 @@ export function buildMarkdown(data: StructuredOutput): string {
       ['周四', String(wo.thursday)],
       ['周五', String(wo.friday)],
     ]
-    if (wo.peakDay) woRows.push(['加班最多', `${wo.peakDay}（${wo.peakCount} 次）`])
+    if (wo.peakDay) woRows.push(['加班最多', `${formatWeekday(wo.peakDay)}（${wo.peakCount} 次）`])
     sections.push(mdTable(['星期', '加班提交数'], woRows))
     sections.push('')
   }
