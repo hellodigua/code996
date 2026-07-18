@@ -35,6 +35,9 @@ export default {
     openSourceTitle: 'This looks like an open-source project',
     openSourceBody:
       'Commit times are more likely to reflect voluntary contribution patterns, so a team 996 score would be misleading. The objective time distributions remain available below.',
+    mixedOpenSourceTitle: 'The selection includes an open-source project',
+    mixedOpenSourceBody:
+      'Open-source activity is not suitable for an aggregate team score, so the overall 996 index is hidden while per-repository details remain available.',
     limitedTitle: 'Not enough data to score work intensity',
     limitedBody:
       'There are not enough commits in the selected period. Expand the range or confirm that readable Git history is available.',

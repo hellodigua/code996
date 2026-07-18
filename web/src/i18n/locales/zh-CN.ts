@@ -34,6 +34,9 @@ export default {
     selfOnly: '仅本人提交',
     openSourceTitle: '这是一个开源项目样本',
     openSourceBody: '提交时间更可能反映业余贡献节奏，不适合据此判断团队的 996 指数。以下仅展示客观时间分布。',
+    mixedOpenSourceTitle: '所选仓库包含开源项目',
+    mixedOpenSourceBody:
+      '开源项目的提交节奏不适合参与团队汇总评分，因此不展示汇总 996 指数；各仓库明细仍保留供单独核对。',
     limitedTitle: '数据不足，暂不计算工作强度',
     limitedBody: '当前时间范围内没有足够的提交记录。请扩大分析范围，或确认仓库包含可读取的 Git 历史。',
     repositoryCount: '{count} 个仓库',

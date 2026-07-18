@@ -15,10 +15,12 @@
     <div class="report-shell">
       <section id="report-summary" class="top-result" data-testid="result-summary">
         <p class="hero-repository" data-testid="repo-name">{{ repositoryName }}</p>
-        <h2 v-if="!isOpenSource && !isLimitedData" id="score-title">{{ t('result.title') }}{{ t('common.colon') }}</h2>
+        <h2 v-if="!isScoreSuppressed && !isLimitedData" id="score-title">
+          {{ t('result.title') }}{{ t('common.colon') }}
+        </h2>
         <h2 v-else>{{ t('result.workPattern') }}</h2>
 
-        <div v-if="!isOpenSource && !isLimitedData" class="result-line" aria-labelledby="score-title">
+        <div v-if="!isScoreSuppressed && !isLimitedData" class="result-line" aria-labelledby="score-title">
           <div class="score-block">
             <strong class="score" data-testid="score">{{ activeReport.core.index996 }}</strong>
             <p class="rating">{{ t(`rating.${activeReport.core.rating}`) }}</p>
@@ -51,7 +53,7 @@
           </dl>
         </div>
 
-        <p v-if="!isOpenSource && !isLimitedData" class="index-explanation">
+        <p v-if="!isScoreSuppressed && !isLimitedData" class="index-explanation">
           {{ t('result.indexExplanation') }}
           <a href="#report-details">{{ t('result.seeDetails') }}</a>
         </p>
@@ -73,15 +75,16 @@
         <p>{{ t('result.limitedBody') }}</p>
       </section>
 
-      <section v-else-if="isOpenSource" class="open-source-notice" data-testid="open-source-notice">
+      <section v-else-if="isScoreSuppressed" class="open-source-notice" data-testid="open-source-notice">
         <p class="section-kicker">
-          OPEN SOURCE / {{ t('common.confidence', { value: activeReport.project?.confidence || 0 }) }}
+          {{ isOpenSource ? 'OPEN SOURCE' : 'MIXED PROJECTS' }} /
+          {{ t('common.confidence', { value: activeReport.project?.confidence || 0 }) }}
         </p>
-        <h2>{{ t('result.openSourceTitle') }}</h2>
-        <p>{{ t('result.openSourceBody') }}</p>
+        <h2>{{ t(isOpenSource ? 'result.openSourceTitle' : 'result.mixedOpenSourceTitle') }}</h2>
+        <p>{{ t(isOpenSource ? 'result.openSourceBody' : 'result.mixedOpenSourceBody') }}</p>
       </section>
 
-      <DiagnosticInsights v-if="!isOpenSource && !isLimitedData" id="report-details" :report="activeReport" />
+      <DiagnosticInsights v-if="!isScoreSuppressed && !isLimitedData" id="report-details" :report="activeReport" />
 
       <div class="report-stack" data-testid="context-evidence-stack">
         <ClassificationEvidence :report="activeReport" />
@@ -326,6 +329,13 @@ const repositoryName = computed(() => {
   return repoCount ? t('result.repositoryCount', { count: repoCount }) : getRepositoryName(activeReport.value)
 })
 const isOpenSource = computed(() => activeReport.value?.project?.type === 'open_source')
+const containsOpenSourceRepository = computed(
+  () =>
+    activeReport.value?.multiRepo?.repos.some(
+      (repo) => repo.status === 'success' && repo.project?.type === 'open_source'
+    ) ?? false
+)
+const isScoreSuppressed = computed(() => isOpenSource.value || containsOpenSourceRepository.value)
 const isLimitedData = computed(() => activeReport.value !== null && activeReport.value.core.totalCommits < 50)
 const workTimeRange = computed(() => {
   const workTime = activeReport.value?.workTime

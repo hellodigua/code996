@@ -184,6 +184,42 @@ describe('ReportData', () => {
     })
   })
 
+  test('工作日加班全部为零时不生成虚假的峰值日期', () => {
+    const report = buildSingleRepoOutput({
+      result,
+      parsedData: {
+        ...parsedData,
+        weekdayOvertime: {
+          monday: 0,
+          tuesday: 0,
+          wednesday: 0,
+          thursday: 0,
+          friday: 0,
+          peakDay: '周一',
+          peakCount: 0,
+        },
+      },
+      rawData,
+      teamAnalysis: null,
+      trendResult: null,
+      options: {},
+      path: '/workspace/demo',
+      classification,
+      holidayMode: false,
+      timezoneAnalysis: null,
+    })
+
+    expect(report.weekdayOvertime).toEqual({
+      monday: 0,
+      tuesday: 0,
+      wednesday: 0,
+      thursday: 0,
+      friday: 0,
+    })
+    expect(report.weekdayOvertime?.peakDay).toBeUndefined()
+    expect(report.weekdayOvertime?.peakCount).toBeUndefined()
+  })
+
   test('多仓库输出保留成功和失败仓库，供 Web 展示完整状态', () => {
     const records: RepoAnalysisRecord[] = [
       {
