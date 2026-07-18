@@ -23,7 +23,7 @@ Instead of suffering for three months, better see the truth early! Don't wait un
 - **📈 Monthly Trend Tracking**: Identify whether the project is "getting more intense" or "stabilizing" through trends
 - **📅 Multi-dimensional Overtime Profile**: Comprehensive analysis, identifying not only weekday/weekend overtime peaks but also the overtime ratio of team members
 - **📦 Multi-repo Comparison**: One-click scan and analyze multiple repositories under a folder, auto-generate comparisons
-- **🖥️ Local Web Report**: Use `--web` to generate and open an offline bilingual visualization without uploading data or keeping a local server running
+- **🖥️ Local Web Report**: Save an offline bilingual visualization alongside the terminal report by default, and use `--open` to open it automatically
 - **🌍 Cross-timezone Detection**: Automatically identify timezone distribution, support specified timezone for precise analysis
 - **🇨🇳 Chinese Holiday Support**: Built-in Chinese holiday and makeup workday logic, precisely exclude holiday interference
 - **🔒 Privacy Safe**: Pure local execution, offline analysis based on git log
@@ -68,7 +68,7 @@ First make sure Node.js 18 or newer is installed, then:
 npx code996
 ```
 
-By default, code996 prints the traditional text report in the terminal. Run `npx code996 --web` when you want the visual report. Its HTML, scripts, styles, and fonts are generated together under `Downloads/code996-report/date_time_project/`, for example `Downloads/code996-report/2026-07-18_10-11-46_demo/`. The report remains available after the CLI exits, and deleting that directory removes the whole report. Repository data is never uploaded and no localhost server is required.
+By default, code996 prints the traditional text report and also saves the visual report under `Downloads/code996-report/date_time_project/` without opening a browser, for example `Downloads/code996-report/2026-07-18_10-11-46_demo/`. Run `npx code996 --open` to open the generated report automatically. The report remains available after the CLI exits, and deleting that directory removes the whole report. Repository data is never uploaded and no localhost server is required.
 
 You can also install it first so you don't have to re-download every time:
 
@@ -146,15 +146,14 @@ code996 /workspace         # Auto-scan subdirectories
 
 ### Report Output Modes
 
-| Option            | Behavior                                                                        |
-| ----------------- | ------------------------------------------------------------------------------- |
-| Default           | Print the traditional text report in the terminal                               |
-| `--web`           | Generate and open the local Web report                                          |
-| `--web --no-open` | Generate the Web report without opening a browser and print the local HTML path |
-| `--json` / `--md` | Emit stable JSON data or Markdown tables without opening a Web report           |
-| `--output [path]` | Save `--json` or `--md` to a path; omit the path to use the default filename    |
+| Option            | Behavior                                                                     |
+| ----------------- | ---------------------------------------------------------------------------- |
+| Default           | Print the terminal report and save the Web report without opening a browser  |
+| `--open`          | Print the terminal report, save the Web report, and open it in a browser     |
+| `--json` / `--md` | Emit stable JSON data or Markdown tables without generating a Web report     |
+| `--output [path]` | Save `--json` or `--md` to a path; omit the path to use the default filename |
 
-`--json`, `--md`, and `--web` are mutually exclusive, and `--no-open` can only be used with `--web`. The Web report can switch between Chinese and English from the top-right control; `--lang` selects the initial language.
+`--json` and `--md` are mutually exclusive, and `--open` cannot be combined with either structured output mode. The Web report can switch between Chinese and English from the top-right control; `--lang` selects the initial language.
 
 ### Interface Language
 
@@ -221,9 +220,8 @@ code996 --lang zh-CN          # Force Chinese UI
 code996 --lang en             # Force English UI
 
 # Report output
-code996                       # Use the traditional terminal report by default
-code996 --web                 # Generate and open the Web report
-code996 --web --no-open       # Generate only and print the local HTML path
+code996                       # Print the terminal report and save the Web report without opening it
+code996 --open                # Print the terminal report, save the Web report, and open it
 code996 --json --output report.json
 code996 --md --output report.md
 ```
@@ -248,7 +246,7 @@ code996 --md --output report.md
 
 1. Use git-log to get project commit related data
 2. Compute the analysis locally and build one shared ReportData payload
-3. Print the terminal report by default, or generate Web / JSON / Markdown output when explicitly requested
+3. Print the terminal report and save the Web page by default, or explicitly open Web / emit JSON / Markdown
 
 ### Data Collection Flow
 

@@ -20,7 +20,7 @@ export interface LocalWebReportOptions {
   now?: Date
 }
 
-interface ReportRoot {
+interface ReportDirectory {
   directory: string
   storageFallback?: Error
 }
@@ -90,21 +90,25 @@ function sanitizeDirectoryName(value: string): string {
   return /^(con|prn|aux|nul|com[1-9]|lpt[1-9])(?:\..*)?$/i.test(sanitized) ? `project-${sanitized}` : sanitized
 }
 
-async function resolveReportRoot(tempRoot?: string): Promise<ReportRoot> {
+async function resolveReportDirectory(baseName: string, tempRoot?: string): Promise<ReportDirectory> {
   if (tempRoot) {
     await fs.mkdir(tempRoot, { recursive: true })
-    return { directory: tempRoot }
+    return { directory: await createReportDirectory(tempRoot, baseName) }
   }
 
   const downloadsRoot = path.join(os.homedir(), 'Downloads', 'code996-report')
   try {
     await fs.mkdir(downloadsRoot, { recursive: true })
-    return { directory: downloadsRoot }
+    // mkdir 在目录已存在时无法证明目录可写，因此把实际报告目录创建也放在降级保护内。
+    return { directory: await createReportDirectory(downloadsRoot, baseName) }
   } catch (error) {
     const storageFallback = error instanceof Error ? error : new Error(String(error))
     const fallbackRoot = path.join(os.tmpdir(), 'code996-report')
     await fs.mkdir(fallbackRoot, { recursive: true })
-    return { directory: fallbackRoot, storageFallback }
+    return {
+      directory: await createReportDirectory(fallbackRoot, baseName),
+      storageFallback,
+    }
   }
 }
 
@@ -207,10 +211,9 @@ export async function writeLocalWebReport(
   options: LocalWebReportOptions = {}
 ): Promise<LocalWebReportResult> {
   const assetsDirectory = await resolveWebAssetsDirectory(options.assetsDir)
-  const reportRoot = await resolveReportRoot(options.tempRoot)
   const reportName = `${formatReportTimestamp(options.now ?? new Date())}_${sanitizeDirectoryName(getReportProjectName(report))}`
-  // 同一秒内重复生成时追加序号，既不覆盖旧报告，也避免随机目录名难以辨认。
-  const directory = await createReportDirectory(reportRoot.directory, reportName)
+  const reportDirectory = await resolveReportDirectory(reportName, options.tempRoot)
+  const directory = reportDirectory.directory
 
   await copyDirectory(assetsDirectory, directory)
   const indexPath = path.join(directory, 'index.html')
@@ -219,19 +222,19 @@ export async function writeLocalWebReport(
   await fs.writeFile(indexPath, injectReportData(fileCompatibleTemplate, report), 'utf8')
 
   if (options.open === false) {
-    return { directory, indexPath, opened: false, storageFallback: reportRoot.storageFallback }
+    return { directory, indexPath, opened: false, storageFallback: reportDirectory.storageFallback }
   }
 
   try {
     await (options.openFile ?? openLocalFile)(indexPath)
-    return { directory, indexPath, opened: true, storageFallback: reportRoot.storageFallback }
+    return { directory, indexPath, opened: true, storageFallback: reportDirectory.storageFallback }
   } catch (error) {
     return {
       directory,
       indexPath,
       opened: false,
       openError: error instanceof Error ? error : new Error(String(error)),
-      storageFallback: reportRoot.storageFallback,
+      storageFallback: reportDirectory.storageFallback,
     }
   }
 }

@@ -155,6 +155,9 @@ describe('CLI i18n', () => {
 
     expect(logSpy).toHaveBeenCalledWith(expect.stringContaining('使用方法:'))
     expect(logSpy).toHaveBeenCalledWith(expect.stringContaining('智能分析模式:'))
+    expect(logSpy).toHaveBeenCalledWith(expect.stringContaining('--open'))
+    expect(logSpy).not.toHaveBeenCalledWith(expect.stringContaining('--web'))
+    expect(logSpy).not.toHaveBeenCalledWith(expect.stringContaining('--no-open'))
   })
 
   it('--lang en 可以覆盖中文环境的 help 输出', async () => {
@@ -182,27 +185,27 @@ describe('CLI i18n', () => {
     exitSpy.mockRestore()
   })
 
-  it('--web 与结构化输出参数同时使用时报错', async () => {
+  it('--open 与结构化输出参数同时使用时报错', async () => {
     process.env.CODE996_LANG = 'zh-CN'
     const exitSpy = jest.spyOn(process, 'exit').mockImplementation((() => {
       throw new Error('process.exit')
     }) as never)
-    const cli = new CLIManager(['node', 'code996', '--web', '--json'])
+    const cli = new CLIManager(['node', 'code996', '--open', '--json'])
 
-    await expect(cli.parseAsync(['node', 'code996', '--web', '--json'])).rejects.toThrow('process.exit')
+    await expect(cli.parseAsync(['node', 'code996', '--open', '--json'])).rejects.toThrow('process.exit')
     expect(exitSpy).toHaveBeenCalledWith(1)
 
     exitSpy.mockRestore()
   })
 
-  it('--no-open 未与 --web 一起使用时报错', async () => {
+  it('--json 与 --md 同时使用时报错', async () => {
     process.env.CODE996_LANG = 'zh-CN'
     const exitSpy = jest.spyOn(process, 'exit').mockImplementation((() => {
       throw new Error('process.exit')
     }) as never)
-    const cli = new CLIManager(['node', 'code996', '--no-open'])
+    const cli = new CLIManager(['node', 'code996', '--json', '--md'])
 
-    await expect(cli.parseAsync(['node', 'code996', '--no-open'])).rejects.toThrow('process.exit')
+    await expect(cli.parseAsync(['node', 'code996', '--json', '--md'])).rejects.toThrow('process.exit')
     expect(exitSpy).toHaveBeenCalledWith(1)
 
     exitSpy.mockRestore()

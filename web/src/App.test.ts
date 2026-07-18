@@ -374,9 +374,9 @@ describe('单仓库 Web 报告', () => {
     expect(notices.get('.report-options-details').attributes('open')).toBeUndefined()
     expect(notices.get('.report-recipes-details').attributes('open')).toBeUndefined()
     expect(notices.find('.report-command-tabs').exists()).toBe(false)
-    expect(notices.findAll('.report-option-list > li')).toHaveLength(22)
+    expect(notices.findAll('.report-option-list > li')).toHaveLength(21)
     expect(notices.findAll('.report-recipe-list > li')).toHaveLength(10)
-    expect(notices.text()).toContain('npx code996 --web')
+    expect(notices.text()).toContain('npx code996 --open')
     expect(notices.text()).toContain('npx code996 "/path/to/repo-a" "/path/to/repo-b"')
     expect(notices.text()).toContain('code996 help')
     expect(notices.text()).toContain('--skip-user-analysis')
@@ -393,6 +393,8 @@ describe('单仓库 Web 报告', () => {
     expect(wrapper.get('#report-command-title').text()).toBe('Command guide')
     expect(wrapper.get('#report-options-title').text()).toContain('Commands and options')
     expect(wrapper.get('#report-recipes-title').text()).toContain('Common command recipes')
-    expect(wrapper.get('[data-testid="report-notices"]').text()).toContain('Generate and open a local Web report')
+    expect(wrapper.get('[data-testid="report-notices"]').text()).toContain(
+      'Open the generated local Web report in a browser'
+    )
   })
 })

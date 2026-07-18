@@ -1,11 +1,14 @@
 import { EventEmitter } from 'events'
 import { spawn, type ChildProcess } from 'child_process'
+import chalk from 'chalk'
 import fs from 'fs/promises'
 import os from 'os'
 import path from 'path'
 import type { ReportData } from '../report/report-data'
-import { resolveOutputMode } from '../cli/output/output-mode'
+import { resolveLocalWebReportBehavior, resolveOutputMode } from '../cli/output/output-mode'
+import { printAnalysisFooter } from '../cli/output/web-report-notice'
 import { openLocalFile, writeLocalWebReport } from '../cli/output/web-report-writer'
+import { setLocale } from '../i18n'
 
 function createReport(repoPath = '/workspace/demo'): ReportData {
   return {
@@ -28,14 +31,50 @@ function createReport(repoPath = '/workspace/demo'): ReportData {
 }
 
 describe('Web 报告输出模式', () => {
-  test('无论运行环境如何，未指定格式时都输出传统终端报告', () => {
+  test('未指定格式时以传统终端报告作为主要输出', () => {
     expect(resolveOutputMode({})).toBe('terminal')
   })
 
-  test('只有显式参数才切换到 Web 或结构化格式', () => {
-    expect(resolveOutputMode({ web: true })).toBe('web')
+  test('只有显式结构化参数才切换主要输出格式', () => {
+    expect(resolveOutputMode({ open: true })).toBe('terminal')
     expect(resolveOutputMode({ json: true })).toBe('json')
     expect(resolveOutputMode({ md: true })).toBe('md')
+  })
+
+  test('默认保存但不打开 HTML，--open 才打开，结构化输出不生成 HTML', () => {
+    expect(resolveLocalWebReportBehavior({})).toEqual({ generate: true, open: false })
+    expect(resolveLocalWebReportBehavior({ open: true })).toEqual({ generate: true, open: true })
+    expect(resolveLocalWebReportBehavior({ json: true })).toEqual({ generate: false, open: false })
+    expect(resolveLocalWebReportBehavior({ md: true })).toEqual({ generate: false, open: false })
+  })
+
+  test('终端模式在使用提示之后以亮蓝色报告生成结果收尾', () => {
+    const previousColorLevel = chalk.level
+    const logSpy = jest.spyOn(console, 'log').mockImplementation(() => undefined)
+    chalk.level = 3
+    setLocale('zh-CN')
+
+    try {
+      printAnalysisFooter(true, {
+        directory: '/tmp/code996-report/demo',
+        indexPath: '/tmp/code996-report/demo/index.html',
+        opened: false,
+      })
+
+      const lines = logSpy.mock.calls.map(([line]) => String(line ?? ''))
+      const noticeIndex = lines.findIndex((line) => line.includes('使用提示'))
+      const reportIndex = lines.findIndex((line) => line.includes('已生成本地 Web 报告'))
+
+      expect(noticeIndex).toBeGreaterThanOrEqual(0)
+      expect(reportIndex).toBeGreaterThan(noticeIndex)
+      expect(lines[reportIndex]).toBe(
+        chalk.cyanBright.bold('🌐 已生成本地 Web 报告：/tmp/code996-report/demo/index.html')
+      )
+      expect(lines[lines.length - 1]).toContain('报告目录：/tmp/code996-report/demo')
+    } finally {
+      chalk.level = previousColorLevel
+      logSpy.mockRestore()
+    }
   })
 })
 
@@ -91,6 +130,26 @@ describe('本地 Web 报告生成', () => {
 
     expect(path.basename(first.directory)).toBe('2026-07-18_01-20-33_demo')
     expect(path.basename(second.directory)).toBe('2026-07-18_01-20-33_demo_2')
+  })
+
+  test('Downloads 无法写入时降级到系统临时目录', async () => {
+    const fakeHome = path.join(testRoot, 'home')
+    const fakeTemp = path.join(testRoot, 'system-temp')
+    await fs.mkdir(path.join(fakeHome, 'Downloads'), { recursive: true })
+    await fs.writeFile(path.join(fakeHome, 'Downloads', 'code996-report'), 'blocked by a file')
+
+    const homeSpy = jest.spyOn(os, 'homedir').mockReturnValue(fakeHome)
+    const tempSpy = jest.spyOn(os, 'tmpdir').mockReturnValue(fakeTemp)
+    try {
+      const result = await writeLocalWebReport(createReport(), { assetsDir, open: false })
+
+      expect(path.dirname(result.directory)).toBe(path.join(fakeTemp, 'code996-report'))
+      expect(result.storageFallback).toBeInstanceOf(Error)
+      await expect(fs.access(result.indexPath)).resolves.toBeUndefined()
+    } finally {
+      homeSpy.mockRestore()
+      tempSpy.mockRestore()
+    }
   })
 
   test('默认调用系统打开器，失败时仍返回报告路径供用户手动访问', async () => {

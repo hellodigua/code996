@@ -29,7 +29,7 @@ describe('ReportCommandGuide', () => {
     expect(wrapper.get('.report-options-details').attributes('open')).toBeUndefined()
     expect(wrapper.get('.report-recipes-details').attributes('open')).toBeUndefined()
     expect(wrapper.find('dl').exists()).toBe(false)
-    expect(wrapper.findAll('.report-option-list > li')).toHaveLength(22)
+    expect(wrapper.findAll('.report-option-list > li')).toHaveLength(21)
     expect(wrapper.findAll('.report-recipe-list > li')).toHaveLength(10)
     wrapper.unmount()
   })
@@ -44,7 +44,7 @@ describe('ReportCommandGuide', () => {
 
     await wrapper.findAll('.report-recipe-command button')[1].trigger('click')
 
-    expect(writeText).toHaveBeenCalledWith('npx code996 --web')
+    expect(writeText).toHaveBeenCalledWith('npx code996 --open')
     expect(wrapper.findAll('.report-recipe-command button')[1].text()).toBe('已复制')
     wrapper.unmount()
   })

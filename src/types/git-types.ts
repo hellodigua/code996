@@ -257,8 +257,7 @@ export interface AnalyzeOptions {
   lang?: string // 界面语言 (例如: en, zh-CN)
   json?: boolean // 以 JSON 格式输出（静默终端报表）
   md?: boolean // 以 Markdown 表格格式输出（静默终端报表）
-  web?: boolean // 生成并打开本地 Web 报告
-  open?: boolean // Web 报告生成后是否自动打开（--no-open 时为 false）
+  open?: boolean // 生成本地 Web 报告后自动打开浏览器
   output?: string | boolean // 输出文件路径（true 表示使用默认文件名，字符串为指定路径）
 }
 
