@@ -20,7 +20,7 @@
 
 ## 构建与资源
 
-- `npm run dev:website` 启动官网开发服务。
+- `npm run dev:website` 在 `http://localhost:3310/` 启动官网开发服务并自动打开浏览器。
 - `npm run build:website` 先执行 Vue 类型检查，再构建到 `dist/website/`。
 - Vite 使用 `base: './'`，保证资产路径适配 `/code996/` 子目录。
 - Vue、vue-router、vue-i18n 和 chart.xkcd 由 Vite 打包；字体、favicon 和历史预览图来自 `website/public/`。
