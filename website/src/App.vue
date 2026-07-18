@@ -3,7 +3,7 @@
     <github-corner />
     <language-switcher />
     <div class="app-container">
-      <router-view></router-view>
+      <router-view :key="$route.fullPath"></router-view>
     </div>
     <common-footer />
   </div>

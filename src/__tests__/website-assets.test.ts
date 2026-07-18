@@ -44,6 +44,12 @@ describe('官方站点迁移', () => {
     expect(resultView).toContain('if (hasValidQuery) init()')
   })
 
+  test('结果页在语言或查询参数变化时重新初始化', () => {
+    const app = readProjectFile('website/src/App.vue')
+
+    expect(app).toContain('<router-view :key="$route.fullPath"></router-view>')
+  })
+
   test('站点运行时和字体不依赖 CDN', () => {
     const html = readProjectFile('website/index.html')
     const styles = readProjectFile('website/src/public/styles/common.scss')
