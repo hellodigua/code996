@@ -36,8 +36,10 @@ tests/
 .claude/
 public/
 web/
+website/
 scripts/
 !dist/web/**
+dist/website/
 
 # 仅用于测试的编译产物不进入发布包
 dist/test-utils/

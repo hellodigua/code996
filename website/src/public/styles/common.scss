@@ -1,0 +1,82 @@
+body {
+  background-color: #212121;
+  color: #ccc;
+  font-size: 16px;
+  line-height: 1.75;
+  font-family:
+    'Pixel',
+    Helvetica Neue,
+    Helvetica,
+    PingFang SC,
+    Hiragino Sans GB,
+    Microsoft YaHei,
+    Arial,
+    sans-serif;
+}
+
+@font-face {
+  font-family: 'vcr-osd';
+  src: url('/fonts/vcr-osd.ttf');
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Pixel';
+  src: url('/fonts/zpix.woff2') format('woff2');
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'xkcd';
+  src: url('/fonts/zpix.woff2') format('woff2');
+  font-display: swap;
+}
+
+::selection {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.container {
+  padding: 40px 0;
+}
+
+.wrapper {
+  width: 70%;
+  margin: 0 auto;
+}
+
+.app {
+  height: 100%;
+  &-container {
+    min-height: 100%;
+  }
+}
+
+.footer {
+  line-height: 2;
+  background: #2a2a2a;
+  text-align: center;
+  margin-top: 3em;
+  padding: 2em 0;
+  font-size: 0.9em;
+  p {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    a {
+      display: contents;
+      color: #de335e;
+    }
+  }
+}
+
+@media screen and (max-width: 700px) {
+  .wrapper {
+    width: 90%;
+    margin: 0 5%;
+  }
+
+  .container {
+    padding: 20px 0;
+  }
+}
