@@ -37,18 +37,14 @@ export function createFixtureRepo(commits: FixtureCommit[]): FixtureRepo {
       fs.appendFileSync(filePath, content)
 
       runGit(repoPath, ['add', 'fixture.txt'])
-      runGit(
-        repoPath,
-        ['commit', '-m', commit.message],
-        {
-          GIT_AUTHOR_DATE: commit.isoDate,
-          GIT_COMMITTER_DATE: commit.isoDate,
-          GIT_AUTHOR_NAME: commit.authorName ?? 'Fixture User',
-          GIT_AUTHOR_EMAIL: commit.authorEmail ?? 'fixture@example.com',
-          GIT_COMMITTER_NAME: commit.authorName ?? 'Fixture User',
-          GIT_COMMITTER_EMAIL: commit.authorEmail ?? 'fixture@example.com',
-        }
-      )
+      runGit(repoPath, ['commit', '-m', commit.message], {
+        GIT_AUTHOR_DATE: commit.isoDate,
+        GIT_COMMITTER_DATE: commit.isoDate,
+        GIT_AUTHOR_NAME: commit.authorName ?? 'Fixture User',
+        GIT_AUTHOR_EMAIL: commit.authorEmail ?? 'fixture@example.com',
+        GIT_COMMITTER_NAME: commit.authorName ?? 'Fixture User',
+        GIT_COMMITTER_EMAIL: commit.authorEmail ?? 'fixture@example.com',
+      })
     })
 
     return {
@@ -108,7 +104,6 @@ export function createFullReportFixtureRepo(): FixtureRepo {
       commits.push(createCommit(date, '23:30', `late-night-${index + 1}`))
     }
   })
-
   ;['2025-01-11', '2025-02-08', '2025-03-08', '2025-03-15'].forEach((date, index) => {
     commits.push(createCommit(date, '10:00', `weekend-start-${index + 1}`))
     commits.push(createCommit(date, '14:00', `weekend-mid-${index + 1}`))

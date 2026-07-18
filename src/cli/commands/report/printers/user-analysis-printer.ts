@@ -93,7 +93,9 @@ function printEndTimePercentiles(analysis: TeamAnalysis): void {
   )
   console.log(`   • ${t('team.group.late', { time: formatTime(medianP75) })}  (${countMedianP75}, ${pctMedianP75}%)`)
   if (countMedianOver > 0) {
-    console.log(`   • ${t('team.group.sustained', { time: formatTime(medianP75) })}   (${countMedianOver}, ${pctMedianOver}%)`)
+    console.log(
+      `   • ${t('team.group.sustained', { time: formatTime(medianP75) })}   (${countMedianOver}, ${pctMedianOver}%)`
+    )
   }
   console.log()
 

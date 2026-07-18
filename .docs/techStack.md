@@ -164,10 +164,13 @@ Web 构建与测试使用 Vue 3、Vite 8、chart.xkcd、vue-router、vue-i18n、
 
 **发布流程**
 
-1. 确保所有测试通过
-2. 更新版本号
-3. 运行构建命令
-4. 执行发布命令：`npm publish`
+1. 在与 `origin/main` 同步的 `main` 上只修改 `package.json.version`
+2. 执行 `npm run release`
+3. 本地脚本同步 `package-lock.json`，运行格式、测试、构建和打包检查
+4. 脚本创建 release commit 与 annotated Tag，并原子推送到 GitHub
+5. Tag 触发 GitHub Actions，通过 provenance 发布 npm 包并创建 GitHub Release
+
+本地不直接运行 `npm publish`，以 Tag 触发的 GitHub Actions 作为唯一远端发布入口。
 
 ## 🛠️ 开发工具和流程
 

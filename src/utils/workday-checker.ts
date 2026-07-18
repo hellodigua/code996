@@ -153,4 +153,3 @@ export async function isHoliday(date: string | Date): Promise<boolean> {
   const checker = getWorkdayChecker()
   return checker.isHoliday(date)
 }
-

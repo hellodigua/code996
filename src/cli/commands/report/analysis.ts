@@ -13,19 +13,33 @@ export function printDetailedAnalysis(result: Result996, parsedData: ParsedGitDa
   // 1. 加班强度分析（与 calculator 的描述保持一致）
   const index = result.index996
   if (index <= 0) {
-    analysis.push(`🎉 ${t('analysis.overtimeRatio', { desc: indexDescription, ratio: result.overTimeRadio.toFixed(1) })}`)
+    analysis.push(
+      `🎉 ${t('analysis.overtimeRatio', { desc: indexDescription, ratio: result.overTimeRadio.toFixed(1) })}`
+    )
   } else if (index <= 21) {
-    analysis.push(`✅ ${t('analysis.overtimeRatio', { desc: indexDescription, ratio: result.overTimeRadio.toFixed(1) })}`)
+    analysis.push(
+      `✅ ${t('analysis.overtimeRatio', { desc: indexDescription, ratio: result.overTimeRadio.toFixed(1) })}`
+    )
   } else if (index <= 48) {
-    analysis.push(`🤔 ${t('analysis.overtimeRatio', { desc: indexDescription, ratio: result.overTimeRadio.toFixed(1) })}`)
+    analysis.push(
+      `🤔 ${t('analysis.overtimeRatio', { desc: indexDescription, ratio: result.overTimeRadio.toFixed(1) })}`
+    )
   } else if (index <= 63) {
-    analysis.push(`⚠️ ${t('analysis.overtimeRatio', { desc: indexDescription, ratio: result.overTimeRadio.toFixed(1) })}`)
+    analysis.push(
+      `⚠️ ${t('analysis.overtimeRatio', { desc: indexDescription, ratio: result.overTimeRadio.toFixed(1) })}`
+    )
   } else if (index <= 100) {
-    analysis.push(`🚨 ${t('analysis.overtimeRatio', { desc: indexDescription, ratio: result.overTimeRadio.toFixed(1) })}`)
+    analysis.push(
+      `🚨 ${t('analysis.overtimeRatio', { desc: indexDescription, ratio: result.overTimeRadio.toFixed(1) })}`
+    )
   } else if (index <= 130) {
-    analysis.push(`🔥 ${t('analysis.overtimeRatio', { desc: indexDescription, ratio: result.overTimeRadio.toFixed(1) })}`)
+    analysis.push(
+      `🔥 ${t('analysis.overtimeRatio', { desc: indexDescription, ratio: result.overTimeRadio.toFixed(1) })}`
+    )
   } else {
-    analysis.push(`💀 ${t('analysis.overtimeRatio', { desc: indexDescription, ratio: result.overTimeRadio.toFixed(1) })}`)
+    analysis.push(
+      `💀 ${t('analysis.overtimeRatio', { desc: indexDescription, ratio: result.overTimeRadio.toFixed(1) })}`
+    )
   }
 
   // 2. 工作日加班分析

@@ -14,7 +14,9 @@ export function createSpinner(label: string, silent: boolean): Ora | SpinnerLike
     return {
       text: '',
       succeed: (_?: string) => {},
-      fail: (msg?: string) => { if (msg) process.stderr.write(msg + '\n') },
+      fail: (msg?: string) => {
+        if (msg) process.stderr.write(msg + '\n')
+      },
       warn: (_?: string) => {},
       render: () => {},
     }

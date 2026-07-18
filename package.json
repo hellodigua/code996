@@ -16,9 +16,12 @@
     "dev:web": "vite --config web/vite.config.mts",
     "dev:website": "vite --config website/vite.config.mts",
     "start": "node dist/index.js",
-    "test": "npm run test:cli && npm run test:web",
+    "format:check": "prettier --check \"src/**/*.{ts,js}\" \"web/**/*.{ts,vue,mts,json,html,scss,css}\" \"website/src/**/*.{ts,vue,scss,css}\" \"website/*.{mts,json,html}\" \"scripts/**/*.{mjs,js}\" \"*.{json,js,mjs,md}\" \".github/**/*.{yml,yaml}\" \".docs/**/*.md\"",
+    "test": "npm run test:cli && npm run test:web && npm run test:release",
     "test:cli": "jest",
     "test:web": "vitest run --config web/vitest.config.mts",
+    "test:release": "node --test scripts/release.test.mjs",
+    "release": "node scripts/release.mjs",
     "prepublishOnly": "npm run build"
   },
   "keywords": [

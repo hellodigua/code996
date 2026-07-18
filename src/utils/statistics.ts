@@ -27,4 +27,3 @@ export function calculatePercentile(sortedValues: number[], percentile: number):
 
   return sortedValues[lower] * (1 - weight) + sortedValues[upper] * weight
 }
-

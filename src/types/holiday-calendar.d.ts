@@ -46,4 +46,3 @@ declare module 'holiday-calendar' {
 
   export default HolidayCalendar
 }
-
