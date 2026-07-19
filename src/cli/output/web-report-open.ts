@@ -2,7 +2,6 @@ import chalk from 'chalk'
 import fs from 'fs'
 import os from 'os'
 import path from 'path'
-import { createInterface } from 'readline/promises'
 import { t } from '../../i18n'
 import type { LocalWebReportResult } from './web-report-writer'
 import { openLocalFile } from './web-report-writer'
@@ -67,40 +66,21 @@ export function resetCode996Config(configPath = resolveConfigPath()): void {
   fs.rmSync(configPath, { force: true })
 }
 
-export function parseWebReportOpenChoice(answer: string): WebReportOpenChoice | undefined {
-  switch (answer.trim() || '1') {
-    case '1':
-      return { open: true }
-    case '2':
-      return { open: false }
-    case '3':
-      return { open: true, remember: 'always' }
-    case '4':
-      return { open: false, remember: 'never' }
-    default:
-      return undefined
-  }
-}
-
 export async function promptWebReportOpen(): Promise<WebReportOpenChoice | undefined> {
-  const readline = createInterface({ input: process.stdin, output: process.stdout })
+  const { default: select } = await import('@inquirer/select')
   try {
-    console.log()
-    console.log(chalk.bold(t('prompt.webReportOpen.question')))
-    console.log(`  1. ${t('prompt.webReportOpen.onceYes')} ${chalk.gray(t('prompt.default'))}`)
-    console.log(`  2. ${t('prompt.webReportOpen.onceNo')}`)
-    console.log(`  3. ${t('prompt.webReportOpen.always')}`)
-    console.log(`  4. ${t('prompt.webReportOpen.never')}`)
-
-    while (true) {
-      const choice = parseWebReportOpenChoice(await readline.question(t('prompt.webReportOpen.input')))
-      if (choice) return choice
-      console.log(chalk.yellow(t('prompt.webReportOpen.invalid')))
-    }
+    return await select<WebReportOpenChoice>({
+      message: t('prompt.webReportOpen.question'),
+      choices: [
+        { name: `${t('prompt.webReportOpen.onceYes')} ${chalk.gray(t('prompt.default'))}`, value: { open: true } },
+        { name: t('prompt.webReportOpen.onceNo'), value: { open: false } },
+        { name: t('prompt.webReportOpen.always'), value: { open: true, remember: 'always' } },
+        { name: t('prompt.webReportOpen.never'), value: { open: false, remember: 'never' } },
+      ],
+      pageSize: 4,
+    })
   } catch {
     return undefined
-  } finally {
-    readline.close()
   }
 }
 

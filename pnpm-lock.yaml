@@ -11,6 +11,9 @@ importers:
       '@inquirer/checkbox':
         specifier: ^3.0.1
         version: 3.0.1
+      '@inquirer/select':
+        specifier: ^3.0.1
+        version: 3.0.1
       chalk:
         specifier: ^4.1.2
         version: 4.1.2
@@ -360,6 +363,10 @@ packages:
 
   '@inquirer/figures@1.0.15':
     resolution: {integrity: sha512-t2IEY+unGHOzAaVM5Xx6DEWKeXlDDcNPeDyUpsRc6CUhBfU3VQOEl+Vssh7VNp1dR8MdUJBWhuObjXCsVpjN5g==}
+    engines: {node: '>=18'}
+
+  '@inquirer/select@3.0.1':
+    resolution: {integrity: sha512-lUDGUxPhdWMkN/fHy1Lk7pF3nK1fh/gqeyWXmctefhxLYxlDsc7vsPBEpxrfVGDsVdyYJsiJoD4bJ1b623cV1Q==}
     engines: {node: '>=18'}
 
   '@inquirer/type@2.0.0':
@@ -2664,6 +2671,14 @@ snapshots:
       yoctocolors-cjs: 2.1.3
 
   '@inquirer/figures@1.0.15': {}
+
+  '@inquirer/select@3.0.1':
+    dependencies:
+      '@inquirer/core': 9.2.1
+      '@inquirer/figures': 1.0.15
+      '@inquirer/type': 2.0.0
+      ansi-escapes: 4.3.2
+      yoctocolors-cjs: 2.1.3
 
   '@inquirer/type@2.0.0':
     dependencies:
