@@ -9,7 +9,6 @@ import { resolveLocalWebReportBehavior, resolveOutputMode } from '../cli/output/
 import { printAnalysisFooter } from '../cli/output/web-report-notice'
 import {
   handleWebReportOpen,
-  parseWebReportOpenChoice,
   readWebReportOpenPreference,
   resetCode996Config,
   resolveConfigPath,
@@ -88,15 +87,6 @@ describe('Web 报告输出模式', () => {
 })
 
 describe('Web 报告打开偏好', () => {
-  test('四个选项和空输入按约定解析，默认打开本次报告', () => {
-    expect(parseWebReportOpenChoice('')).toEqual({ open: true })
-    expect(parseWebReportOpenChoice('1')).toEqual({ open: true })
-    expect(parseWebReportOpenChoice('2')).toEqual({ open: false })
-    expect(parseWebReportOpenChoice('3')).toEqual({ open: true, remember: 'always' })
-    expect(parseWebReportOpenChoice('4')).toEqual({ open: false, remember: 'never' })
-    expect(parseWebReportOpenChoice('5')).toBeUndefined()
-  })
-
   test('按平台解析配置路径，并可保存和重置偏好', async () => {
     const configRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'code996-config-test-'))
     const configPath = path.join(configRoot, 'code996', 'config.json')
