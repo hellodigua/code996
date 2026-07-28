@@ -104,18 +104,14 @@ import { ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { i18n } from '../../i18n'
 import { router } from '../../router'
+import { copyText } from '../../utils/clipboard'
 
 const { t } = useI18n()
 const command = 'npx code996'
 const copyStatus = ref<'copy' | 'copied' | 'copyFailed'>('copy')
 
 const copyCommand = async () => {
-  try {
-    await navigator.clipboard.writeText(command)
-    copyStatus.value = 'copied'
-  } catch {
-    copyStatus.value = 'copyFailed'
-  }
+  copyStatus.value = (await copyText(command)) ? 'copied' : 'copyFailed'
 
   window.setTimeout(() => {
     copyStatus.value = 'copy'
