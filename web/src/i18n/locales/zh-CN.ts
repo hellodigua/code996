@@ -9,6 +9,8 @@ export default {
     confidence: '置信度 {value}%',
     detected: '已检测到',
     notDetected: '未检测到',
+    backHome: '返回主页',
+    officialWebsite: '官网',
     details: '详细报告',
     colon: '：',
   },

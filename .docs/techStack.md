@@ -89,9 +89,9 @@ Web 构建与测试使用 Vue 3、Vite 8、chart.xkcd、vue-router、vue-i18n、
 
 3. **测试验证**
    ```bash
-   npm run dev           # 在 3300 端口使用匿名完整报告预览本地 Web
+   npm run dev           # 在 3300/preview 使用匿名完整报告预览本地 Web
    npm run dev:cli       # 监听 CLI TypeScript 编译
-   npm run dev:website   # 在 3310 端口预览官方站点
+   npm run dev:website   # 同时启动内部 Web 预览，在 3310 端口联调完整官网
    npm test              # Jest + Vitest
    npm run build         # CLI + 本地 Web 生产构建
    npm run build:website # 官方站点生产构建
@@ -111,6 +111,7 @@ Web 构建与测试使用 Vue 3、Vite 8、chart.xkcd、vue-router、vue-i18n、
 
 3. **官方站点构建**
    - `website/` 使用独立的 Vite 配置构建到 `dist/website`
+   - `web/` 以 `preview` 模式追加构建到 `dist/website/preview`，注入匿名完整报告供首页展示
    - 保留 hash 路由和相对资产路径，兼容 GitHub Pages 子目录及历史结果链接
    - 运行依赖和字体随产物部署，不依赖 CDN
    - `dist/website` 只作为 Pages artifact，不进入 npm 发布包
@@ -135,7 +136,10 @@ Web 构建与测试使用 Vue 3、Vite 8、chart.xkcd、vue-router、vue-i18n、
    ├── git/
    ├── types/
    ├── utils/
-   └── web/                 # Vite 生产产物、字体和 favicon
+   ├── web/                 # CLI 使用的无示例数据 Vite 产物、字体和 favicon
+   └── website/
+       ├── index.html       # 官网与历史 hash 路由入口
+       └── preview/         # 复用 Web 报告的匿名新版示例
    ```
 
 5. **发布包结构**
@@ -213,15 +217,16 @@ Web 构建与测试使用 Vue 3、Vite 8、chart.xkcd、vue-router、vue-i18n、
 ### 本地 Web 报告
 
 - **统一契约**: `src/report/report-data.ts` 不引入 Node 模块，可被 CLI 与浏览器共同引用
-- **输出判断**: 默认终端并保存本地 Web 但不打开；显式 `--web` 自动打开；JSON/Markdown 不额外生成网页
+- **输出判断**: 默认终端并保存本地 Web，随后按交互选择或 `--open` / `--no-open` 决定是否打开；JSON/Markdown 不额外生成网页
 - **本地生成**: `web-report-writer.ts` 复制 `dist/web` 到 `Downloads/code996-report` 并安全注入数据，Downloads 不可用时降级到系统临时目录
 - **安全边界**: JSON 中的 `<`、`>`、`&`、U+2028、U+2029 会转义，系统打开器使用参数数组且不经过 shell
 - **测试**: Jest 验证输出模式、注入与降级；Vitest 验证双语、项目类型、多仓库和低样本状态
 
 ### 官方站点
 
-- **源码位置**: `website/`，与 CLI 本地报告的 `web/` 分开维护
+- **源码位置**: `website/` 维护官网外壳和旧结果页，`web/` 的完整报告组件同时用于本地报告与新版公开预览
 - **兼容边界**: Vue Router hash 路由继续解析历史 `time`、`hour`、`week` 查询参数
-- **构建命令**: `npm run build:website`
+- **新版预览**: 首页进入 `/preview/`，页面直接复用 `web/`，构建时仅注入匿名完整报告
+- **构建命令**: `npm run build:website` 同时产出官网外壳和 `dist/website/preview/`
 - **部署方式**: 主仓库 GitHub Actions 上传 `dist/website` artifact，并由 `actions/deploy-pages` 发布
 - **密钥边界**: 使用 GitHub Pages 的 `pages: write` 与 OIDC 权限，不使用旧仓库 deploy key

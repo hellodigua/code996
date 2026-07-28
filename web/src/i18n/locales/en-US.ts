@@ -9,6 +9,8 @@ export default {
     confidence: '{value}% confidence',
     detected: 'Detected',
     notDetected: 'Not detected',
+    backHome: 'Back to home',
+    officialWebsite: 'Website',
     details: 'Full report',
     colon: ':',
   },

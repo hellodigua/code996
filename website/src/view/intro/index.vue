@@ -6,7 +6,7 @@
         <p class="p2">
           {{ t('intro.subtitle') }}
         </p>
-        <span class="btn" @click="previewDemo">{{ t('common.viewDemo') }}</span>
+        <a class="btn" :href="previewUrl">{{ t('common.viewDemo') }}</a>
       </div>
     </div>
     <div class="main wrapper">
@@ -100,15 +100,18 @@
   </div>
 </template>
 <script setup lang="ts">
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { i18n } from '../../i18n'
-import { router } from '../../router'
 import { copyText } from '../../utils/clipboard'
 
 const { t } = useI18n()
 const command = 'npx code996'
 const copyStatus = ref<'copy' | 'copied' | 'copyFailed'>('copy')
+const previewUrl = computed(() => {
+  const language = i18n.global.locale.value === 'zh-CN' ? 'zh-CN' : 'en'
+  return `./preview/?lang=${language}&from=website`
+})
 
 const copyCommand = async () => {
   copyStatus.value = (await copyText(command)) ? 'copied' : 'copyFailed'
@@ -116,19 +119,5 @@ const copyCommand = async () => {
   window.setTimeout(() => {
     copyStatus.value = 'copy'
   }, 2000)
-}
-
-const previewDemo = () => {
-  const currentLocale = i18n.global.locale.value
-  const routeName = currentLocale === 'zh-CN' ? 'zh-result' : 'en-result'
-
-  router.push({
-    name: routeName,
-    query: {
-      time: '2021-01-01_2022-01-01',
-      hour: '5_08,19_09,44_10,51_11,7_13,63_14,71_15,49_16,75_17,34_18,15_19,4_20,1_21,1_22',
-      week: '50_1,119_2,108_3,96_4,65_5,1_6',
-    },
-  })
 }
 </script>

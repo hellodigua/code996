@@ -38,13 +38,18 @@ describe('Web 报告资产', () => {
     expect(viteConfig).not.toMatch(/external\s*:/)
   })
 
-  test('开发服务器默认注入完整示例报告，并可显式检查空状态', () => {
+  test('开发服务和官网预览注入完整示例，普通 Web 构建保持无数据', () => {
     const viteConfig = readProjectFile('web/vite.config.mts')
     const fixture = readProjectFile('web/src/dev/report-fixture.ts')
 
-    expect(viteConfig).toContain("apply: 'serve'")
+    expect(viteConfig).toContain("const isDevServer = command === 'serve'")
+    expect(viteConfig).toContain("const isWebsitePreview = command === 'build' && mode === 'preview'")
+    expect(viteConfig).toContain('demoReportPlugin(isDevServer || isWebsitePreview, isDevServer)')
     expect(viteConfig).toContain("searchParams.get('empty') === '1'")
     expect(viteConfig).toContain('window.__CODE996_REPORT__')
+    expect(viteConfig).toContain("isWebsitePreview ? '../dist/website/preview' : '../dist/web'")
+    expect(viteConfig).toContain("base: isDevServer ? '/preview/' : './'")
+    expect(viteConfig).toContain("path: '/preview/hmr'")
     expect(viteConfig).toContain('port: 3300')
     expect(viteConfig).toContain('strictPort: true')
     expect(viteConfig).toContain('open: true')

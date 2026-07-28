@@ -62,8 +62,9 @@ src/
 web/
 ├── src/App.vue            # 单仓库、多仓库与异常状态报告编排入口
 ├── src/components/        # 诊断、分类、时区、趋势、团队、提交脉冲和图表组件
+├── src/dev/report-fixture.ts # 开发服务与官网预览共用的匿名完整报告
 ├── src/i18n/              # Web 独立的中英文文案
-└── vite.config.mts        # 离线相对路径构建到 dist/web
+└── vite.config.mts        # 普通模式构建 dist/web，preview 模式构建官网示例
 website/
 ├── src/view/intro/        # 官方站点介绍页
 ├── src/view/result/       # 兼容历史 URL 参数的公开结果页
@@ -92,10 +93,12 @@ scripts/
 
 ### 2. 官方站点
 
-- **独立边界**：`website/` 是公开官网和历史结果链接的兼容层，不读取本地 CLI 的 `ReportData`；`web/` 负责默认分析和 `--open` 共用的离线完整报告。
+- **复用边界**：`website/` 负责公开官网和历史结果链接；新版 `/preview/` 直接复用 `web/` 的完整报告组件，只注入仓库内匿名示例，不接收用户数据。
 - **历史兼容**：使用 hash 路由保留 `#/zh/result?...`、`#/en/result?...` 和旧 `#/result?...` 地址。
+- **首页入口**：“查看示例结果”进入新版 `/preview/`，旧结果页继续服务已有 shell 链接和收藏地址。
 - **站内依赖**：Vue、vue-router、vue-i18n、chart.xkcd 与字体均由 Vite 构建或复制，不从 CDN 加载运行时资源。
-- **部署归属**：主仓库 `main` 的 `website/` 变化触发 `.github/workflows/pages.yml`，构建 `dist/website` 并通过 GitHub Pages artifact 部署；不再依赖 `code996-web` 仓库或跨仓库部署密钥。
+- **构建产物**：`npm run build:website` 生成官网外壳和 `dist/website/preview/`；普通 `dist/web` 不含匿名数据，仍供 CLI 注入真实报告。
+- **部署归属**：主仓库 `main` 的 `website/`、`web/` 或 `ReportData` Schema 变化触发 `.github/workflows/pages.yml`，构建 `dist/website` 并通过 GitHub Pages artifact 部署；不再依赖 `code996-web` 仓库或跨仓库部署密钥。
 
 ### 3. 自动发版
 
