@@ -5,6 +5,9 @@
 
     <header class="result-topbar" data-testid="result-topbar">
       <div class="topbar-inner">
+        <a class="topbar-button" data-testid="home-link" :href="homeUrl">
+          {{ t(isWebsitePreview ? 'common.backHome' : 'common.officialWebsite') }}
+        </a>
         <a class="topbar-button" data-testid="details-link" href="#report-details">
           {{ t('common.details') }}
         </a>
@@ -319,10 +322,19 @@ import { formatClock, getRepositoryName, percentage } from '@/report/formatters'
 
 const props = defineProps<{ report?: ReportData }>()
 const activeReport = computed(() => props.report || window.__CODE996_REPORT__ || null)
-const { setLocale, t } = useWebI18n()
+const { locale, setLocale, t } = useWebI18n()
+const searchParams = new URLSearchParams(window.location.search)
+const isWebsitePreview = import.meta.env.MODE === 'preview' || searchParams.get('from') === 'website'
 
-if (activeReport.value) setLocale(activeReport.value.meta.locale)
+if (activeReport.value) {
+  const requestedLocale = searchParams.get('lang')
+  setLocale(requestedLocale || activeReport.value.meta.locale)
+}
 
+const homeUrl = computed(() => {
+  const languagePath = locale.value === 'zh-CN' ? 'zh' : 'en'
+  return isWebsitePreview ? `../#/${languagePath}/` : `https://hellodigua.github.io/code996/#/${languagePath}/`
+})
 const repositoryName = computed(() => {
   if (!activeReport.value) return 'code996'
   const repoCount = activeReport.value.multiRepo?.repos.length

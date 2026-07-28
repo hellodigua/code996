@@ -1,13 +1,13 @@
 import type { ReportData } from '../../../src/report/report-data'
 
 /**
- * 仅供 `npm run dev` / `npm run dev:web` 使用的匿名完整报告。
- * 数据刻意覆盖分类、时区、趋势和团队模块，方便在热更新环境中检查整页布局。
+ * 开发服务与官网示例页共用的匿名完整报告。
+ * 数据刻意覆盖分类、时区、趋势和团队模块，方便检查整页布局。
  */
-export const devReportFixture: ReportData = {
+export const demoReportFixture: ReportData = {
   schemaVersion: '1',
   meta: {
-    version: 'dev',
+    version: 'demo',
     repos: ['/workspace/code996-demo'],
     since: '2025-07-01',
     until: '2025-12-31',

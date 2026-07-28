@@ -66,9 +66,19 @@ describe('官方站点迁移', () => {
       scripts?: Record<string, string>
     }
     const workflow = readProjectFile('.github/workflows/pages.yml')
+    const intro = readProjectFile('website/src/view/intro/index.vue')
+    const webViteConfig = readProjectFile('web/vite.config.mts')
 
     expect(packageJson.scripts?.['build:website']).toContain('website/vite.config.mts')
+    expect(packageJson.scripts?.['build:website']).toContain('web/vite.config.mts --mode preview')
+    expect(intro).toContain(':href="previewUrl"')
+    expect(intro).toContain('return `./preview/?lang=${language}&from=website`')
+    expect(intro).not.toContain('localhost:3300')
+    expect(webViteConfig).toContain("'../dist/website/preview'")
+    expect(webViteConfig).toContain('isWebsitePreview')
     expect(workflow).toContain('npm run build:website')
+    expect(workflow).toContain("- 'web/**'")
+    expect(workflow).toContain("- 'src/report/report-data.ts'")
     expect(workflow).toContain('path: dist/website')
     expect(workflow).toContain('actions/deploy-pages@v4')
     expect(workflow).not.toContain('code996-web')
@@ -77,10 +87,20 @@ describe('官方站点迁移', () => {
 
   test('官网开发服务使用独立固定端口', () => {
     const viteConfig = readProjectFile('website/vite.config.mts')
+    const packageJson = JSON.parse(readProjectFile('package.json')) as {
+      scripts?: Record<string, string>
+    }
+    const devScript = readProjectFile('scripts/dev-website.mjs')
 
     expect(viteConfig).toContain('port: 3310')
     expect(viteConfig).toContain('strictPort: true')
     expect(viteConfig).toContain('open: true')
+    expect(viteConfig).toContain("'/preview'")
+    expect(viteConfig).toContain("target: 'http://localhost:3300'")
+    expect(packageJson.scripts?.['dev:website']).toBe('node scripts/dev-website.mjs')
+    expect(devScript).toContain("configFile: 'web/vite.config.mts'")
+    expect(devScript).toContain("configFile: 'website/vite.config.mts'")
+    expect(devScript).toContain('server: { open: false }')
   })
 
   test('官网源码和产物不会进入 CLI npm 包', () => {

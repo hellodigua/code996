@@ -16,6 +16,12 @@ export default defineConfig({
     port: 3310,
     strictPort: true,
     open: true,
+    proxy: {
+      '/preview': {
+        target: 'http://localhost:3300',
+        ws: true,
+      },
+    },
   },
   build: {
     outDir: fileURLToPath(new URL('../dist/website', import.meta.url)),

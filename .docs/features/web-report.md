@@ -18,9 +18,10 @@
 
 ## 开发预览
 
-- `npm run dev` 在 `http://localhost:3300/` 启动 Vite 开发服务器并自动打开浏览器，同时默认注入一份匿名的完整 `ReportData`，用于热更新检查整页布局和交互；`npm run dev:web` 保留为含义明确的别名。
+- `npm run dev` 在 `http://localhost:3300/preview/` 启动 Vite 开发服务器并自动打开浏览器，同时默认注入一份匿名的完整 `ReportData`，用于热更新检查整页布局和交互；`npm run dev:web` 保留为含义明确的别名。`npm run dev:website` 会自动启动该服务并通过官网同源地址 `http://localhost:3310/preview/` 访问，无需重复运行 `dev:web`。
 - 在开发地址后添加 `?empty=1` 可关闭示例数据，专门检查“没有可展示的报告”状态。
-- 示例数据插件只在 Vite `serve` 模式生效，不进入 `dist/web`；生产报告仍只能由 CLI 在生成 HTML 时注入真实数据。
+- 匿名数据还用于官网 `/preview/` 的生产构建，确保公开示例与本地报告共用组件和样式。
+- 普通 `npm run build:web` 不注入示例数据；CLI 生产报告仍只在生成 HTML 时注入真实数据。只有 `npm run build:website` 内部的 `preview` 模式会把匿名数据写入 `dist/website/preview/index.html`。
 - 需要监听 CLI TypeScript 编译时使用 `npm run dev:cli`。
 
 ## 架构
@@ -54,7 +55,7 @@ Web 是完整报告而不是终端摘要，必须覆盖 CLI 已计算的主要�
 
 - 首屏延续历史 `code996-web` 结果页：灰色顶栏、`#CODE996 Result` 像素标题、粉色方形指数卡，以及工时、加班比例、提交数和分析时间四项摘要。
 - 桌面端主内容保持历史版本约 70% 的页面宽度，移动端切换为 90%；指数卡和摘要在窄屏纵向排列，详细报告中的宽表只在自身容器内滚动。
-- 顶栏“详细报告”和指数说明中的链接都跳转到 `#report-details`。本地报告没有历史站点的输入页，因此不保留无法正确工作的“返回”按钮。
+- 顶栏“详细报告”和指数说明中的链接都跳转到 `#report-details`。官网 `/preview/` 显示“返回主页”，并跟随当前语言返回对应首页；CLI 生成的本地报告则显示“官网”，跳转到对应语言的 `https://hellodigua.github.io/code996/` 首页。
 - 中文/英文切换与 GitHub 角标沿用历史位置和悬停反馈；切换语言只改变展示文案，不重新计算或丢失报告数据。
 - 页面使用平滑锚点滚动；用户启用 `prefers-reduced-motion` 时关闭滚动和按钮动画。
 - 开源项目与低样本报告仍使用相同顶栏和仓库上下文，但不渲染误导性的指数卡，改为展示适用性说明。
@@ -62,6 +63,7 @@ Web 是完整报告而不是终端摘要，必须覆盖 CLI 已计算的主要�
 ## 离线与生命周期
 
 - Vite 使用相对资产路径构建，字体、favicon、CSS 和 JS 全部位于 `dist/web`。
+- 同一份 Web 源码还可构建为 `dist/website/preview/` 的公开匿名示例；该产物属于官网，不进入 npm 包。
 - 生成时模块脚本内联到 HTML，避免浏览器对 `file://` 外部 ES Module 的限制。
 - CLI 不启动 HTTP 服务；报告默认写入用户目录下的 `Downloads/code996-report/`，进程退出后仍可访问。
 - 单次报告目录格式为 `YYYY-MM-DD_HH-mm-ss_项目名`，按名称排序即可按生成时间排列；同一项目在同一秒重复生成时追加 `_2`、`_3`，不覆盖旧报告。

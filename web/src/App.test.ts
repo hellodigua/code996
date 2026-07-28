@@ -3,7 +3,7 @@ import { describe, expect, test } from 'vitest'
 import type { ReportData } from '../../src/report/report-data'
 import App from './App.vue'
 import BarChart from './components/charts/BarChart.vue'
-import { devReportFixture } from './dev/report-fixture'
+import { demoReportFixture } from './dev/report-fixture'
 
 function createReport(projectType: ReportData['project'] = { type: 'corporate', confidence: 88 }): ReportData {
   return {
@@ -87,9 +87,9 @@ function createReport(projectType: ReportData['project'] = { type: 'corporate', 
 }
 
 describe('单仓库 Web 报告', () => {
-  test('开发示例数据能够渲染完整报告', () => {
+  test('匿名示例数据能够渲染完整报告', () => {
     const wrapper = mount(App, {
-      props: { report: devReportFixture },
+      props: { report: demoReportFixture },
       global: { stubs: { BarChart: true } },
     })
 
@@ -98,6 +98,28 @@ describe('单仓库 Web 报告', () => {
     expect(wrapper.find('[data-testid="timezone-analysis"]').exists()).toBe(true)
     expect(wrapper.get('[data-testid="trend-analysis"]').text()).toContain('2025-12')
     expect(wrapper.get('[data-testid="team-analysis"]').text()).toContain('Developer A')
+    expect(wrapper.get('[data-testid="home-link"]').text()).toBe('官网')
+    expect(wrapper.get('[data-testid="home-link"]').attributes('href')).toBe(
+      'https://hellodigua.github.io/code996/#/zh/'
+    )
+  })
+
+  test('官网预览可通过查询参数指定初始语言', async () => {
+    window.history.replaceState({}, '', '/preview/?lang=en&from=website')
+    const wrapper = mount(App, {
+      props: { report: demoReportFixture },
+      global: { stubs: { BarChart: true } },
+    })
+
+    expect(wrapper.get('[data-testid="result-summary"]').text()).toContain('Estimated work hours:')
+    expect(wrapper.get('[data-testid="home-link"]').text()).toBe('Back to home')
+    expect(wrapper.get('[data-testid="home-link"]').attributes('href')).toBe('../#/en/')
+
+    await wrapper.get('[data-testid="language-switcher"]').trigger('click')
+    expect(wrapper.get('[data-testid="home-link"]').attributes('href')).toBe('../#/zh/')
+
+    wrapper.unmount()
+    window.history.replaceState({}, '', '/')
   })
 
   test('展示 CLI 已计算的数据，切换语言时数值保持不变', async () => {
@@ -108,6 +130,10 @@ describe('单仓库 Web 报告', () => {
 
     expect(wrapper.get('[data-testid="repo-name"]').text()).toBe('demo')
     expect(wrapper.get('[data-testid="score"]').text()).toBe('72')
+    expect(wrapper.get('[data-testid="home-link"]').text()).toBe('官网')
+    expect(wrapper.get('[data-testid="home-link"]').attributes('href')).toBe(
+      'https://hellodigua.github.io/code996/#/zh/'
+    )
     expect(wrapper.get('[data-testid="result-topbar"]').text()).toContain('#CODE996 Result')
     expect(wrapper.get('[data-testid="result-summary"]').text()).toContain('推测你们的工作时间为：')
     expect(wrapper.get('[data-testid="result-summary"]').text()).toContain('09:30–19:00')
@@ -122,6 +148,10 @@ describe('单仓库 Web 报告', () => {
     expect(wrapper.text()).toContain('Weekday overtime')
     expect(wrapper.get('[data-testid="result-summary"]').text()).toContain('Estimated work hours:')
     expect(wrapper.get('[data-testid="score"]').text()).toBe('72')
+    expect(wrapper.get('[data-testid="home-link"]').text()).toBe('Website')
+    expect(wrapper.get('[data-testid="home-link"]').attributes('href')).toBe(
+      'https://hellodigua.github.io/code996/#/en/'
+    )
     const weekdayChart = wrapper.findAllComponents(BarChart).find((chart) => chart.props('data').length === 7)
     const hourlyChart = wrapper.findAllComponents(BarChart).find((chart) => chart.props('data').length === 24)
     expect(weekdayChart?.props('data')[0].time).toBe('Mon')
