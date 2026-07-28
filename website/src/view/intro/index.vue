@@ -18,19 +18,23 @@
           <div class="p1">{{ t('intro.howToUse.title') }}</div>
           <ul>
             <p>{{ t('intro.howToUse.nodeJsTip') }}</p>
-            <div class="overflow-x">
-              <pre>npx code996</pre>
+            <div class="overflow-x command-line">
+              <pre>{{ command }}</pre>
+              <button
+                type="button"
+                :aria-label="t(`intro.howToUse.${copyStatus}`)"
+                :title="t(`intro.howToUse.${copyStatus}`)"
+                @click="copyCommand"
+              >
+                <svg v-if="copyStatus === 'copied'" aria-hidden="true" viewBox="0 0 24 24">
+                  <path d="m5 12 4 4L19 6" />
+                </svg>
+                <svg v-else aria-hidden="true" viewBox="0 0 24 24">
+                  <rect x="8" y="8" width="11" height="11" rx="2" />
+                  <path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2" />
+                </svg>
+              </button>
             </div>
-            <p>{{ t('intro.howToUse.localAnalysis') }}</p>
-            <div class="overflow-x">
-              <pre>curl -fsSL {{ t('intro.howToUse.scriptUrl') }} | bash</pre>
-            </div>
-            <p>
-              {{ t('intro.howToUse.onlineAnalysis') }}
-              <a href="https://greasyfork.org/en/scripts/452007-gitlab-996-index-statistic" target="_blank">
-                {{ t('intro.howToUse.userscript') }}
-              </a>
-            </p>
           </ul>
         </article>
       </div>
@@ -54,6 +58,7 @@
           <p>{{ t('intro.whatIsItFor.intro') }}</p>
           <p>{{ t('intro.whatIsItFor.point1') }}</p>
           <p>{{ t('intro.whatIsItFor.point2') }}</p>
+          <p>{{ t('intro.whatIsItFor.point3') }}</p>
         </article>
       </div>
       <div class="item">
@@ -89,29 +94,33 @@
             <li>{{ t('intro.faq.q2a3') }}</li>
             <li>{{ t('intro.faq.q2a4') }}</li>
           </ul>
-          <p class="p2">{{ t('intro.faq.q3') }}</p>
-          <ul>
-            <li>
-              {{ t('intro.faq.q3a1') }}
-              <a :href="t('intro.faq.q3a1LinkUrl')">{{ t('intro.faq.q3a1Link') }}</a>
-              {{ t('intro.faq.q3a1End') }}
-            </li>
-            <li class="overflow-x">
-              {{ t('intro.faq.q3a2') }}
-              <pre>curl -fsSL {{ t('intro.faq.q3a2ScriptUrl') }} | bash</pre>
-            </li>
-          </ul>
         </article>
       </div>
     </div>
   </div>
 </template>
 <script setup lang="ts">
+import { ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { i18n } from '../../i18n'
 import { router } from '../../router'
 
 const { t } = useI18n()
+const command = 'npx code996'
+const copyStatus = ref<'copy' | 'copied' | 'copyFailed'>('copy')
+
+const copyCommand = async () => {
+  try {
+    await navigator.clipboard.writeText(command)
+    copyStatus.value = 'copied'
+  } catch {
+    copyStatus.value = 'copyFailed'
+  }
+
+  window.setTimeout(() => {
+    copyStatus.value = 'copy'
+  }, 2000)
+}
 
 const previewDemo = () => {
   const currentLocale = i18n.global.locale.value

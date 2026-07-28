@@ -149,6 +149,60 @@
       overflow-x: auto;
     }
 
+    .command-line {
+      position: relative;
+      display: inline-block;
+      width: auto;
+      max-width: 100%;
+
+      pre {
+        display: block;
+        width: auto;
+        min-width: 240px;
+        padding-right: 50px;
+      }
+
+      button {
+        position: absolute;
+        top: 50%;
+        right: 10px;
+        display: grid;
+        width: 30px;
+        height: 30px;
+        padding: 6px;
+        transform: translateY(-50%);
+        border: 0;
+        border-radius: 4px;
+        background: transparent;
+        color: #aaa;
+        cursor: pointer;
+        place-items: center;
+        transition:
+          color 0.2s ease,
+          background-color 0.2s ease;
+
+        svg {
+          width: 16px;
+          height: 16px;
+          fill: none;
+          stroke: currentColor;
+          stroke-linecap: round;
+          stroke-linejoin: round;
+          stroke-width: 2;
+        }
+
+        &:hover {
+          background: rgb(255 255 255 / 6%);
+          color: #de335e;
+        }
+
+        &:focus-visible {
+          outline: 2px solid #de335e;
+          outline-offset: 2px;
+        }
+      }
+    }
+
     a {
       color: #de335e;
     }
