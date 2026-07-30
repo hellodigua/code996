@@ -16,26 +16,29 @@
         </div>
         <article class="markdown-body">
           <div class="p1">{{ t('intro.howToUse.title') }}</div>
-          <ul>
-            <p>{{ t('intro.howToUse.nodeJsTip') }}</p>
-            <div class="overflow-x command-line">
-              <pre>{{ command }}</pre>
-              <button
-                type="button"
-                :aria-label="t(`intro.howToUse.${copyStatus}`)"
-                :title="t(`intro.howToUse.${copyStatus}`)"
-                @click="copyCommand"
-              >
-                <svg v-if="copyStatus === 'copied'" aria-hidden="true" viewBox="0 0 24 24">
-                  <path d="m5 12 4 4L19 6" />
-                </svg>
-                <svg v-else aria-hidden="true" viewBox="0 0 24 24">
-                  <rect x="8" y="8" width="11" height="11" rx="2" />
-                  <path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2" />
-                </svg>
-              </button>
+          <div v-for="item in usageCommands" :key="item.key" class="usage-method">
+            <p class="usage-method-title">{{ item.title }}</p>
+            <p>{{ item.tip }}</p>
+            <div v-for="snippet in item.snippets" :key="snippet.key" class="usage-snippet">
+              <div class="overflow-x command-line" :class="{ 'command-line--prompt': snippet.key === 'prompt' }">
+                <pre>{{ snippet.content }}</pre>
+                <button
+                  type="button"
+                  :aria-label="`${item.title} ${t(`intro.howToUse.${copyStatus[snippet.key]}`)}`"
+                  :title="t(`intro.howToUse.${copyStatus[snippet.key]}`)"
+                  @click="copyCommand(snippet.key, snippet.content)"
+                >
+                  <svg v-if="copyStatus[snippet.key] === 'copied'" aria-hidden="true" viewBox="0 0 24 24">
+                    <path d="m5 12 4 4L19 6" />
+                  </svg>
+                  <svg v-else aria-hidden="true" viewBox="0 0 24 24">
+                    <rect x="8" y="8" width="11" height="11" rx="2" />
+                    <path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0 2 2v8a2 2 0 0 0 2 2h2" />
+                  </svg>
+                </button>
+              </div>
             </div>
-          </ul>
+          </div>
         </article>
       </div>
       <div class="item">
@@ -100,24 +103,58 @@
   </div>
 </template>
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, reactive } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { i18n } from '../../i18n'
 import { copyText } from '../../utils/clipboard'
 
 const { t } = useI18n()
-const command = 'npx code996'
-const copyStatus = ref<'copy' | 'copied' | 'copyFailed'>('copy')
+type CommandKey = 'cli' | 'prompt'
+type CopyStatus = 'copy' | 'copied' | 'copyFailed'
+interface UsageSnippet {
+  key: CommandKey
+  content: string
+}
+interface UsageMethod {
+  key: 'cli' | 'ai'
+  title: string
+  tip: string
+  snippets: UsageSnippet[]
+}
+
+const usageCommands = computed<UsageMethod[]>(() => [
+  {
+    key: 'cli' as const,
+    title: t('intro.howToUse.cliTitle'),
+    tip: t('intro.howToUse.cliTip'),
+    snippets: [{ key: 'cli' as const, content: 'npx code996' }],
+  },
+  {
+    key: 'ai' as const,
+    title: t('intro.howToUse.skillTitle'),
+    tip: t('intro.howToUse.promptTip'),
+    snippets: [
+      {
+        key: 'prompt' as const,
+        content: t('intro.howToUse.prompt'),
+      },
+    ],
+  },
+])
+const copyStatus = reactive<Record<CommandKey, CopyStatus>>({
+  cli: 'copy',
+  prompt: 'copy',
+})
 const previewUrl = computed(() => {
   const language = i18n.global.locale.value === 'zh-CN' ? 'zh-CN' : 'en'
   return `./preview/?lang=${language}&from=website`
 })
 
-const copyCommand = async () => {
-  copyStatus.value = (await copyText(command)) ? 'copied' : 'copyFailed'
+const copyCommand = async (key: CommandKey, command: string) => {
+  copyStatus[key] = (await copyText(command)) ? 'copied' : 'copyFailed'
 
   window.setTimeout(() => {
-    copyStatus.value = 'copy'
+    copyStatus[key] = 'copy'
   }, 2000)
 }
 </script>

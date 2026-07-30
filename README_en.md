@@ -61,6 +61,8 @@ Instead of suffering for three months, better see the truth early! Don't wait un
 
 ## 🚀 Quick Start
 
+### Use the CLI
+
 First make sure Node.js 18 or newer is installed, then:
 
 ```bash
@@ -80,22 +82,15 @@ npm i -g code996
 code996
 ```
 
-## 🤖 Generate Reports with AI Coding Agents
+### Use an AI Coding Agent
 
-Use with AI coding agents that support [Agent Skills](https://agentskills.io/) (Codex / Claude Code / WorkBuddy, etc.) to generate a narrative work-intensity report in one sentence — including overtime semantics, contributor comparison, and improvement suggestions.
+No Skill installation is required. Open the target project and send the following prompt to an AI coding agent with network and terminal access:
 
-```bash
-# Requires Node.js ≥ 18; the installer detects AI agents on your machine and lets you choose targets
-npx skills add hellodigua/code996 --skill code996 -g
+```text
+Read https://raw.githubusercontent.com/hellodigua/code996/main/skills/code996/SKILL.md and its referenced files, then follow the instructions to analyze the current Git project's team work intensity and generate a 996 report.
 ```
 
-If the Skill does not appear after install, restart the corresponding agent. Open the target repo in the agent and send something like:
-
-```
-Analyze the team work intensity of the current project using code996 and generate a 996 report
-```
-
-You can also specify a year, compare multiple repos, or ask for Markdown / HTML output:
+The AI will use the code996 Skill to collect local Git data and produce a narrative report with overtime semantics, contributor comparisons, and improvement suggestions. You can also replace the final analysis request with:
 
 ```
 Analyze our team's overtime situation for 2025 and generate a report
@@ -103,7 +98,7 @@ Compare the overtime intensity of /workspace/proj-a and /workspace/proj-b
 Analyze this repo with code996 and open the local Web report
 ```
 
-> Installing the Skill and running the code996 CLI both require Node.js ≥ 18.
+Running code996 requires Node.js 18+.
 
 ## 🤖 Smart Analysis Mode
 

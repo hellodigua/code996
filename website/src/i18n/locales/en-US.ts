@@ -16,8 +16,12 @@ export default {
       'Code996 is an analysis tool that can count the commit time distribution of Git projects, and then deduce the coding work intensity of this project.',
     howToUse: {
       title: 'How to Use',
-      nodeJsTip:
-        'If you have Node.js environment, simply run the following command in the root directory of your Git project:',
+      cliTitle: 'Use the CLI',
+      cliTip: 'Install Node.js 18+, then run this in the root directory of your Git project:',
+      skillTitle: 'Use an AI Coding Agent',
+      promptTip: 'Copy this into an AI coding agent with network and terminal access.',
+      prompt:
+        "Read https://raw.githubusercontent.com/hellodigua/code996/main/skills/code996/SKILL.md and its referenced files, then follow the instructions to analyze the current Git project's team work intensity and generate a 996 report.",
       copy: 'Copy',
       copied: 'Copied',
       copyFailed: 'Copy manually',

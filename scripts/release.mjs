@@ -78,6 +78,37 @@ export function syncPackageLockVersion(packageLock, version) {
   }
 }
 
+function getSkillCliVersions(skillContent) {
+  return [...skillContent.matchAll(/code996@(\d+\.\d+\.\d+)/g)].map((match) => match[1])
+}
+
+export function assertSkillCliVersionMatchesPackage(skillContent, version) {
+  parseStableVersion(version)
+  const versions = getSkillCliVersions(skillContent)
+  if (versions.length === 0) fail('SKILL.md 中未找到固定的 code996 CLI 版本')
+
+  const mismatchedVersions = [...new Set(versions.filter((item) => item !== version))]
+  if (mismatchedVersions.length > 0) {
+    fail(`SKILL.md 中的 CLI 版本必须全部为 ${version}，当前还包含：${mismatchedVersions.join('、')}`)
+  }
+
+  return versions.length
+}
+
+export function syncSkillCliVersion(skillContent, oldVersion, newVersion) {
+  assertSkillCliVersionMatchesPackage(skillContent, oldVersion)
+  parseStableVersion(newVersion)
+  return skillContent.replaceAll(`code996@${oldVersion}`, `code996@${newVersion}`)
+}
+
+export function assertSkillVersionOnlyChanged(originalSkill, currentSkill, oldVersion, newVersion) {
+  const expectedSkill = syncSkillCliVersion(originalSkill, oldVersion, newVersion)
+  if (currentSkill !== originalSkill && currentSkill !== expectedSkill) {
+    fail('SKILL.md 在运行 release 前只能包含脚本自动同步的 CLI 版本变化')
+  }
+  return expectedSkill
+}
+
 export function parsePorcelainStatus(output) {
   return output
     .split('\0')
@@ -150,11 +181,12 @@ function assertPackageLockVersionOnlyChanged(originalLock, currentLock, oldVersi
 async function main() {
   console.log('🚀 code996 发版预检')
   assertReleaseBranchIsCurrent()
-  // 上次检查中断时 package-lock.json 可能已经同步，允许直接重试。
-  assertChangedFiles(['package.json'], ['package-lock.json'])
+  // 上次检查中断时 lockfile 和 Skill 可能已经同步，允许直接重试。
+  assertChangedFiles(['package.json'], ['package-lock.json', 'skills/code996/SKILL.md'])
 
   const packagePath = path.join(repoRoot, 'package.json')
   const packageLockPath = path.join(repoRoot, 'package-lock.json')
+  const skillPath = path.join(repoRoot, 'skills/code996/SKILL.md')
   const originalPackage = readHeadJson('package.json')
   const currentPackage = readJson(packagePath)
   const version = assertOnlyPackageVersionChanged(originalPackage, currentPackage)
@@ -173,17 +205,23 @@ async function main() {
   const syncedLock = syncPackageLockVersion(readJson(packageLockPath), version)
   fs.writeFileSync(packageLockPath, `${JSON.stringify(syncedLock, null, 2)}\n`)
   assertPackageLockVersionOnlyChanged(originalLock, syncedLock, originalPackage.version, version)
-  assertChangedFiles(['package-lock.json', 'package.json'])
+
+  const originalSkill = run('git', ['show', 'HEAD:skills/code996/SKILL.md'], { capture: true })
+  const currentSkill = fs.readFileSync(skillPath, 'utf8')
+  const syncedSkill = assertSkillVersionOnlyChanged(originalSkill, currentSkill, originalPackage.version, version)
+  fs.writeFileSync(skillPath, syncedSkill)
+  assertSkillCliVersionMatchesPackage(syncedSkill, version)
+  assertChangedFiles(['package-lock.json', 'package.json', 'skills/code996/SKILL.md'])
 
   console.log(`\n📦 准备发布 ${tag}，开始执行本地质量检查（不会发布 npm）\n`)
   run(npmCommand, ['run', 'format:check'])
   run(npmCommand, ['test'])
   run(npmCommand, ['run', 'build'])
   run('git', ['--no-pager', 'diff', '--check'])
-  assertChangedFiles(['package-lock.json', 'package.json'])
+  assertChangedFiles(['package-lock.json', 'package.json', 'skills/code996/SKILL.md'])
 
   console.log(`\n✅ 质量检查全部通过，自动创建 release commit 和 ${tag}\n`)
-  run('git', ['add', 'package.json', 'package-lock.json'])
+  run('git', ['add', 'package.json', 'package-lock.json', 'skills/code996/SKILL.md'])
   run('git', ['commit', '-m', `release: ${tag}`])
   run('git', ['tag', '-a', tag, '-m', tag])
 
