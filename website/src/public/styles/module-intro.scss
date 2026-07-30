@@ -150,6 +150,27 @@
       overflow-x: auto;
     }
 
+    .usage-method {
+      margin-bottom: 28px;
+
+      &:last-child {
+        margin-bottom: 0;
+      }
+    }
+
+    .usage-method-title {
+      color: #fff;
+      font-size: 1.1em;
+      font-weight: 500;
+
+      &::before {
+        margin-right: 8px;
+        color: #de335e;
+        content: '>';
+        font-family: vcr-osd;
+      }
+    }
+
     .command-line {
       position: relative;
       display: inline-block;
@@ -200,6 +221,19 @@
         &:focus-visible {
           outline: 2px solid #de335e;
           outline-offset: 2px;
+        }
+      }
+
+      &--prompt {
+        display: block;
+        width: 100%;
+        max-width: 880px;
+
+        pre {
+          box-sizing: border-box;
+          width: 100%;
+          line-height: 1.6;
+          white-space: pre-wrap;
         }
       }
     }

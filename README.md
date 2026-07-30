@@ -61,6 +61,8 @@ code996 是一个分析工具，它可以统计 Git 项目的 commit 时间分�
 
 ## 🚀 快速开始
 
+### 使用命令行
+
 首先确保本地已安装 Node.js 18 或更高版本，然后：
 
 ```bash
@@ -80,22 +82,15 @@ npm i -g code996
 code996
 ```
 
-## 🤖 用 AI 助手生成分析报告
+### 使用 AI 助手
 
-用 Codex、Claude Code、WorkBuddy 等支持 [Agent Skills](https://agentskills.io/) 的 AI 编程工具时，可以装上 code996 的 skill：一句话让 AI 帮你跑分析，并写出人能看懂的报告——不只是数字，还会说清加班在干什么、谁加班多、怎么改进。
+无需预先安装 Skill。打开目标项目，把下面这段话发送给能够访问网络和执行命令的 AI 编程工具：
 
-```bash
-# 需要 Node.js 18 及以上；会检测本机装了哪些 AI 工具，让你选装到哪里
-npx skills add hellodigua/code996 --skill code996 -g
+```text
+请阅读 https://raw.githubusercontent.com/hellodigua/code996/main/skills/code996/SKILL.md 及其中引用的文件，并按照说明分析当前 Git 项目的团队工作强度，生成一份 996 分析报告。
 ```
 
-装完如果还没生效，重启一下对应的 AI 工具。然后打开要分析的项目，对 AI 说：
-
-```
-帮我用 code996 分析当前项目团队的工作强度，生成一份 996 分析报告
-```
-
-也可以这样说：
+AI 会按照 code996 Skill 采集本地 Git 数据，并生成包含加班语义、贡献者对比和改进建议的叙事化报告。你也可以把提示词末尾的分析要求改成：
 
 ```
 分析我们团队 2025 年的加班情况，出一份报告
@@ -103,7 +98,7 @@ npx skills add hellodigua/code996 --skill code996 -g
 用 code996 分析这个仓库，并打开本地 Web 报告
 ```
 
-> 安装 skill 和运行 code996 CLI 都需要 Node.js 18+。
+运行 code996 需要 Node.js 18+。
 
 ## 🤖 智能分析模式
 

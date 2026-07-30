@@ -15,7 +15,12 @@ export default {
     subtitle: 'code996 是一个分析工具，它可以统计 Git 项目的 commit 时间分布，进而推导出这个项目的编码工作强度。',
     howToUse: {
       title: '如何使用',
-      nodeJsTip: '如果你有 Node.js 环境，只需在 Git 项目的根目录执行以下命令：',
+      cliTitle: '使用命令行',
+      cliTip: '安装 Node.js 18+，在 Git 项目的根目录运行：',
+      skillTitle: '使用 AI 助手',
+      promptTip: '复制给能够访问网络和终端的 AI 编程工具即可',
+      prompt:
+        '请阅读 https://raw.githubusercontent.com/hellodigua/code996/main/skills/code996/SKILL.md 及其中引用的文件，并按照说明分析当前 Git 项目的团队工作强度，生成一份 996 分析报告。',
       copy: '复制',
       copied: '已复制',
       copyFailed: '请手动复制',
