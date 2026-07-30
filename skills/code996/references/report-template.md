@@ -16,6 +16,8 @@
 | 推测上班时间 | {将 workTime.startHour 换算为 HH:MM，例如 9.5 → 09:30} |
 | 推测下班时间 | {将 workTime.endHour 换算为 HH:MM，例如 18.5 → 18:30}  |
 
+{同时展示 workTime.isReliable / workTime.confidence；不可靠时明确说明推测时间不能等同真实上下班时间}
+
 ---
 
 ## 二、工作时间分布
@@ -34,22 +36,26 @@
 
 ### 工作日加班
 
-{基于 weekdayOvertime，描述哪几天加班最严重，peakDay 是哪天}
+{基于 weekdayOvertime，描述星期几的下班后提交最多，以及 peakDay。monday 至 friday 和 peakCount 的单位都是“提交数”，不得写成“天数”}
 
 ### 周末加班
 
-- 周六加班天数（中国节假日模式下还包含工作日法定节假日）：{weekendOvertime.saturdayDays} 天
+- 周六加班天数（中国节假日模式下还包含落在周一至周五的法定节假日）：{weekendOvertime.saturdayDays} 天
 - 周日加班天数：{weekendOvertime.sundayDays} 天
 - 其中真正加班（一天内提交覆盖 ≥3 个不同小时段）：{weekendOvertime.realOvertimeDays} 天
 
 ### 深夜加班
 
 - 深夜加班比例：{lateNight.midnightRate}%
-- 深夜加班：{lateNight.midnight} 天（按每日最晚提交统计）
+- 深夜及凌晨活动：{lateNight.midnightDays} 天（按每日最晚提交统计）
+
+{lateNight.evening、lateNight.lateNight、lateNight.midnight、lateNight.dawn 均为按每日最晚提交时间统计的活动天数，不是提交次数；展开各时段时必须使用“天”}
 
 ### 加班在干什么
 
 {基于 git log 语义分析结果，描述各类加班内容的占比，并列举典型 commit message}
+
+{若中国节假日模式已启用但没有可靠日历，只展示深夜及凌晨样本；明确说明已跳过工作日晚间和休息日日间归因}
 
 | 类型              | 占比 | 典型示例 |
 | ----------------- | ---- | -------- |
@@ -60,9 +66,9 @@
 
 ---
 
-## 四、贡献者 / 人均对比
+## 四、贡献者活动对比
 
-{基于 team.contributors[]，描述各人加班情况，重点标注加班比例最高的成员}
+{基于 team.contributors[]，描述提交活动是否集中于少数贡献者。不同邮箱默认视为不同身份；同名多邮箱、bot、release server、CI 等账号需要单独提示，不纳入个人风险结论。不要使用“被迫加班”，不要把 commit 时间等同真实工时}
 
 | 贡献者   | 提交数         | 提交占比            | 加班提交                      | 加班比例                                                          | 强度等级         |
 | -------- | -------------- | ------------------- | ----------------------------- | ----------------------------------------------------------------- | ---------------- |
@@ -70,7 +76,7 @@
 
 {如果 overtimeStats 或 intensityLevel 缺失，对应列显示“—”，不要推断或编造}
 
-{如果存在个别成员加班比例远高于团队均值，重点提示风险}
+{如果存在个别身份的加班活动占比远高于其他身份，只描述为“活动集中信号”，并提示需要结合身份合并、机器人排除、值班与团队制度核查}
 
 ---
 
@@ -81,6 +87,8 @@
 | 仓库            | 996 指数        | 加班比例              | 提交数              |
 | --------------- | --------------- | --------------------- | ------------------- |
 | {meta.repos[0]} | {core.index996} | {core.overTimeRatio}% | {core.totalCommits} |
+
+{不要计算综合 996 指数。可选展示按提交数加权的总体加班比例：sum(core.totalCommits × core.overTimeRatio) / sum(core.totalCommits)，并标注为估算值、非 code996 官方聚合指标}
 
 ---
 
