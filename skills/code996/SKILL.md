@@ -22,6 +22,7 @@ description: >
 - 命令本身必须是非交互式的；需要用户选择时，通过 AI 对话询问，不要启动等待终端输入的脚本。
 - 先从用户请求中一次性提取仓库、时间范围、团队背景和输出格式。只有分析目标存在歧义时才追问，并把所有必要问题合并到一条消息中。
 - 单仓库未指定时间范围时使用 code996 默认区间；多仓库未指定时间范围时先计算共享区间；未提供团队背景时继续分析并注明校准信息不足；未指定输出格式时直接在对话中展示报告。
+- 执行只读分析，不打开浏览器，不修改仓库。需要下载或临时执行 npm 包时，先遵守步骤 2 的知情确认规则。
 
 ---
 
@@ -89,53 +90,70 @@ git -C "<path>" log --no-merges --format="%cd" --date=format:%Y-%m-%d --max-coun
 
 ## 步骤 2 — 采集结构化数据
 
-优先使用环境中已有且支持 `--json` 的 `code996` 命令；若命令不可用、不支持 `--json`、执行时拒绝该参数或 stdout 不是可解析的 JSON，则使用 `npx --yes code996@latest` 重新执行。不要把可执行命令和参数保存为依赖 shell 字符串拆分的变量。
+优先使用环境中已有且支持 `--json` 的 `code996` 命令。先检查命令是否存在，再通过 `code996 --help` 确认帮助中包含 `--json`；检查能力时不要读取用户仓库。
+
+若命令不可用、不支持 `--json`、执行时拒绝该参数或 stdout 不是可解析的 JSON，才使用与本 Skill 对齐的固定版本 `npx --yes code996@1.2.0`。不要使用 `@latest`；更新 Skill 所适配的 CLI 版本时，必须同步更新本节全部 npx 命令。在下载或执行后备包之前：
+
+- 用户已经明确同意使用 npx 下载并运行 code996：直接继续。
+- 用户尚未明确同意，或宿主会因“第三方代码读取本地仓库”要求授权：优先使用宿主的原生权限确认，并在授权理由中列出目标仓库，说明“将通过 npx 临时下载 code996；分析只读取这些仓库的本地 Git 记录，不上传报告或日志”。宿主没有原生权限确认时，才在对话中一次性取得确认；多仓库只确认一次。
+- 用户拒绝或宿主拒绝权限：停止采集并说明阻塞原因，不用本仓库源码、手工统计或其他实现绕过。
+
+下载等待超过 30 秒且宿主允许发送进度时，告诉用户当前仍在获取 npm 包；不要无提示地反复启动相同命令。网络失败后只报告失败，不连续重试。
+
+不要把可执行命令和参数保存为依赖 shell 字符串拆分的变量。
 
 根据对话语言直接传递 locale：中文使用 `--lang zh-CN`，英文使用 `--lang en`。下面以 npx 后备方式为例：
 
 ```bash
 # 单仓库
-npx --yes code996@latest "<path>" --json --lang zh-CN
+npx --yes code996@1.2.0 "<path>" --json --lang zh-CN
 ```
 
 多仓库时，每条命令必须单独执行并立即解析该次 stdout，不要在同一个 shell 调用中连续执行而得到拼接的 JSON：
 
 ```bash
 # 未指定时间时，第一次调用
-npx --yes code996@latest "<path1>" --json --lang zh-CN -s "<shared-since>" -u "<shared-until>"
+npx --yes code996@1.2.0 "<path1>" --json --lang zh-CN -s "<shared-since>" -u "<shared-until>"
 ```
 
 ```bash
 # 未指定时间时，第二次调用
-npx --yes code996@latest "<path2>" --json --lang zh-CN -s "<shared-since>" -u "<shared-until>"
+npx --yes code996@1.2.0 "<path2>" --json --lang zh-CN -s "<shared-since>" -u "<shared-until>"
 ```
 
 ```bash
 # 指定年份
-npx --yes code996@latest "<path>" --json --lang zh-CN -y 2025
+npx --yes code996@1.2.0 "<path>" --json --lang zh-CN -y 2025
 ```
 
-若使用全局命令，将示例中的 `npx --yes code996@latest` 替换为 `code996`。其他时间范围按步骤 1b 添加 `-s`、`-u` 或 `-y` 参数。
+若使用全局命令，将示例中的 `npx --yes code996@1.2.0` 替换为 `code996`。其他时间范围按步骤 1b 添加 `-s`、`-u` 或 `-y` 参数。
 
 多仓库模式下不要在同一次 code996 调用中传入多个路径：当前 CLI 会进入交互式仓库选择并混入进度文本，不适合 Agent 的非交互式 JSON 采集。应为每个仓库分别执行单仓库命令、独立解析 JSON，再基于各仓库结果进行聚合比较。若某个仓库失败，记录失败原因并继续处理其他仓库。
 
-**解析 JSON 输出**，提取以下字段用于后续分析：
+**解析 JSON 输出**。npm 警告通常写入 stderr，不应混入 JSON；优先使用宿主分别提供的 stdout。若宿主合并 stdout/stderr，只有能无歧义提取出唯一一个完整顶层 JSON 对象时才继续，否则视为采集失败并使用上述后备规则。
 
-| 字段                                                   | 用途                         |
-| ------------------------------------------------------ | ---------------------------- |
-| `meta.repos[]` / `meta.since` / `meta.until`           | 仓库路径与实际分析区间       |
-| `core.index996` / `core.rating` / `core.overTimeRatio` | 核心指标                     |
-| `workTime.startHour` / `workTime.endHour`              | 推测上下班时间               |
-| `hourlyDistribution[]`                                 | 24 小时提交分布              |
-| `weekdayDistribution[]`                                | 周一至周日分布               |
-| `weekdayOvertime`                                      | 工作日加班分布（peakDay）    |
-| `weekendOvertime`                                      | 周末加班（realOvertimeDays） |
-| `lateNight.midnightRate` / `lateNight.midnight`        | 深夜加班比例 / 深夜加班天数  |
-| `trend.summary`                                        | 趋势（若有）                 |
-| `team.contributors[]`                                  | 各贡献者加班占比             |
-| 多个单仓库结果中的 `core` / `team`                     | 多仓库横向对比与聚合         |
+提取以下字段用于后续分析：
 
-使用全局 `code996` 失败时，先按上述规则使用 `npx --yes code996@latest` 重试。只有最新版后备命令仍执行失败（如提交数不足）时，才告知用户原因并停止；多仓库模式则记录该仓库的失败原因并继续其他仓库。
+| 字段                                                   | 用途                        |
+| ------------------------------------------------------ | --------------------------- |
+| `meta.repos[]` / `meta.since` / `meta.until`           | 仓库路径与实际分析区间      |
+| `core.index996` / `core.rating` / `core.overTimeRatio` | 核心指标                    |
+| `workTime.startHour` / `workTime.endHour`              | 推测上下班时间              |
+| `hourlyDistribution[]`                                 | 24 小时提交分布             |
+| `weekdayDistribution[]`                                | 周一至周日分布              |
+| `weekdayOvertime.monday` 至 `friday` / `peakCount`     | 各工作日下班后的提交数      |
+| `weekdayOvertime.peakDay`                              | 下班后提交数最多的星期      |
+| `weekendOvertime.*Days`                                | 周末或休息日活动天数        |
+| `lateNight.evening` / `lateNight.lateNight`            | 下班后至 23:00 的活动天数   |
+| `lateNight.midnight` / `lateNight.dawn`                | 23:00–05:59 的活动天数      |
+| `lateNight.midnightRate` / `lateNight.midnightDays`    | 深夜活动天数占比 / 活动天数 |
+| `trend.summary`                                        | 趋势（若有）                |
+| `team.contributors[]`                                  | 各贡献者加班占比            |
+| 多个单仓库结果中的 `core` / `team`                     | 多仓库横向对比与聚合        |
+
+使用全局 `code996` 失败时，先按上述规则使用固定版本 `npx --yes code996@1.2.0` 重试。只有固定版本后备命令仍执行失败（如提交数不足）时，才告知用户原因并停止；多仓库模式则记录该仓库的失败原因并继续其他仓库。
+
+`lateNight.evening`、`lateNight.lateNight`、`lateNight.midnight` 和 `lateNight.dawn` 均按每天的最晚提交时间归类，单位是“活动天数”，不是提交数、小时数或人次。报告中不得写成“深夜提交 N 次”。
 
 ---
 
@@ -143,29 +161,29 @@ npx --yes code996@latest "<path>" --json --lang zh-CN -y 2025
 
 基于步骤 2 的 JSON 数据，识别加班高峰窗口，对同一仓库执行 git log 获取实际 commit message，归纳「加班都在干什么」。
 
-对每个仓库获取带 ISO 时间的 commit message。执行前必须从该仓库对应的 JSON 中读取 `meta.since` 和 `meta.until`，作为 code996 实际采用的有效区间；不要继续使用用户原始口述值或未赋值的占位符。
+对每个仓库获取 commit hash、带时区的 ISO 时间和 commit message。执行前必须从该仓库对应的 JSON 中读取 `meta.since` 和 `meta.until`，作为 code996 实际采用的有效区间；不要继续使用用户原始口述值或未赋值的占位符。
 
 正常默认区间和自定义区间使用：
 
 ```bash
-git -C "<path>" log --no-merges --after="<meta.since>" --before="<meta.until>" --format="%cI|||%s" --max-count=500
+git -C "<path>" log --no-merges --after="<meta.since>" --before="<meta.until>" --format="%H|||%cI|||%s" --max-count=500
 ```
 
 若用户使用 `--all-time`，JSON 中的 `meta.since` 和 `meta.until` 会缺失，此时必须同时省略 `--after`、`--before`，不能传空字符串或保留字面占位符：
 
 ```bash
-git -C "<path>" log --no-merges --format="%cI|||%s" --max-count=500
+git -C "<path>" log --no-merges --format="%H|||%cI|||%s" --max-count=500
 ```
 
 始终引用仓库路径，不依赖 POSIX 管道。
 
 `--no-merges` 必须保留，使定性样本与 code996 定量分析默认排除合并提交的口径一致。
 
-根据 `%cI` 中保留的提交本地日期、时间和时区进行筛选。先判断本次分析是否启用了中国节假日模式：显式使用 `--cn` 时直接视为启用；否则按分析区间内的非合并提交统计时区，将 `%cI` 的 `+08:00` 等偏移统一规范化为 `+0800` 格式，当 `+0800` 占比不低于 50% 时视为自动启用，与 code996 的判断保持一致。
+根据 `%cI` 中保留的提交本地日期、时间和时区进行筛选。先判断本次分析是否启用了中国节假日模式：显式使用 `--cn` 时直接视为启用；否则优先读取 JSON 的 `holidayMode`。旧版 JSON 缺少该字段时，再按分析区间内的非合并提交统计时区，将 `%cI` 的 `+08:00` 等偏移统一规范化为 `+0800` 格式，当 `+0800` 占比不低于 50% 时视为自动启用。
 
 - 未启用中国节假日模式：周一至周五视为工作日，周六、周日视为休息日。
-- 启用中国节假日模式：使用宿主可用的可靠中国工作日日历（优先采用与 code996 相同的 `holiday-calendar` 数据）逐日判断；法定节假日视为休息日，调休周六或周日视为工作日，不再仅按星期判断。
-- 若已启用中国节假日模式但宿主无法可靠取得日历结果：仍可分析不依赖日期类型的 23:00–05:59 样本；跳过工作日/休息日日间语义归因，并在报告中明确说明该限制。不得把调休工作日当作周末加班，或声称已覆盖法定节假日样本。
+- 启用中国节假日模式：只使用宿主已有的可靠中国工作日日历，优先采用与 code996 相同的 `holiday-calendar` 数据。可靠意味着能够指出数据来源，并能区分数据中的 `public_holiday` 与 `transfer_workday`；会在失败时静默退回普通星期规则的 API 不算可靠。不要为了语义分析另行联网下载日历，除非用户明确同意。
+- JSON 中 `holidayMode: true` 只表示模式已启用，不证明宿主已经取得可靠日历数据。若无法可靠取得日历：仍可分析不依赖日期类型的 23:00–05:59 样本；跳过工作日晚间与休息日日间语义归因，并在报告中明确说明该限制。不得把调休工作日当作周末加班，或声称已覆盖法定节假日样本。
 
 按上述日期类型筛选，使语义样本与 code996 使用的提交时间口径保持一致：
 
@@ -173,7 +191,7 @@ git -C "<path>" log --no-merges --format="%cI|||%s" --max-count=500
 - 休息日提交：日期被判定为休息日，最多取最近 50 条。
 - 深夜及凌晨提交：本地时间为 23:00–05:59，最多取最近 50 条。
 - 合并以上样本时按 commit 去重，避免同一条休息日深夜提交被重复计入。
-- 若最近 500 条提交不足以覆盖分析区间中的加班样本，可按时间窗口分段查询；避免一次输出完整大型仓库历史。
+- 若最近 500 条提交不足以覆盖分析区间中的加班样本，可按连续且无间隙的时间窗口分段查询；使用 `%H` 按 commit hash 去重，并核对去重后的提交总数是否与 JSON 的 `core.totalCommits` 一致。若不一致，说明语义样本未完整覆盖，不要把样本占比表述为全量占比。
 
 **多仓库时对每个仓库分别执行**，再合并归纳。
 
@@ -195,9 +213,21 @@ git -C "<path>" log --no-merges --format="%cI|||%s" --max-count=500
 
 - **定量数据**：code996 JSON 中的所有指标
 - **定性数据**：步骤 3 的加班语义分类
-- **人均/贡献者对比**：`team.contributors[]` 中各人加班占比，判断是否存在个别人被迫加班
+- **人均/贡献者对比**：`team.contributors[]` 中各人加班活动占比，只判断活动是否集中于少数贡献者，不推断“被迫加班”或真实工时
 - **用户口述背景**：团队规模、是否弹性制、约定工时——用于校准「这算不算过度加班」的基准
 - **多仓库视图**：基于每个仓库独立 JSON 的 `core`、`team` 等字段进行横向对比（若适用）
+
+贡献者分析遵守以下边界：
+
+- 将不同邮箱视为不同 Git 身份；除非用户提供映射，不自行合并同名身份。
+- 发现 bot、release server、CI 等疑似自动化账号时，单独标注，不把它们纳入个人风险结论；需要重新排除后分析时，先征得用户同意再添加 `--ignore-author`。
+- `workingHours.isReliable` 为 false 或置信度较低时，明确说明时间推测不可靠；不依据 `intensityLevel` 单独判断个人工作状态。
+
+多仓库聚合只使用成功返回的仓库：
+
+- 不计算或编造“综合 996 指数”，只横向展示各仓库的 `core.index996`。
+- 如需一个总体加班比例，使用提交数加权估算：`sum(core.totalCommits × core.overTimeRatio) / sum(core.totalCommits)`，结果标注为“按提交数加权的估算值”。由于单仓库比例已经四舍五入，该值不是 code996 官方聚合指标。
+- 若不需要总体数字，省略估算值，不临时发明其他聚合公式。
 
 报告风格：有结论（先给定性判断）、有数据支撑（引用具体数字）、有建议（可操作的改进方向）。
 
