@@ -121,10 +121,10 @@ export class CLIManager {
     const benchmarkCommand = new Command('benchmark')
       .description(t('benchmark.command'))
       .argument('[path]', t('benchmark.path'))
-      .requiredOption('--reference-hours <range>', t('benchmark.option.referenceHours'))
-      .requiredOption('--team-size <number>', t('benchmark.option.teamSize'))
-      .option('--schedule <type>', t('benchmark.option.schedule'), 'fixed')
-      .option('--label-confidence <level>', t('benchmark.option.labelConfidence'), 'high')
+      .option('--reference-hours <range>', t('benchmark.option.referenceHours'))
+      .option('--team-size <number>', t('benchmark.option.teamSize'))
+      .option('--schedule <type>', t('benchmark.option.schedule'))
+      .option('--label-confidence <level>', t('benchmark.option.labelConfidence'))
       .option('-s, --since <date>', t('cli.option.since'))
       .option('-u, --until <date>', t('cli.option.until'))
       .option('-y, --year <year>', t('cli.option.year'))
@@ -489,7 +489,7 @@ ${chalk.bold(t('cli.help.examples'))}
   code996 --ignore-msg "merge|lint|format"  # ${exampleFilterMsgs}
 
   ${chalk.gray(t('benchmark.helpExample'))}
-  code996 benchmark . --reference-hours 9.5-18.5 --team-size 20 -y 2025
+  code996 benchmark
 
 ${chalk.bold(t('cli.help.regex'))}
   ${t('cli.help.regex.line1')}

@@ -2,15 +2,15 @@ import { ProjectType } from '../core/project-classifier'
 import { Result996, TimeCount, WorkTimeDetectionResult } from '../types/git-types'
 
 export type BenchmarkSchedule = 'fixed' | 'flexible' | 'shift' | 'unknown'
-export type BenchmarkLabelConfidence = 'high' | 'medium' | 'low'
+export type BenchmarkLabelConfidence = 'high' | 'medium' | 'low' | 'unknown'
 
 export interface BenchmarkOptions {
   since?: string
   until?: string
   year?: string
   allTime?: boolean
-  referenceHours: string
-  teamSize: string
+  referenceHours?: string
+  teamSize?: string
   schedule?: BenchmarkSchedule
   labelConfidence?: BenchmarkLabelConfidence
   timezone?: string
@@ -40,7 +40,8 @@ export interface AnonymousBenchmarkBundle {
     aggregateDataWarning: string
   }
   labels: {
-    referenceWorkTime: {
+    status: 'labeled' | 'unlabeled'
+    referenceWorkTime?: {
       startHour: number
       endHour: number
     }
@@ -86,11 +87,11 @@ export interface AnonymousBenchmarkBundle {
       workTime: WorkTimeDetectionResult
       result996: Result996
     }
-    reference: {
+    reference?: {
       workTime: WorkTimeDetectionResult
       result996: Result996
     }
-    comparison: {
+    comparison?: {
       startErrorMinutes: number
       endErrorMinutes: number
       indexDelta: number

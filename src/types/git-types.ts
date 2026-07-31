@@ -125,7 +125,7 @@ export interface DailyFirstCommit {
  */
 export interface DailyLatestCommit {
   date: string
-  minutesFromMidnight: number // 最晚提交距离午夜的分钟数 (0-1439)
+  minutesFromMidnight: number // 最晚提交距离工作日起点的分钟数；次日凌晨可为 1440-1799
 }
 
 /**

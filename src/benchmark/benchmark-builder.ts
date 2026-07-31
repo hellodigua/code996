@@ -36,15 +36,15 @@ export async function buildAnonymousBenchmark(
 ): Promise<AnonymousBenchmarkBundle> {
   const collector = new GitCollector()
   const range = await resolveBenchmarkRange(collector, repoPath, options)
-  const referenceWorkTime = parseReferenceHours(options.referenceHours)
-  const teamSize = parsePositiveInteger(options.teamSize, 'team size')
+  const referenceWorkTime = options.referenceHours ? parseReferenceHours(options.referenceHours) : undefined
+  const teamSize = options.teamSize ? parsePositiveInteger(options.teamSize, 'team size') : undefined
   const schedule = parseSchedule(options.schedule)
-  const labelConfidence = parseLabelConfidence(options.labelConfidence)
+  const labelConfidence = parseLabelConfidence(options.labelConfidence, !!referenceWorkTime)
 
   const collectOptions: GitLogOptions = {
     path: repoPath,
     since: range.since,
-    until: range.until,
+    until: toExclusiveGitUntil(range.until),
     ignoreAuthor: options.ignoreAuthor,
     ignoreMsg: options.ignoreMsg,
     timezone: options.timezone,
@@ -57,19 +57,19 @@ export async function buildAnonymousBenchmark(
 
   const holidayMode = shouldEnableHolidayMode(rawData, options)
   const automaticData = await GitParser.parseGitData(rawData, undefined, range.since, range.until, holidayMode)
-  const referenceData = await GitParser.parseGitData(
-    rawData,
-    options.referenceHours,
-    range.since,
-    range.until,
-    holidayMode
-  )
   const automaticResult = GitParser.calculate996Index(automaticData)
-  const referenceResult = GitParser.calculate996Index(referenceData)
   const automaticWorkTime = automaticData.detectedWorkTime
-  const referenceDetectedWorkTime = referenceData.detectedWorkTime
-  if (!automaticWorkTime || !referenceDetectedWorkTime) {
-    throw new Error('Unable to calculate benchmark work-time results')
+  if (!automaticWorkTime) {
+    throw new Error('Unable to calculate benchmark work-time result')
+  }
+
+  const referenceData = options.referenceHours
+    ? await GitParser.parseGitData(rawData, options.referenceHours, range.since, range.until, holidayMode)
+    : undefined
+  const referenceResult = referenceData ? GitParser.calculate996Index(referenceData) : undefined
+  const referenceDetectedWorkTime = referenceData?.detectedWorkTime
+  if (referenceData && (!referenceResult || !referenceDetectedWorkTime || !referenceWorkTime)) {
+    throw new Error('Unable to calculate benchmark reference result')
   }
 
   const classification = ProjectClassifier.classify(rawData, automaticData)
@@ -93,9 +93,10 @@ export async function buildAnonymousBenchmark(
         'Aggregate timing patterns can still be sensitive. Open and review this JSON before sharing it.',
     },
     labels: {
+      status: referenceWorkTime ? 'labeled' : 'unlabeled',
       referenceWorkTime,
       schedule,
-      teamSizeBucket: toCountBucket(teamSize),
+      teamSizeBucket: teamSize ? toCountBucket(teamSize) : 'unknown',
       confidence: labelConfidence,
     },
     scope: {
@@ -114,7 +115,7 @@ export async function buildAnonymousBenchmark(
       weekdayDistribution: rawData.byDay,
       weekdayHalfHourDistribution: aggregateWeekdayHalfHours(rawData),
       dailyFirstCommitDistribution: aggregateMinuteDistribution(rawData.dailyFirstCommits ?? []),
-      dailyLatestCommitDistribution: aggregateMinuteDistribution(rawData.dailyLatestCommits ?? []),
+      dailyLatestCommitDistribution: aggregateMinuteDistribution(rawData.dailyLatestCommits ?? [], true),
     },
     classification: {
       projectType: classification.projectType,
@@ -128,16 +129,20 @@ export async function buildAnonymousBenchmark(
         workTime: automaticWorkTime,
         result996: automaticResult,
       },
-      reference: {
-        workTime: referenceDetectedWorkTime,
-        result996: referenceResult,
-      },
-      comparison: {
-        startErrorMinutes: Math.round((automaticWorkTime.startHour - referenceWorkTime.startHour) * 60),
-        endErrorMinutes: Math.round((automaticWorkTime.endHour - referenceWorkTime.endHour) * 60),
-        indexDelta: automaticResult.index996 - referenceResult.index996,
-        overtimeRatioDelta: automaticResult.overTimeRadio - referenceResult.overTimeRadio,
-      },
+      ...(referenceDetectedWorkTime && referenceResult && referenceWorkTime
+        ? {
+            reference: {
+              workTime: referenceDetectedWorkTime,
+              result996: referenceResult,
+            },
+            comparison: {
+              startErrorMinutes: Math.round((automaticWorkTime.startHour - referenceWorkTime.startHour) * 60),
+              endErrorMinutes: Math.round((automaticWorkTime.endHour - referenceWorkTime.endHour) * 60),
+              indexDelta: automaticResult.index996 - referenceResult.index996,
+              overtimeRatioDelta: automaticResult.overTimeRadio - referenceResult.overTimeRadio,
+            },
+          }
+        : {}),
     },
   }
 
@@ -213,16 +218,20 @@ function parsePositiveInteger(value: string, label: string): number {
 }
 
 function parseSchedule(value: BenchmarkSchedule | undefined): BenchmarkSchedule {
-  const result = value ?? 'fixed'
+  const result = value ?? 'unknown'
   if (!['fixed', 'flexible', 'shift', 'unknown'].includes(result)) {
     throw new Error(`Invalid schedule: ${result}`)
   }
   return result
 }
 
-function parseLabelConfidence(value: BenchmarkLabelConfidence | undefined): BenchmarkLabelConfidence {
-  const result = value ?? 'high'
-  if (!['high', 'medium', 'low'].includes(result)) {
+function parseLabelConfidence(
+  value: BenchmarkLabelConfidence | undefined,
+  hasReferenceWorkTime: boolean
+): BenchmarkLabelConfidence {
+  if (!hasReferenceWorkTime) return 'unknown'
+  const result = value ?? 'unknown'
+  if (!['high', 'medium', 'low', 'unknown'].includes(result)) {
     throw new Error(`Invalid label confidence: ${result}`)
   }
   return result
@@ -242,10 +251,14 @@ function toMonth(date: string | undefined): string | undefined {
   return date?.slice(0, 7)
 }
 
-function aggregateMinuteDistribution(items: Array<{ minutesFromMidnight: number }>): TimeCount[] {
+function aggregateMinuteDistribution(
+  items: Array<{ minutesFromMidnight: number }>,
+  preserveNextDay: boolean = false
+): TimeCount[] {
   const counts = new Map<string, number>()
+  const maxMinutes = preserveNextDay ? 30 * 60 - 1 : 24 * 60 - 1
   for (const item of items) {
-    const bounded = Math.max(0, Math.min(item.minutesFromMidnight, 1439))
+    const bounded = Math.max(0, Math.min(item.minutesFromMidnight, maxMinutes))
     const hour = Math.floor(bounded / 60)
     const minute = bounded % 60 < 30 ? 0 : 30
     const time = `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`
@@ -293,9 +306,24 @@ function summarizeTimezone(
 
 function shouldEnableHolidayMode(rawData: GitLogData, options: BenchmarkOptions): boolean {
   if (options.cn) return true
+  if (options.timezone) return options.timezone === '+0800'
   const dominant = rawData.timezoneData?.timezones[0]
   const total = rawData.timezoneData?.totalCommits ?? 0
   return !!dominant && dominant.offset === '+0800' && total > 0 && dominant.count / total >= 0.5
+}
+
+/**
+ * Git 会把日期形式的 --until 解释为当天零点。benchmark 对日期范围使用包含结束日的语义，
+ * 因此查询时将纯日期上界推进到次日零点；带具体时间的上界保持用户原意。
+ */
+function toExclusiveGitUntil(until: string | undefined): string | undefined {
+  if (!until || !/^\d{4}-\d{2}-\d{2}$/.test(until)) return until
+
+  const date = new Date(`${until}T00:00:00Z`)
+  if (Number.isNaN(date.getTime()) || date.toISOString().slice(0, 10) !== until) return until
+
+  date.setUTCDate(date.getUTCDate() + 1)
+  return date.toISOString().slice(0, 10)
 }
 
 async function resolveBenchmarkRange(

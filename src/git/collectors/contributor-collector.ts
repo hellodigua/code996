@@ -26,7 +26,7 @@ export class ContributorCollector extends BaseCollector {
 
     // 有作者排除或时区过滤时，需要获取详细信息进行过滤
     // 格式: "Author Name <email@example.com>|ISO_TIMESTAMP"
-    const args = ['log', '--format=%an <%ae>|%ai']
+    const args = ['log', '--format=%an <%ae>|%ci']
     this.applyCommonFilters(args, options)
 
     const output = await this.execGitCommand(args, path)
@@ -68,7 +68,7 @@ export class ContributorCollector extends BaseCollector {
     const { path } = options
 
     // 格式: "Author Name <email@example.com>|ISO_TIMESTAMP"
-    const args = ['log', '--format=%an <%ae>|%ai']
+    const args = ['log', '--format=%an <%ae>|%ci']
     this.applyCommonFilters(args, options)
 
     const output = await this.execGitCommand(args, path)
@@ -114,7 +114,7 @@ export class ContributorCollector extends BaseCollector {
     const { path } = options
 
     // 格式: "Author Name <email@example.com>|YYYY-MM-DD|ISO_TIMESTAMP"
-    const args = ['log', '--format=%an <%ae>|%cd|%ai', '--date=format:%Y-%m-%d', '--reverse', '--max-parents=0']
+    const args = ['log', '--format=%an <%ae>|%cd|%ci', '--date=format:%Y-%m-%d', '--reverse', '--max-parents=0']
     this.applyCommonFilters(args, options)
 
     const output = await this.execGitCommand(args, path)
@@ -158,7 +158,7 @@ export class ContributorCollector extends BaseCollector {
 
     // 格式: "Author Name <email@example.com>|YYYY-MM-DD|ISO_TIMESTAMP"
     // 注意：不能使用 -1 限制，因为最新的提交可能被排除
-    const args = ['log', '--format=%an <%ae>|%cd|%ai', '--date=format:%Y-%m-%d']
+    const args = ['log', '--format=%an <%ae>|%cd|%ci', '--date=format:%Y-%m-%d']
     this.applyCommonFilters(args, options)
 
     const output = await this.execGitCommand(args, path)

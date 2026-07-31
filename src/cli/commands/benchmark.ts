@@ -37,17 +37,23 @@ function printPreview(bundle: AnonymousBenchmarkBundle, outputPath: string): voi
   console.log(chalk.bold(t('benchmark.preview')))
   console.log(`  ${t('benchmark.datasetId')}: ${bundle.datasetId}`)
   console.log(`  ${t('benchmark.sample')}: ${bundle.sample.totalCommits}`)
-  console.log(
-    `  ${t('benchmark.reference')}: ${formatHour(bundle.labels.referenceWorkTime.startHour)}-${formatHour(
-      bundle.labels.referenceWorkTime.endHour
-    )}`
-  )
+  if (bundle.labels.referenceWorkTime && reference) {
+    console.log(
+      `  ${t('benchmark.reference')}: ${formatHour(bundle.labels.referenceWorkTime.startHour)}-${formatHour(
+        bundle.labels.referenceWorkTime.endHour
+      )}`
+    )
+  } else {
+    console.log(`  ${t('benchmark.reference')}: ${t('benchmark.unlabeled')}`)
+  }
   console.log(
     `  ${t('benchmark.automatic')}: ${formatHour(automatic.workTime.startHour)}-${formatHour(
       automatic.workTime.endHour
     )} / ${automatic.result996.index996}`
   )
-  console.log(`  ${t('benchmark.referenceIndex')}: ${reference.result996.index996}`)
+  if (reference) {
+    console.log(`  ${t('benchmark.referenceIndex')}: ${reference.result996.index996}`)
+  }
   console.log()
   console.log(chalk.yellow(`⚠️  ${t('benchmark.review')}`))
   console.log(chalk.gray(t('benchmark.excluded')))

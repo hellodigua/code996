@@ -12,9 +12,9 @@ export class TimeCollector extends BaseCollector {
   async getCommitsByHour(options: GitLogOptions): Promise<TimeCount[]> {
     const { path } = options
 
-    // 采集分钟级数据：同时获取作者、提交时间（使用提交时的原始时区）和时区信息用于过滤
+    // 采集分钟级数据：同时获取作者、提交时间和 committer ISO 时间戳用于时区过滤
     // 格式: "Author Name <email@example.com>|HH:MM|2025-01-01 12:30:00 +0800"
-    const args = ['log', '--format=%an <%ae>|%cd|%ai', `--date=format:%H:%M`]
+    const args = ['log', '--format=%an <%ae>|%cd|%ci', `--date=format:%H:%M`]
     this.applyCommonFilters(args, options)
 
     const output = await this.execGitCommand(args, path)
@@ -28,7 +28,7 @@ export class TimeCollector extends BaseCollector {
     const { path } = options
 
     // 格式: "Author Name <email@example.com>|D|2025-01-01 12:30:00 +0800" (D为星期几，0-6)
-    const args = ['log', '--format=%an <%ae>|%cd|%ai', `--date=format:%w`]
+    const args = ['log', '--format=%an <%ae>|%cd|%ci', `--date=format:%w`]
     this.applyCommonFilters(args, options)
 
     const output = await this.execGitCommand(args, path)
