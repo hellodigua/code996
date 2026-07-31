@@ -43,8 +43,8 @@ export async function buildAnonymousBenchmark(
 
   const collectOptions: GitLogOptions = {
     path: repoPath,
-    since: range.since,
-    until: toExclusiveGitUntil(range.until),
+    since: toGitSince(range.since),
+    until: toGitUntil(range.until),
     ignoreAuthor: options.ignoreAuthor,
     ignoreMsg: options.ignoreMsg,
     timezone: options.timezone,
@@ -312,18 +312,27 @@ function shouldEnableHolidayMode(rawData: GitLogData, options: BenchmarkOptions)
   return !!dominant && dominant.offset === '+0800' && total > 0 && dominant.count / total >= 0.5
 }
 
+/** 为纯日期补上明确的午夜，避免 Git approximate-date 使用当前时刻。 */
+function toGitSince(since: string | undefined): string | undefined {
+  return isValidDateOnly(since) ? `${since}T00:00:00` : since
+}
+
 /**
- * Git 会把日期形式的 --until 解释为当天零点。benchmark 对日期范围使用包含结束日的语义，
- * 因此查询时将纯日期上界推进到次日零点；带具体时间的上界保持用户原意。
+ * benchmark 的结束日期包含当天，因此 Git 查询使用次日午夜作为排他上界。
+ * 带具体时间的用户输入保持原意，不进行转换。
  */
-function toExclusiveGitUntil(until: string | undefined): string | undefined {
-  if (!until || !/^\d{4}-\d{2}-\d{2}$/.test(until)) return until
+function toGitUntil(until: string | undefined): string | undefined {
+  if (!isValidDateOnly(until)) return until
 
   const date = new Date(`${until}T00:00:00Z`)
-  if (Number.isNaN(date.getTime()) || date.toISOString().slice(0, 10) !== until) return until
-
   date.setUTCDate(date.getUTCDate() + 1)
-  return date.toISOString().slice(0, 10)
+  return `${date.toISOString().slice(0, 10)}T00:00:00`
+}
+
+function isValidDateOnly(value: string | undefined): value is string {
+  if (!value || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false
+  const date = new Date(`${value}T00:00:00Z`)
+  return !Number.isNaN(date.getTime()) && date.toISOString().slice(0, 10) === value
 }
 
 async function resolveBenchmarkRange(

@@ -98,6 +98,42 @@ describe('匿名 benchmark', () => {
     }
   })
 
+  test('纯日期范围使用固定午夜边界，不遗漏首日或混入次日', async () => {
+    const originalTimezone = process.env.TZ
+    process.env.TZ = 'UTC'
+    const dateBoundaryFixture = createFixtureRepo([
+      {
+        message: 'first-day-early',
+        isoDate: '2025-01-01 00:30:00 +0000',
+      },
+      {
+        message: 'first-day-late',
+        isoDate: '2025-01-01 23:30:00 +0000',
+      },
+      {
+        message: 'next-day-early',
+        isoDate: '2025-01-02 00:30:00 +0000',
+      },
+    ])
+
+    try {
+      const bundle = await buildAnonymousBenchmark(dateBoundaryFixture.repoPath, {
+        since: '2025-01-01',
+        until: '2025-01-01',
+      })
+      expect(bundle.sample.totalCommits).toBe(2)
+      expect(bundle.sample.weekdayDistribution.find((item) => item.time === '3')?.count).toBe(2)
+      expect(bundle.sample.weekdayDistribution.find((item) => item.time === '4')?.count).toBe(0)
+    } finally {
+      dateBoundaryFixture.cleanup()
+      if (originalTimezone === undefined) {
+        delete process.env.TZ
+      } else {
+        process.env.TZ = originalTimezone
+      }
+    }
+  })
+
   test('末次提交分布保留次日凌晨的扩展半小时桶', async () => {
     const midnightFixture = createFixtureRepo([
       {
