@@ -92,7 +92,7 @@ git -C "<path>" log --no-merges --format="%cd" --date=format:%Y-%m-%d --max-coun
 
 优先使用环境中已有且支持 `--json` 的 `code996` 命令。先检查命令是否存在，再通过 `code996 --help` 确认帮助中包含 `--json`；检查能力时不要读取用户仓库。
 
-若命令不可用、不支持 `--json`、执行时拒绝该参数或 stdout 不是可解析的 JSON，才使用与本 Skill 对齐的固定版本 `npx --yes code996@1.3.1`。不要使用 `@latest`；更新 Skill 所适配的 CLI 版本时，必须同步更新本节全部 npx 命令。在下载或执行后备包之前：
+若命令不可用、不支持 `--json`、执行时拒绝该参数或 stdout 不是可解析的 JSON，才使用与本 Skill 对齐的固定版本 `npx --yes code996@1.4.0`。不要使用 `@latest`；更新 Skill 所适配的 CLI 版本时，必须同步更新本节全部 npx 命令。在下载或执行后备包之前：
 
 - 用户已经明确同意使用 npx 下载并运行 code996：直接继续。
 - 用户尚未明确同意，或宿主会因“第三方代码读取本地仓库”要求授权：优先使用宿主的原生权限确认，并在授权理由中列出目标仓库，说明“将通过 npx 临时下载 code996；分析只读取这些仓库的本地 Git 记录，不上传报告或日志”。宿主没有原生权限确认时，才在对话中一次性取得确认；多仓库只确认一次。
@@ -106,27 +106,27 @@ git -C "<path>" log --no-merges --format="%cd" --date=format:%Y-%m-%d --max-coun
 
 ```bash
 # 单仓库
-npx --yes code996@1.3.1 "<path>" --json --lang zh-CN
+npx --yes code996@1.4.0 "<path>" --json --lang zh-CN
 ```
 
 多仓库时，每条命令必须单独执行并立即解析该次 stdout，不要在同一个 shell 调用中连续执行而得到拼接的 JSON：
 
 ```bash
 # 未指定时间时，第一次调用
-npx --yes code996@1.3.1 "<path1>" --json --lang zh-CN -s "<shared-since>" -u "<shared-until>"
+npx --yes code996@1.4.0 "<path1>" --json --lang zh-CN -s "<shared-since>" -u "<shared-until>"
 ```
 
 ```bash
 # 未指定时间时，第二次调用
-npx --yes code996@1.3.1 "<path2>" --json --lang zh-CN -s "<shared-since>" -u "<shared-until>"
+npx --yes code996@1.4.0 "<path2>" --json --lang zh-CN -s "<shared-since>" -u "<shared-until>"
 ```
 
 ```bash
 # 指定年份
-npx --yes code996@1.3.1 "<path>" --json --lang zh-CN -y 2025
+npx --yes code996@1.4.0 "<path>" --json --lang zh-CN -y 2025
 ```
 
-若使用全局命令，将示例中的 `npx --yes code996@1.3.1` 替换为 `code996`。其他时间范围按步骤 1b 添加 `-s`、`-u` 或 `-y` 参数。
+若使用全局命令，将示例中的 `npx --yes code996@1.4.0` 替换为 `code996`。其他时间范围按步骤 1b 添加 `-s`、`-u` 或 `-y` 参数。
 
 多仓库模式下不要在同一次 code996 调用中传入多个路径：当前 CLI 会进入交互式仓库选择并混入进度文本，不适合 Agent 的非交互式 JSON 采集。应为每个仓库分别执行单仓库命令、独立解析 JSON，再基于各仓库结果进行聚合比较。若某个仓库失败，记录失败原因并继续处理其他仓库。
 
@@ -151,7 +151,7 @@ npx --yes code996@1.3.1 "<path>" --json --lang zh-CN -y 2025
 | `team.contributors[]`                                  | 各贡献者加班占比            |
 | 多个单仓库结果中的 `core` / `team`                     | 多仓库横向对比与聚合        |
 
-使用全局 `code996` 失败时，先按上述规则使用固定版本 `npx --yes code996@1.3.1` 重试。只有固定版本后备命令仍执行失败（如提交数不足）时，才告知用户原因并停止；多仓库模式则记录该仓库的失败原因并继续其他仓库。
+使用全局 `code996` 失败时，先按上述规则使用固定版本 `npx --yes code996@1.4.0` 重试。只有固定版本后备命令仍执行失败（如提交数不足）时，才告知用户原因并停止；多仓库模式则记录该仓库的失败原因并继续其他仓库。
 
 `lateNight.evening`、`lateNight.lateNight`、`lateNight.midnight` 和 `lateNight.dawn` 均按每天的最晚提交时间归类，单位是“活动天数”，不是提交数、小时数或人次。报告中不得写成“深夜提交 N 次”。
 
