@@ -127,7 +127,7 @@ const usageCommands = computed<UsageMethod[]>(() => [
     key: 'cli' as const,
     title: t('intro.howToUse.cliTitle'),
     tip: t('intro.howToUse.cliTip'),
-    snippets: [{ key: 'cli' as const, content: 'npx code996' }],
+    snippets: [{ key: 'cli' as const, content: 'npx -y code996' }],
   },
   {
     key: 'ai' as const,
