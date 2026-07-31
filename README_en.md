@@ -100,31 +100,6 @@ Analyze this repo with code996 and open the local Web report
 
 Running code996 requires Node.js 18+.
 
-### Contribute an Anonymous Benchmark
-
-Run this inside the Git repository you want to analyze:
-
-```bash
-npx code996 benchmark
-```
-
-The command asks no questions, analyzes everything locally, and uploads nothing. It creates an unlabeled `code996-benchmark-*.json` file; open and review the file before sending it to the maintainer. Unlabeled samples can expose obvious algorithm failures and unusual distributions, but cannot prove the error against the team's actual schedule.
-
-Optionally provide context to create a labeled sample that is more useful for measuring error:
-
-```bash
-npx code996 benchmark \
-  --reference-hours 9.5-18.5 \
-  --team-size 20
-```
-
-- `--reference-hours`: the team's actual or typical standard hours, used to compare against the automatic result
-- `--team-size`: used only to study algorithm behavior by team-size segment; it does not affect the 996 index, and the Git contributor-count bucket is still collected automatically when omitted
-- `--schedule` and `--label-confidence`: optional schedule and reference-label context
-- `-y` / `--since --until`: use a fixed range so datasets can be reproduced and compared
-
-The JSON excludes repository names and paths, source code and filenames, author names and emails, commit hashes and messages, branches and remotes, and exact commit dates. It retains commit counts, half-hour and weekday aggregate distributions, the month range, a contributor-count bucket, and the automatic result; reference results and error fields appear only when reference hours are supplied. Aggregate timing patterns may still be sensitive, so manual review before sharing is required.
-
 ## 🤖 Smart Analysis Mode
 
 code996 automatically selects the most suitable analysis mode based on context:
@@ -295,6 +270,31 @@ Git Repo → git log collection → Daily first commit + Hourly distribution →
 - Usage Restrictions: This project's analysis results are for personal reference only, please do not use for "evil" or improper purposes.
 - Disclaimer: code996 is not responsible for any consequences caused by using, distributing this program and its derivatives.
 
+## Anonymous Contributions
+
+If you'd like to help calibrate code996's calculations, run the following command in the Git repository you want to analyze:
+
+```bash
+npx code996 benchmark
+```
+
+The command analyzes the repository locally and uploads nothing. It creates an unlabeled `code996-benchmark-*.json` file; open and review the file before sending it to the maintainer. Unlabeled samples can expose obvious algorithm failures and unusual distributions, but cannot prove the error against the team's actual schedule.
+
+Optionally provide context to create a labeled sample that is more useful for measuring error:
+
+```bash
+npx code996 benchmark \
+  --reference-hours 9.5-18.5 \
+  --team-size 20
+```
+
+- `--reference-hours`: the team's actual or typical standard hours, used to compare against the automatic result
+- `--team-size`: used only to study algorithm behavior by team-size segment; it does not affect the 996 index, and the Git contributor-count bucket is still collected automatically when omitted
+- `--schedule` and `--label-confidence`: optional schedule and reference-label context
+- `-y` / `--since --until`: use a fixed range so datasets can be reproduced and compared
+
+The JSON contains no private information. It retains commit counts, half-hour and weekday aggregate distributions, the month range, a contributor-count bucket, and the automatic result; reference results and error fields appear only when reference hours are supplied.
+
 ## Other Questions
 
 > Here are some common questions. If you have other questions, feel free to open an issue.
@@ -310,18 +310,6 @@ Not really. The core value of code996 is breaking information asymmetry, using r
 ### 📉 Will Squash commits affect accuracy if the project habit is local multiple commits then Squash before push?
 
 There will be some impact, but code996 relies on statistical patterns. As long as commit samples reach a certain number, what's finally shown is the team's collective work pattern, special commit habits will be filtered out as "noise" statistically.
-
-### 🛡️ Why not support viewing individual member's 996 index?
-
-Although technically feasible, we deliberately abandoned this feature:
-
-Viewing 996 index by user, this feature is too easy to be misused and abused. It can easily be used by some people to analyze team members' "overtime situation".
-
-Although I've emphasized the tool's limitations more than once (actual work also includes meetings, learning, maintaining documentation, debugging, testing, etc.), you just can't stop some people from only looking at numbers 🤦
-
-The original intention of this project is to help avoid pit projects, not to provide new ammunition for internal competition. Therefore, the project only provides two perspectives: viewing team and viewing yourself (--self).
-
-Finally, code commit volume and timing don't equal work output. If used for performance evaluation, it will not only cause the team to produce lots of junk commits for stats, but also destroy team trust.
 
 ### 🚀 What's the project roadmap?
 
