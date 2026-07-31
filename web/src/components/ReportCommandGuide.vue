@@ -77,7 +77,7 @@ const commandOptions = [
 ] as const
 
 const commandRecipes = [
-  { command: 'npx code996', descriptionKey: 'notices.recipes.current' },
+  { command: 'npx -y code996', descriptionKey: 'notices.recipes.current' },
   { command: 'npx code996 --open', descriptionKey: 'notices.recipes.open' },
   { command: 'npx code996 "/path/to/repo" --open', descriptionKey: 'notices.recipes.repo' },
   { command: 'npx code996 -y 2025 --open', descriptionKey: 'notices.recipes.year' },

@@ -4,7 +4,7 @@ code996 is an analysis tool that statistics Git project commit time distribution
 
 It helps you understand new team's working patterns and identify potential overtime culture.
 
-**Easy to use, just one command: `npx code996`**
+**Easy to use, just one command: `npx -y code996`**
 
 English | [简体中文](./README.md)
 
@@ -12,7 +12,7 @@ English | [简体中文](./README.md)
 
 During interviews, we ask about overtime policies, but the answers aren't always truthful. However, code commit times don't lie, which is why this tool exists.
 
-When you join a new company, run `npx code996` to see the truth behind the data and judge the real overtime culture.
+When you join a new company, run `npx -y code996` to see the truth behind the data and judge the real overtime culture.
 
 Instead of suffering for three months, better see the truth early! Don't wait until your probation ends to regret!
 
@@ -67,7 +67,7 @@ First make sure Node.js 18 or newer is installed, then:
 
 ```bash
 # Run in current repo or parent directory of repos
-npx code996
+npx -y code996
 ```
 
 By default, code996 prints the traditional text report and also saves the visual report under `Downloads/code996-report/date_time_project/` without opening a browser, for example `Downloads/code996-report/2026-07-18_10-11-46_demo/`. Run `npx code996 --open` to open the generated report automatically. The report remains available after the CLI exits, and deleting that directory removes the whole report. Repository data is never uploaded and no localhost server is required.
