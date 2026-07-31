@@ -25,6 +25,11 @@ function pct(n: number): string {
   return `${n.toFixed(1)}%`
 }
 
+function clock(hour: number): string {
+  const minutes = Math.round(hour * 60)
+  return `${String(Math.floor(minutes / 60)).padStart(2, '0')}:${String(minutes % 60).padStart(2, '0')}`
+}
+
 export function buildMarkdown(data: StructuredOutput): string {
   const sections: string[] = []
   const date = new Date().toISOString().slice(0, 10)
@@ -45,14 +50,31 @@ export function buildMarkdown(data: StructuredOutput): string {
   ]
   sections.push(mdTable(['项目', '值'], metaRows))
   sections.push('')
+  if (data.core.uncertainty) {
+    sections.push(
+      `> 工作时间样本置信度较低；不同常见工时假设下，996 指数区间为 ${data.core.uncertainty.minIndex996.toFixed(1)}–${data.core.uncertainty.maxIndex996.toFixed(1)}。当前值仅供参考。\n`
+    )
+    sections.push(
+      mdTable(
+        ['标准工时', '996 指数', '加班比例'],
+        data.core.uncertainty.scenarios.map((scenario) => [
+          `${clock(scenario.startHour)}–${clock(scenario.endHour)}`,
+          scenario.index996.toFixed(1),
+          pct(scenario.overTimeRadio),
+        ])
+      )
+    )
+    sections.push('')
+  }
 
   // 推测工时
   if (data.workTime) {
     sections.push('## 推测工时\n')
     const wt = data.workTime
     const wtRows: string[][] = [
-      ['上班时间', `${wt.startHour}:00`],
-      ['下班时间', `${wt.endHour}:00`],
+      ['标准上班时间', clock(wt.startHour)],
+      ['标准下班时间', clock(wt.endHour)],
+      ['提交活动延伸至', wt.observedEndHour === undefined ? '—' : clock(wt.observedEndHour)],
       ['置信度', pct(wt.confidence)],
       ['检测方法', wt.detectionMethod],
       ['是否可靠', wt.isReliable ? '是' : '否'],

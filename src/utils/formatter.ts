@@ -44,31 +44,16 @@ export function formatEndClock(detection: ParsedGitData['detectedWorkTime']): st
     return '—'
   }
 
-  const range = detection.endHourRange
-  const thresholdHour = (detection.startHour ?? 0) + 9
+  return formatMinutesToClock(Math.round(detection.endHour * 60))
+}
 
-  if (!range) {
-    const fallbackHour = Math.max(thresholdHour, detection.endHour ?? thresholdHour)
-    return formatMinutesToClock(Math.round(fallbackHour * 60))
+/** 格式化提交活动实际延伸到的时间；它不是标准工时边界。 */
+export function formatObservedEndClock(detection: ParsedGitData['detectedWorkTime']): string {
+  if (!detection || detection.observedEndHour === undefined) {
+    return '—'
   }
 
-  let displayHour: number
-
-  if (range.startHour >= thresholdHour) {
-    displayHour = range.startHour
-  } else {
-    displayHour = range.endHour
-  }
-
-  const displayClock = formatMinutesToClock(Math.round(displayHour * 60))
-  const rangeStart = formatMinutesToClock(Math.round(range.startHour * 60))
-  const rangeEnd = formatMinutesToClock(Math.round(range.endHour * 60))
-
-  return t('workTime.endRange', {
-    time: displayClock,
-    start: rangeStart,
-    end: rangeEnd,
-  })
+  return formatMinutesToClock(Math.round(detection.observedEndHour * 60))
 }
 
 /** 根据指数区间返回对应的颜色函数 */

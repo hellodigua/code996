@@ -376,7 +376,8 @@ export class MultiExecutor {
               authorPattern,
               () => {},
               options.timezone,
-              shouldEnableHoliday3.enabled
+              shouldEnableHoliday3.enabled,
+              options.hours
             )
           } catch {
             // 结构化输出保持纯净，缺失模块由 null 表达。
@@ -394,7 +395,8 @@ export class MultiExecutor {
                 trendSpinner.text = `📈 ${t('analyze.trend.progress', { current, total, month })}`
               },
               options.timezone,
-              shouldEnableHoliday3.enabled
+              shouldEnableHoliday3.enabled,
+              options.hours
             )
             trendSpinner.succeed()
             printTrendReport(trendResult)
@@ -420,15 +422,19 @@ export class MultiExecutor {
             authorPattern,
             ignoreAuthor: options.ignoreAuthor,
             ignoreMsg: options.ignoreMsg,
+            timezone: options.timezone,
           }
           const maxUsers = options.maxUsers ? parseInt(String(options.maxUsers), 10) : 30
+          const manualWorkTime =
+            parsedData.detectedWorkTime?.detectionMethod === 'manual' ? parsedData.detectedWorkTime : undefined
           teamAnalysis =
             (await MultiRepoTeamAnalyzer.analyzeAggregatedTeam(
               successfulRepoPaths,
               collectOptions,
               20,
               maxUsers,
-              result.index996
+              result.index996,
+              manualWorkTime
             )) ?? null
 
           if (isTerminalReport && teamAnalysis) printTeamAnalysis(teamAnalysis)

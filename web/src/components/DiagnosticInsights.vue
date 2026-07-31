@@ -29,6 +29,11 @@
           {{ formatRange(report.workTime.endHourRange) }}
         </small>
       </div>
+      <div v-if="report.workTime.observedEndHour !== undefined">
+        <span>{{ t('details.workTime.observedEnd') }}</span>
+        <strong>{{ formatClock(report.workTime.observedEndHour) }}</strong>
+        <small>{{ t('details.workTime.observedEndNote') }}</small>
+      </div>
       <div>
         <span>{{ t('details.workTime.confidence') }}</span>
         <strong>{{ percentage(report.workTime.confidence) }}%</strong>
@@ -40,6 +45,15 @@
         <small>{{ reliabilityLabel }}</small>
       </div>
     </div>
+
+    <p v-if="report.core.uncertainty" class="inline-warning">
+      {{
+        t('details.workTime.lowConfidence', {
+          min: report.core.uncertainty.minIndex996.toFixed(1),
+          max: report.core.uncertainty.maxIndex996.toFixed(1),
+        })
+      }}
+    </p>
 
     <p v-if="workTimeSpan > 9" class="inline-warning">
       {{ t('details.workTime.capNotice', { hours: workTimeSpan.toFixed(1) }) }}

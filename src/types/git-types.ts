@@ -40,7 +40,9 @@ export interface TimeCount {
 }
 
 export interface WorkTimeDetectionResult {
+  /** 标准工时开始，用于加班判定 */
   startHour: number
+  /** 标准工时结束，用于加班判定；自动模式固定为开始后 9 小时 */
   endHour: number
   isReliable: boolean
   sampleCount: number
@@ -55,6 +57,13 @@ export interface WorkTimeDetectionResult {
     endHour: number
   }
   endDetectionMethod?: 'standard-shift' | 'backward-threshold' | 'default' | 'manual'
+  /** 提交活动实际延伸到的时间，只作为诊断证据，不扩大正常工时 */
+  observedEndHour?: number
+  observedEndHourRange?: {
+    startHour: number
+    endHour: number
+  }
+  observedEndDetectionMethod?: 'backward-threshold' | 'default'
 }
 
 export interface ParsedGitData {
@@ -90,6 +99,20 @@ export interface Result996 {
   index996: number
   index996DescriptionKey: IndexDescriptionKey
   overTimeRadio: number
+  uncertainty?: {
+    reason: 'low-work-time-confidence'
+    minIndex996: number
+    maxIndex996: number
+    scenarios: WorkTimeScenarioResult[]
+  }
+}
+
+export interface WorkTimeScenarioResult {
+  startHour: number
+  endHour: number
+  index996: number
+  overTimeRadio: number
+  source: 'auto' | 'common'
 }
 
 export interface DailyFirstCommit {
@@ -127,6 +150,7 @@ export interface DailyCommitCount {
 export interface DayHourCommit {
   weekday: number // 1-7 (周一到周日)
   hour: number // 0-23
+  minute?: number // 0-59；旧数据缺失时按 0 处理
   count: number
 }
 
@@ -301,7 +325,7 @@ export interface UserWorkPattern {
   email: string // 邮箱
   totalCommits: number // 提交数
   commitPercentage: number // 占比（百分比）
-  timeDistribution: TimeCount[] // 个人的时间分布（24小时）
+  timeDistribution: TimeCount[] // 个人的时间分布（48个半小时点）
   workingHours?: WorkTimeDetectionResult // 个人的上下班时间（算法识别）
   // 基于每日首末commit的中位数
   avgStartTimeMedian?: number // 平均上班时间（中位数，小时数）

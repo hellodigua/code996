@@ -1,4 +1,4 @@
-import { GitLogOptions, TeamAnalysis } from '../types/git-types'
+import { GitLogOptions, TeamAnalysis, TimeCount, WorkTimeDetectionResult } from '../types/git-types'
 import {
   UserPatternCollector,
   ContributorInfo,
@@ -36,7 +36,8 @@ export class MultiRepoTeamAnalyzer {
     options: GitLogOptions,
     minCommits: number = 20,
     maxUsers: number = 30,
-    overallIndex: number = 0
+    overallIndex: number = 0,
+    workTimeOverride?: WorkTimeDetectionResult
   ): Promise<TeamAnalysis | null> {
     // 第一步：收集所有仓库的所有贡献者
     const aggregatedContributors = await this.aggregateContributors(repoPaths, options)
@@ -59,7 +60,9 @@ export class MultiRepoTeamAnalyzer {
     const totalCommits = coreContributors.reduce((sum, c) => sum + c.totalCommits, 0)
 
     // 第五步：分析每个用户
-    const userPatterns = userPatternDataList.map((userData) => UserAnalyzer.analyzeUser(userData, totalCommits))
+    const userPatterns = userPatternDataList.map((userData) =>
+      UserAnalyzer.analyzeUser(userData, totalCommits, undefined, workTimeOverride)
+    )
 
     // 第六步：团队层面分析
     const teamAnalysis = UserAnalyzer.analyzeTeam(userPatterns, minCommits, aggregatedContributors.size, overallIndex)
@@ -117,10 +120,7 @@ export class MultiRepoTeamAnalyzer {
 
     for (const contributor of coreContributors) {
       // 初始化聚合数据
-      const timeDistribution = new Array(24).fill(0).map((_, i) => ({
-        time: i.toString().padStart(2, '0'),
-        count: 0,
-      }))
+      const timeDistributionMap = new Map<string, number>()
 
       const dayDistribution = new Array(7).fill(0).map((_, i) => ({
         time: (i + 1).toString(),
@@ -141,8 +141,8 @@ export class MultiRepoTeamAnalyzer {
           ])
 
           // 合并时间分布
-          for (let i = 0; i < 24; i++) {
-            timeDistribution[i].count += timeData[i]?.count || 0
+          for (const item of timeData) {
+            timeDistributionMap.set(item.time, (timeDistributionMap.get(item.time) || 0) + item.count)
           }
 
           // 合并星期分布
@@ -174,7 +174,9 @@ export class MultiRepoTeamAnalyzer {
 
       results.push({
         contributor: contributorInfo,
-        timeDistribution,
+        timeDistribution: Array.from(timeDistributionMap.entries())
+          .map(([time, count]): TimeCount => ({ time, count }))
+          .sort((a, b) => a.time.localeCompare(b.time)),
         dayDistribution,
         dailyFirstCommits: allDailyFirstCommits,
         dailyLatestCommits: allDailyLatestCommits,

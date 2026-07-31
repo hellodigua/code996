@@ -27,6 +27,14 @@
           <div class="score-block">
             <strong class="score" data-testid="score">{{ activeReport.core.index996 }}</strong>
             <p class="rating">{{ t(`rating.${activeReport.core.rating}`) }}</p>
+            <p v-if="activeReport.core.uncertainty" class="rating">
+              {{
+                t('result.uncertaintyRange', {
+                  min: activeReport.core.uncertainty.minIndex996.toFixed(1),
+                  max: activeReport.core.uncertainty.maxIndex996.toFixed(1),
+                })
+              }}
+            </p>
           </div>
 
           <dl class="result-facts">

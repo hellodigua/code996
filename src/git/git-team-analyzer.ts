@@ -1,4 +1,4 @@
-import { GitLogOptions, TeamAnalysis } from '../types/git-types'
+import { GitLogOptions, TeamAnalysis, WorkTimeDetectionResult } from '../types/git-types'
 import { UserPatternCollector } from './collectors/user-pattern-collector'
 import { UserAnalyzer } from '../core/user-analyzer'
 import ora from 'ora'
@@ -23,7 +23,8 @@ export class GitTeamAnalyzer {
     overallIndex: number,
     minCommits: number = 20,
     maxUsers: number = 30,
-    silent: boolean = false
+    silent: boolean = false,
+    workTimeOverride?: WorkTimeDetectionResult
   ): Promise<TeamAnalysis | null> {
     const collector = new UserPatternCollector()
 
@@ -63,7 +64,9 @@ export class GitTeamAnalyzer {
     const analysisSpinner = !silent ? ora(t('team.spinner.userAnalysis')).start() : null
 
     const totalCommits = allContributors.reduce((sum, c) => sum + c.commits, 0)
-    const userPatterns = userPatternDataList.map((data) => UserAnalyzer.analyzeUser(data, totalCommits))
+    const userPatterns = userPatternDataList.map((data) =>
+      UserAnalyzer.analyzeUser(data, totalCommits, undefined, workTimeOverride)
+    )
 
     analysisSpinner?.succeed(t('team.spinner.userAnalysisDone', { count: userPatterns.length }))
 

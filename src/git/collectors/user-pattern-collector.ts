@@ -24,7 +24,7 @@ export interface DailyCommitTime {
  */
 export interface UserPatternData {
   contributor: ContributorInfo
-  timeDistribution: TimeCount[] // 时间分布（24小时）
+  timeDistribution: TimeCount[] // 时间分布（48个半小时点）
   dayDistribution: TimeCount[] // 星期分布（1-7）
   dailyFirstCommits: DailyCommitTime[] // 每日首次提交时间（过滤后）
   dailyLatestCommits: DailyCommitTime[] // 每日末次提交时间（过滤后）
@@ -123,7 +123,7 @@ export class UserPatternCollector extends BaseCollector {
   }
 
   /**
-   * 为单个用户采集时间分布数据（24小时粒度）
+   * 为单个用户采集时间分布数据（半小时粒度）
    */
   async getUserTimeDistribution(email: string, options: GitLogOptions): Promise<TimeCount[]> {
     const { path } = options
@@ -137,8 +137,7 @@ export class UserPatternCollector extends BaseCollector {
     const output = await this.execGitCommand(args, path)
     const lines = output.split('\n').filter((line) => line.trim())
 
-    // 统计24小时分布（聚合到小时）
-    const hourCounts = new Map<number, number>()
+    const halfHourCounts = new Map<string, number>()
 
     for (const line of lines) {
       const parts = line.split('|')
@@ -160,17 +159,19 @@ export class UserPatternCollector extends BaseCollector {
       const match = time.trim().match(/^(\d{2}):(\d{2})$/)
       if (match) {
         const hour = parseInt(match[1], 10)
-        hourCounts.set(hour, (hourCounts.get(hour) || 0) + 1)
+        const minute = parseInt(match[2], 10) < 30 ? 0 : 30
+        const key = `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`
+        halfHourCounts.set(key, (halfHourCounts.get(key) || 0) + 1)
       }
     }
 
-    // 转换为TimeCount数组（补全24小时）
+    // 转换为TimeCount数组（补全48个半小时点）
     const timeDistribution: TimeCount[] = []
     for (let hour = 0; hour < 24; hour++) {
-      timeDistribution.push({
-        time: hour.toString().padStart(2, '0'),
-        count: hourCounts.get(hour) || 0,
-      })
+      for (const minute of [0, 30]) {
+        const key = `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`
+        timeDistribution.push({ time: key, count: halfHourCounts.get(key) || 0 })
+      }
     }
 
     return timeDistribution
@@ -244,10 +245,7 @@ export class UserPatternCollector extends BaseCollector {
   ): Promise<DailyCommitTime[]> {
     const { path } = options
 
-    // 计算N个月前的日期
-    const nMonthsAgo = new Date()
-    nMonthsAgo.setMonth(nMonthsAgo.getMonth() - monthsBack)
-    const sinceDate = nMonthsAgo.toISOString().split('T')[0]
+    const sinceDate = this.resolvePatternSinceDate(options, monthsBack)
 
     // 格式: "YYYY-MM-DD HH:MM|ISO_TIMESTAMP"
     // 使用提交时的原始时区
@@ -258,7 +256,7 @@ export class UserPatternCollector extends BaseCollector {
       `--author=${email}`,
       `--since=${sinceDate}`,
     ]
-    this.applyCommonFilters(args, options)
+    this.applyCommonFilters(args, { ...options, since: undefined })
 
     const output = await this.execGitCommand(args, path)
     const lines = output.split('\n').filter((line) => line.trim())
@@ -335,10 +333,7 @@ export class UserPatternCollector extends BaseCollector {
   ): Promise<DailyCommitTime[]> {
     const { path } = options
 
-    // 计算N个月前的日期
-    const nMonthsAgo = new Date()
-    nMonthsAgo.setMonth(nMonthsAgo.getMonth() - monthsBack)
-    const sinceDate = nMonthsAgo.toISOString().split('T')[0]
+    const sinceDate = this.resolvePatternSinceDate(options, monthsBack)
 
     // 格式: "YYYY-MM-DD HH:MM|ISO_TIMESTAMP"
     // 使用提交时的原始时区
@@ -349,7 +344,7 @@ export class UserPatternCollector extends BaseCollector {
       `--author=${email}`,
       `--since=${sinceDate}`,
     ]
-    this.applyCommonFilters(args, options)
+    this.applyCommonFilters(args, { ...options, since: undefined })
 
     const output = await this.execGitCommand(args, path)
     const lines = output.split('\n').filter((line) => line.trim())
@@ -412,6 +407,17 @@ export class UserPatternCollector extends BaseCollector {
     }
 
     return result
+  }
+
+  /**
+   * 成员模式窗口以查询结束日期为锚点；历史区间不应被当前日期清空。
+   */
+  private resolvePatternSinceDate(options: GitLogOptions, monthsBack: number): string {
+    const anchor = options.until ? new Date(`${options.until}T12:00:00`) : new Date()
+    anchor.setMonth(anchor.getMonth() - monthsBack)
+    const rollingSince = anchor.toISOString().split('T')[0]
+
+    return options.since && options.since > rollingSince ? options.since : rollingSince
   }
 
   /**

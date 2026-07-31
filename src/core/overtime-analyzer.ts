@@ -26,7 +26,7 @@ export class OvertimeAnalyzer {
     dayHourCommits: DayHourCommit[],
     workTime: WorkTimeDetectionResult
   ): WeekdayOvertimeDistribution {
-    const endHour = Math.ceil(workTime.endHour)
+    const endMinutes = workTime.endHour * 60
 
     // 初始化周一到周五的加班计数
     const overtimeCounts = {
@@ -39,12 +39,12 @@ export class OvertimeAnalyzer {
 
     // 统计每个工作日下班后的提交数
     for (const commit of dayHourCommits) {
-      const { weekday, hour, count } = commit
+      const { weekday, hour, minute = 0, count } = commit
 
       // 只统计工作日（周一到周五：1-5）
       if (weekday >= 1 && weekday <= 5) {
         // 只统计下班时间之后的提交
-        if (hour >= endHour) {
+        if (hour * 60 + minute >= endMinutes) {
           const dayNames = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'] as const
           const dayIndex = weekday - 1
           overtimeCounts[dayNames[dayIndex]] += count

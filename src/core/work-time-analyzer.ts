@@ -21,10 +21,6 @@ export class WorkTimeAnalyzer {
     hourData: TimeCount[],
     dailyFirstCommits: DailyFirstCommit[] = []
   ): WorkTimeDetectionResult {
-    // 如果是半小时数据，先聚合为小时数据用于算法分析
-    const granularity = TimeAggregator.detectGranularity(hourData)
-    const hourDataForAnalysis = granularity === 'half-hour' ? TimeAggregator.aggregateToHour(hourData) : hourData
-
     const filteredDailyCommits = this.filterValidDailyCommits(dailyFirstCommits)
     const sampleCount = filteredDailyCommits.length
 
@@ -44,38 +40,68 @@ export class WorkTimeAnalyzer {
 
     const startHour = startRange.startHour
     const standardEndHour = Math.min(startHour + this.STANDARD_WORK_HOURS, 24)
-    const observedEndWindow = detectEndHourWindow(hourDataForAnalysis, startHour, standardEndHour)
+    const observedEndWindow = this.detectObservedEnd(hourData, startHour, standardEndHour)
     const standardRange = this.buildEndHourRange(startHour, standardEndHour)
-
-    const useObserved = observedEndWindow.method === 'backward-threshold'
-    const effectiveEndHour = useObserved ? observedEndWindow.endHour : standardEndHour
-    const effectiveRange = useObserved ? observedEndWindow.range : standardRange
-    const endDetectionMethod = useObserved ? 'backward-threshold' : 'standard-shift'
     const confidence = this.estimateConfidence(sampleCount)
 
     return {
       startHour,
-      endHour: effectiveEndHour,
+      // 正常工时边界和活动结束证据必须分离。观察到团队提交延伸到更晚，
+      // 不能反向把晚间提交吸收到正常工时中。
+      endHour: standardEndHour,
       isReliable: confidence >= 60,
       sampleCount,
       detectionMethod,
       confidence,
       startHourRange: startRange,
-      endHourRange: effectiveRange,
-      endDetectionMethod,
+      endHourRange: standardRange,
+      endDetectionMethod: 'standard-shift',
+      observedEndHour: observedEndWindow.endHour,
+      observedEndHourRange: observedEndWindow.range,
+      observedEndDetectionMethod: observedEndWindow.method,
     }
   }
 
   /**
-   * 根据识别结果判断某个整点是否属于工作时间
+   * 解析 "HH"、"HH:MM" 时间标签为距离午夜的分钟数。
+   */
+  static parseTimeToMinutes(time: string): number | null {
+    const match = time.trim().match(/^(\d{1,2})(?::(\d{2}))?$/)
+    if (!match) return null
+
+    const hour = parseInt(match[1], 10)
+    const minute = match[2] ? parseInt(match[2], 10) : 0
+    if (hour < 0 || hour > 23 || minute < 0 || minute > 59) return null
+
+    return hour * 60 + minute
+  }
+
+  /**
+   * 根据标准工时边界判断一个时间点是否属于正常工作时间。
+   */
+  static isWorkingTime(time: string, detection: WorkTimeDetectionResult): boolean {
+    const timeMinutes = this.parseTimeToMinutes(time)
+    if (timeMinutes === null) return false
+
+    const startMinutes = detection.startHour * 60
+    const endMinutes = Math.max(startMinutes, detection.endHour * 60)
+    return timeMinutes >= startMinutes && timeMinutes < endMinutes
+  }
+
+  /**
+   * 兼容旧调用方的整点判断。
    */
   static isWorkingHour(hour: number, detection: WorkTimeDetectionResult): boolean {
-    const hourStartMinutes = hour * 60
-    const startMinutes = detection.startHour * 60
-    // 加班判定：即便检测到更晚的下班时间，正常工时最多只统计 9 小时
-    const cappedEndHour = Math.min(detection.endHour, detection.startHour + this.STANDARD_WORK_HOURS)
-    const endMinutes = Math.max(startMinutes, cappedEndHour * 60)
-    return hourStartMinutes >= startMinutes && hourStartMinutes < endMinutes
+    return this.isWorkingTime(hour.toString(), detection)
+  }
+
+  /**
+   * 从提交分布识别活动结束证据。手动工时也调用同一逻辑，避免把标准结束时间冒充为观察结果。
+   */
+  static detectObservedEnd(hourData: TimeCount[], startHour: number, standardEndHour: number) {
+    const granularity = TimeAggregator.detectGranularity(hourData)
+    const hourDataForAnalysis = granularity === 'half-hour' ? TimeAggregator.aggregateToHour(hourData) : hourData
+    return detectEndHourWindow(hourDataForAnalysis, startHour, standardEndHour)
   }
 
   /**

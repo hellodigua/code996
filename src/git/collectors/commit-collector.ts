@@ -19,9 +19,9 @@ export class CommitCollector extends BaseCollector {
   async getCommitsByDayAndHour(options: GitLogOptions): Promise<DayHourCommit[]> {
     const { path } = options
 
-    // 格式: "Author Name <email@example.com>|D H|ISO_TIMESTAMP" (D=星期几 0-6，H=小时)
+    // 格式: "Author Name <email@example.com>|D HH:MM|ISO_TIMESTAMP" (D=星期几 0-6)
     // 使用提交时的原始时区
-    const args = ['log', '--format=%an <%ae>|%cd|%ai', '--date=format:%w %H']
+    const args = ['log', '--format=%an <%ae>|%cd|%ai', '--date=format:%w %H:%M']
     this.applyCommonFilters(args, options)
 
     const output = await this.execGitCommand(args, path)
@@ -60,12 +60,24 @@ export class CommitCollector extends BaseCollector {
 
       if (timeParts.length >= 2) {
         const dayW = parseInt(timeParts[0], 10)
-        const hour = parseInt(timeParts[1], 10)
+        const [hourText, minuteText = '0'] = timeParts[1].split(':')
+        const hour = parseInt(hourText, 10)
+        const minute = parseInt(minuteText, 10)
 
-        if (!isNaN(dayW) && !isNaN(hour) && dayW >= 0 && dayW <= 6 && hour >= 0 && hour <= 23) {
+        if (
+          !isNaN(dayW) &&
+          !isNaN(hour) &&
+          !isNaN(minute) &&
+          dayW >= 0 &&
+          dayW <= 6 &&
+          hour >= 0 &&
+          hour <= 23 &&
+          minute >= 0 &&
+          minute <= 59
+        ) {
           // 转换：%w 的 0(周日) -> 7, 1-6 -> 1-6
           const weekday = dayW === 0 ? 7 : dayW
-          const key = `${weekday}-${hour}`
+          const key = `${weekday}-${hour}-${minute}`
           commitMap.set(key, (commitMap.get(key) || 0) + 1)
         }
       }
@@ -74,8 +86,8 @@ export class CommitCollector extends BaseCollector {
     // 转换为数组格式
     const result: DayHourCommit[] = []
     commitMap.forEach((count, key) => {
-      const [weekday, hour] = key.split('-').map((v) => parseInt(v, 10))
-      result.push({ weekday, hour, count })
+      const [weekday, hour, minute] = key.split('-').map((v) => parseInt(v, 10))
+      result.push({ weekday, hour, minute, count })
     })
 
     return result

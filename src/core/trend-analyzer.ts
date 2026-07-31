@@ -36,7 +36,8 @@ export class TrendAnalyzer {
     authorPattern?: string,
     progressCallback?: (current: number, total: number, month: string) => void,
     timezone?: string,
-    enableHolidayMode: boolean = true
+    enableHolidayMode: boolean = true,
+    customWorkHours?: string
   ): Promise<TrendAnalysisResult> {
     const collector = new GitCollector()
 
@@ -57,7 +58,15 @@ export class TrendAnalyzer {
       if (progressCallback) {
         progressCallback(i + 1, months.length, months[i])
       }
-      const data = await this.analyzeMonth(collector, path, months[i], authorPattern, timezone, enableHolidayMode)
+      const data = await this.analyzeMonth(
+        collector,
+        path,
+        months[i],
+        authorPattern,
+        timezone,
+        enableHolidayMode,
+        customWorkHours
+      )
       monthlyData.push(data)
     }
 
@@ -92,7 +101,8 @@ export class TrendAnalyzer {
     authorPattern: string | undefined,
     progressCallback?: (current: number, total: number, month: string) => void,
     timezone?: string,
-    enableHolidayMode: boolean = true
+    enableHolidayMode: boolean = true,
+    customWorkHours?: string
   ): Promise<TrendAnalysisResult> {
     const collector = new GitCollector()
 
@@ -138,7 +148,8 @@ export class TrendAnalyzer {
         months[i],
         authorPattern,
         timezone,
-        enableHolidayMode
+        enableHolidayMode,
+        customWorkHours
       )
       monthlyData.push(data)
     }
@@ -165,7 +176,8 @@ export class TrendAnalyzer {
     month: string,
     authorPattern?: string,
     timezone?: string,
-    enableHolidayMode: boolean = true
+    enableHolidayMode: boolean = true,
+    customWorkHours?: string
   ): Promise<MonthlyTrendData | null> {
     try {
       // 计算该月的起止日期
@@ -213,7 +225,7 @@ export class TrendAnalyzer {
       const mergedData = GitDataMerger.merge(monthDataList)
 
       // 解析数据并计算 996 指数
-      const parsedData = await GitParser.parseGitData(mergedData, undefined, since, until, enableHolidayMode)
+      const parsedData = await GitParser.parseGitData(mergedData, customWorkHours, since, until, enableHolidayMode)
       const result996 = calculate996Index({
         workHourPl: parsedData.workHourPl,
         workWeekPl: parsedData.workWeekPl,
@@ -274,7 +286,8 @@ export class TrendAnalyzer {
     month: string,
     authorPattern?: string,
     timezone?: string,
-    enableHolidayMode: boolean = true
+    enableHolidayMode: boolean = true,
+    customWorkHours?: string
   ): Promise<MonthlyTrendData | null> {
     try {
       // 计算该月的起止日期
@@ -302,7 +315,7 @@ export class TrendAnalyzer {
       }
 
       // 解析数据并计算 996 指数
-      const parsedData = await GitParser.parseGitData(gitLogData, undefined, since, until, enableHolidayMode)
+      const parsedData = await GitParser.parseGitData(gitLogData, customWorkHours, since, until, enableHolidayMode)
       const result996 = calculate996Index({
         workHourPl: parsedData.workHourPl,
         workWeekPl: parsedData.workWeekPl,

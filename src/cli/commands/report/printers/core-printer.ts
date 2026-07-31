@@ -75,6 +75,25 @@ export function printCoreResults(
   console.log(resultTable.toString())
   console.log()
 
+  if (result.uncertainty) {
+    console.log(
+      chalk.yellow(
+        `⚠️  ${t('core.result.uncertainty', {
+          min: result.uncertainty.minIndex996.toFixed(1),
+          max: result.uncertainty.maxIndex996.toFixed(1),
+        })}`
+      )
+    )
+    for (const scenario of result.uncertainty.scenarios) {
+      console.log(
+        chalk.gray(
+          `   ${scenario.startHour}-${scenario.endHour}: ${scenario.index996.toFixed(1)} (${scenario.overTimeRadio.toFixed(1)}%)`
+        )
+      )
+    }
+    console.log()
+  }
+
   // 在核心结果表格下方添加996指数说明
   console.log(chalk.gray(t('core.result.note')))
   console.log()

@@ -1,10 +1,8 @@
 import chalk from 'chalk'
 import { ParsedGitData } from '../../../../types/git-types'
 import { getTerminalWidth, createAdaptiveTable } from '../../../../utils/terminal'
-import { formatStartClock, formatEndClock } from '../../../../utils/formatter'
+import { formatStartClock, formatEndClock, formatObservedEndClock } from '../../../../utils/formatter'
 import { t } from '../../../../i18n'
-
-const MAX_STANDARD_WORK_HOURS = 9
 
 /**
  * 工作时间打印器
@@ -21,20 +19,8 @@ export function printWorkTimeSummary(parsedData: ParsedGitData): void {
     return
   }
 
-  if (detection.detectionMethod === 'manual') {
-    // 用户已通过 --hours 指定标准工时，这里直接跳过推测模块以避免重复信息
-    printWorkHourCapNotice(detection)
-    return
-  }
-
-  // 如果置信度低于40%，不显示工作时间推测（但仍然显示加班说明）
-  if (detection.confidence < 40) {
-    printWorkHourCapNotice(detection)
-    return
-  }
-
-  // 只在自动推断场景展示该模块，因此固定输出自动提示
-  const titleSuffix = chalk.gray(t('workTime.auto'))
+  const titleSuffix =
+    detection.detectionMethod === 'manual' ? chalk.gray(t('workTime.manual')) : chalk.gray(t('workTime.auto'))
   console.log(chalk.cyan.bold(`⌛ ${t('workTime.title')}`) + ' ' + titleSuffix)
 
   const startClock = formatStartClock(detection)
@@ -49,8 +35,12 @@ export function printWorkTimeSummary(parsedData: ParsedGitData): void {
       { content: startClock, colSpan: 1 },
     ],
     [
-      { content: chalk.bold(t('workTime.end')), colSpan: 1 },
+      { content: chalk.bold(t('workTime.standardEnd')), colSpan: 1 },
       { content: endClock, colSpan: 1 },
+    ],
+    [
+      { content: chalk.bold(t('workTime.observedEnd')), colSpan: 1 },
+      { content: formatObservedEndClock(detection), colSpan: 1 },
     ],
     [
       { content: chalk.bold(t('workTime.confidence')), colSpan: 1 },
@@ -67,21 +57,8 @@ export function printWorkTimeSummary(parsedData: ParsedGitData): void {
   console.log(workTimeTable.toString())
   console.log()
 
-  printWorkHourCapNotice(detection)
-}
-
-// 当推测/指定的工作时段超过 9 小时时，告知用户超出的部分已按加班计算
-function printWorkHourCapNotice(detection: ParsedGitData['detectedWorkTime']): void {
-  if (!detection) {
-    return
+  if (!detection.isReliable) {
+    console.log(chalk.yellow(`⚠️  ${t('workTime.lowConfidence')}`))
+    console.log()
   }
-
-  const actualSpan = detection.endHour - detection.startHour
-  if (actualSpan <= MAX_STANDARD_WORK_HOURS) {
-    return
-  }
-
-  const spanText = actualSpan.toFixed(1)
-  console.log(chalk.yellow(`⚠️  ${t('workTime.capNotice', { hours: spanText })}`))
-  console.log()
 }

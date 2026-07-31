@@ -5,6 +5,7 @@ import {
   TimeCount,
   WorkTimePl,
   WorkWeekPl,
+  WorkTimeDetectionResult,
 } from '../types/git-types'
 import { UserPatternData } from '../git/collectors/user-pattern-collector'
 import { WorkTimeAnalyzer } from './work-time-analyzer'
@@ -22,11 +23,16 @@ export class UserAnalyzer {
    * 分析单个用户的工作模式
    * @param baselineEndHour 团队基准下班时间（可选，用于分类）
    */
-  static analyzeUser(userData: UserPatternData, totalCommits: number, baselineEndHour?: number): UserWorkPattern {
+  static analyzeUser(
+    userData: UserPatternData,
+    totalCommits: number,
+    baselineEndHour?: number,
+    workTimeOverride?: WorkTimeDetectionResult
+  ): UserWorkPattern {
     const { contributor, timeDistribution, dayDistribution, dailyFirstCommits, dailyLatestCommits } = userData
 
-    // 计算工作时间（传入空数组作为dailyFirstCommits，因为我们没有单个用户的每日首提数据）
-    const workingHours = WorkTimeAnalyzer.detectWorkingHours(timeDistribution, [])
+    // 手动工时在总览、趋势和成员分析中保持一致；自动模式使用成员自己的每日首提样本。
+    const workingHours = workTimeOverride ?? WorkTimeAnalyzer.detectWorkingHours(timeDistribution, dailyFirstCommits)
 
     // 计算基于每日首末commit的平均上下班时间
     const avgTimes = this.calculateAverageWorkTimes(dailyFirstCommits, dailyLatestCommits)
@@ -46,7 +52,8 @@ export class UserAnalyzer {
     const overtimeStats = this.calculateOvertimeStats(timeDistribution, workingHours.startHour, workingHours.endHour)
 
     // 判断工作强度等级（使用基准下班时间，如果没有则使用默认值18）
-    const intensityLevel = this.classifyIntensityLevel(workingHours.endHour, baselineEndHour)
+    const activityEndHour = workingHours.observedEndHour ?? workingHours.endHour
+    const intensityLevel = this.classifyIntensityLevel(activityEndHour, baselineEndHour)
 
     return {
       author: contributor.author,
@@ -134,10 +141,10 @@ export class UserAnalyzer {
     // 统计正常工作时间和加班时间的提交数
     let normalWork = 0
     let overtime = 0
+    const detection = this.createWorkTimeWindow(startHour, endHour)
 
     for (const item of timeDistribution) {
-      const hour = parseInt(item.time, 10)
-      if (hour >= startHour && hour < endHour) {
+      if (WorkTimeAnalyzer.isWorkingTime(item.time, detection)) {
         normalWork += item.count
       } else {
         overtime += item.count
@@ -180,10 +187,10 @@ export class UserAnalyzer {
    */
   private static calculateOvertimeStats(timeDistribution: TimeCount[], startHour: number, endHour: number) {
     let totalOvertime = 0
+    const detection = this.createWorkTimeWindow(startHour, endHour)
 
     for (const item of timeDistribution) {
-      const hour = parseInt(item.time, 10)
-      if (hour < startHour || hour >= endHour) {
+      if (!WorkTimeAnalyzer.isWorkingTime(item.time, detection)) {
         totalOvertime += item.count
       }
     }
@@ -196,6 +203,17 @@ export class UserAnalyzer {
       workdayOvertime,
       weekendOvertime,
       totalOvertime,
+    }
+  }
+
+  private static createWorkTimeWindow(startHour: number, endHour: number): WorkTimeDetectionResult {
+    return {
+      startHour,
+      endHour,
+      isReliable: true,
+      sampleCount: -1,
+      detectionMethod: 'manual',
+      confidence: 100,
     }
   }
 
@@ -229,7 +247,7 @@ export class UserAnalyzer {
     // 先计算团队的基准下班时间（使用P50中位数）
     const endTimesForBaseline = userPatterns
       .filter((u) => u.workingHours && u.workingHours.endHour)
-      .map((u) => u.workingHours!.endHour)
+      .map((u) => u.workingHours!.observedEndHour ?? u.workingHours!.endHour)
       .sort((a, b) => a - b)
 
     const baselineEndHour = endTimesForBaseline.length > 0 ? calculatePercentile(endTimesForBaseline, 50) : 18
@@ -237,7 +255,8 @@ export class UserAnalyzer {
     // 根据基准下班时间重新分类工作强度
     userPatterns.forEach((u) => {
       if (u.workingHours) {
-        u.intensityLevel = this.classifyIntensityLevel(u.workingHours.endHour, baselineEndHour)
+        const activityEndHour = u.workingHours.observedEndHour ?? u.workingHours.endHour
+        u.intensityLevel = this.classifyIntensityLevel(activityEndHour, baselineEndHour)
       }
     })
 

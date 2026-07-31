@@ -80,6 +80,7 @@ function buildCore(result: Result996, totalCommits: number): StructuredOutput['c
     rating: result.index996DescriptionKey,
     overTimeRatio: result.overTimeRadio,
     totalCommits,
+    uncertainty: result.uncertainty,
   }
 }
 
@@ -214,6 +215,7 @@ function buildMultiRepo(repoRecords: RepoAnalysisRecord[]): StructuredOutput['mu
             index996: record.result.index996,
             rating: record.result.index996DescriptionKey,
             overTimeRatio: record.result.overTimeRadio,
+            uncertainty: record.result.uncertainty,
           }
         : null,
     totalCommits: record.data.totalCommits,

@@ -35,9 +35,23 @@ export class GitParser {
     enableHolidayMode: boolean = true
   ): Promise<ParsedGitData> {
     // 智能识别或使用自定义的工作时间
-    const workTimeDetection = customWorkHours
-      ? this.parseCustomWorkHours(customWorkHours)
-      : WorkTimeAnalyzer.detectWorkingHours(rawData.byHour, rawData.dailyFirstCommits || [])
+    let workTimeDetection: WorkTimeDetectionResult
+    if (customWorkHours) {
+      workTimeDetection = this.parseCustomWorkHours(customWorkHours)
+      const observedEnd = WorkTimeAnalyzer.detectObservedEnd(
+        rawData.byHour,
+        workTimeDetection.startHour,
+        workTimeDetection.endHour
+      )
+      workTimeDetection = {
+        ...workTimeDetection,
+        observedEndHour: observedEnd.endHour,
+        observedEndHourRange: observedEnd.range,
+        observedEndDetectionMethod: observedEnd.method,
+      }
+    } else {
+      workTimeDetection = WorkTimeAnalyzer.detectWorkingHours(rawData.byHour, rawData.dailyFirstCommits || [])
+    }
 
     // 计算加班相关分析
     const weekdayOvertime =
@@ -138,10 +152,8 @@ export class GitParser {
     let overtimeCount = 0
 
     for (const item of hourData) {
-      const hour = parseInt(item.time, 10)
-
       // 判断是否在工作时间内
-      if (WorkTimeAnalyzer.isWorkingHour(hour, workTimeDetection)) {
+      if (WorkTimeAnalyzer.isWorkingTime(item.time, workTimeDetection)) {
         workCount += item.count
       } else {
         overtimeCount += item.count
@@ -292,7 +304,50 @@ export class GitParser {
       hourData: data.hourData,
     }
 
-    return calculate996Index(workTimeData)
+    const result = calculate996Index(workTimeData)
+    const detection = data.detectedWorkTime
+
+    if (!detection || detection.detectionMethod === 'manual' || detection.isReliable) {
+      return result
+    }
+
+    const candidateWindows = [
+      { startHour: detection.startHour, endHour: detection.endHour, source: 'auto' as const },
+      { startHour: 9, endHour: 18, source: 'common' as const },
+      { startHour: 9.5, endHour: 18.5, source: 'common' as const },
+      { startHour: 10, endHour: 19, source: 'common' as const },
+    ]
+    const uniqueWindows = Array.from(
+      new Map(candidateWindows.map((window) => [`${window.startHour}-${window.endHour}`, window])).values()
+    )
+    const scenarios = uniqueWindows.map((window) => {
+      const scenarioDetection: WorkTimeDetectionResult = {
+        ...detection,
+        startHour: window.startHour,
+        endHour: window.endHour,
+      }
+      const scenarioResult = calculate996Index({
+        workHourPl: this.calculateWorkHourPl(data.hourData, scenarioDetection),
+        workWeekPl: data.workWeekPl,
+        hourData: data.hourData,
+      })
+      return {
+        ...window,
+        index996: scenarioResult.index996,
+        overTimeRadio: scenarioResult.overTimeRadio,
+      }
+    })
+    const indexes = scenarios.map((scenario) => scenario.index996)
+
+    return {
+      ...result,
+      uncertainty: {
+        reason: 'low-work-time-confidence',
+        minIndex996: Math.min(...indexes),
+        maxIndex996: Math.max(...indexes),
+        scenarios,
+      },
+    }
   }
 }
 

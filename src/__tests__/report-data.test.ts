@@ -161,6 +161,36 @@ describe('ReportData', () => {
     expect(markdown).not.toContain('tuesday（6 次）')
   })
 
+  test('低置信度场景同时进入 ReportData 和 Markdown', () => {
+    const uncertainResult: Result996 = {
+      ...result,
+      uncertainty: {
+        reason: 'low-work-time-confidence',
+        minIndex996: 54,
+        maxIndex996: 96,
+        scenarios: [
+          { startHour: 9, endHour: 18, index996: 96, overTimeRadio: 32, source: 'common' },
+          { startHour: 9.5, endHour: 18.5, index996: 54, overTimeRadio: 18, source: 'auto' },
+        ],
+      },
+    }
+    const report = buildSingleRepoOutput({
+      result: uncertainResult,
+      parsedData,
+      rawData,
+      teamAnalysis: null,
+      trendResult: null,
+      options: {},
+      path: '/workspace/demo',
+      classification,
+      holidayMode: false,
+      timezoneAnalysis: null,
+    })
+
+    expect(report.core.uncertainty).toEqual(uncertainResult.uncertainty)
+    expect(buildMarkdown(report)).toContain('996 指数区间为 54.0–96.0')
+  })
+
   test('保留 CLI 项目分类依据与完整团队分析，而不是只输出摘要字段', () => {
     const report = buildSingleRepoOutput({
       result,

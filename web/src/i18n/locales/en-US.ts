@@ -31,6 +31,7 @@ export default {
       'A 996 index of 0 means no overtime. Higher values indicate more overtime; a 996 schedule corresponds to 100, while negative values indicate a very light work rhythm.',
     seeDetails: 'View detailed diagnostics',
     workTimeConfidence: 'Based on {sample} workday samples',
+    uncertaintyRange: 'Low-confidence range {min}–{max}',
     holidayMode: 'China holiday calendar',
     timezone: 'Primary timezone {timezone}',
     selfOnly: 'Your commits only',
@@ -186,7 +187,9 @@ export default {
     },
     workTime: {
       start: 'Estimated start',
-      end: 'Estimated end',
+      end: 'Standard hours end',
+      observedEnd: 'Commit activity extends to',
+      observedEndNote: 'Activity evidence only; not part of standard hours',
       confidence: 'Estimate confidence',
       samples: '{count} valid workday samples',
       method: 'Detection method',
@@ -197,6 +200,8 @@ export default {
       },
       reliable: 'Sample meets the reliability threshold',
       unreliable: 'Sample reliability is limited',
+      lowConfidence:
+        'The work-time sample is limited. Under common schedules, the 996 Index ranges from {min} to {max}; the displayed score is a reference value.',
       range: 'Candidate range {start}–{end}',
       capNotice: 'The detected work span is {hours} hours; time beyond 9 hours is counted as overtime.',
     },

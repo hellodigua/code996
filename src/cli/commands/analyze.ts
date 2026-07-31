@@ -211,7 +211,8 @@ export class AnalyzeExecutor {
               collectOptions.authorPattern,
               () => {},
               options.timezone,
-              shouldEnableHoliday.enabled
+              shouldEnableHoliday.enabled,
+              options.hours
             )
           } catch {
             // 结构化输出保持纯净，缺失模块由 null 表达。
@@ -229,7 +230,8 @@ export class AnalyzeExecutor {
                 trendSpinner.text = `📈 ${t('analyze.trend.progress', { current, total, month })}`
               },
               options.timezone,
-              shouldEnableHoliday.enabled
+              shouldEnableHoliday.enabled,
+              options.hours
             )
             trendSpinner.succeed()
             printTrendReport(trendResult)
@@ -244,9 +246,17 @@ export class AnalyzeExecutor {
       if (!isOpenSource && GitTeamAnalyzer.shouldAnalyzeTeam(options)) {
         try {
           const maxUsers = options.maxUsers ? parseInt(String(options.maxUsers), 10) : 30
+          const manualWorkTime =
+            parsedData.detectedWorkTime?.detectionMethod === 'manual' ? parsedData.detectedWorkTime : undefined
           teamAnalysis =
-            (await GitTeamAnalyzer.analyzeTeam(collectOptions, result.index996, 20, maxUsers, !isTerminalReport)) ??
-            null
+            (await GitTeamAnalyzer.analyzeTeam(
+              collectOptions,
+              result.index996,
+              20,
+              maxUsers,
+              !isTerminalReport,
+              manualWorkTime
+            )) ?? null
           if (isTerminalReport && teamAnalysis) printTeamAnalysis(teamAnalysis)
         } catch (error) {
           if (isTerminalReport) {

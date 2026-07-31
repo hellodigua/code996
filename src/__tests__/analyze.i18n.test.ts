@@ -90,7 +90,8 @@ describe('AnalyzeExecutor i18n', () => {
     const combinedOutput = `${joinedLogs}\n${joinedErrors}`
 
     expect(combinedOutput).toContain('Core results:')
-    expect(combinedOutput).toContain('Overtime note:')
+    expect(combinedOutput).toContain('Standard workday')
+    expect(combinedOutput).toContain('Commit activity')
     expect(combinedOutput).toContain('Monthly trend report')
     expect(combinedOutput).toContain('Late-night overtime analysis:')
     expect(combinedOutput).not.toMatch(/[\u4e00-\u9fff]/)

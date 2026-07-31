@@ -33,6 +33,9 @@ export interface ReportWorkTime {
   startHourRange?: { startHour: number; endHour: number }
   endHourRange?: { startHour: number; endHour: number }
   endDetectionMethod?: 'standard-shift' | 'backward-threshold' | 'default' | 'manual'
+  observedEndHour?: number
+  observedEndHourRange?: { startHour: number; endHour: number }
+  observedEndDetectionMethod?: 'backward-threshold' | 'default'
 }
 
 export interface ReportTrendMonth {
@@ -138,6 +141,18 @@ export interface ReportData {
     rating: string
     overTimeRatio: number
     totalCommits: number
+    uncertainty?: {
+      reason: 'low-work-time-confidence'
+      minIndex996: number
+      maxIndex996: number
+      scenarios: Array<{
+        startHour: number
+        endHour: number
+        index996: number
+        overTimeRadio: number
+        source: 'auto' | 'common'
+      }>
+    }
   }
   workTime: ReportWorkTime | null
   hourlyDistribution: Array<{ hour: string; count: number }>
@@ -185,7 +200,12 @@ export interface ReportData {
       path: string
       status: 'success' | 'failed'
       error?: string
-      core: { index996: number; rating: string; overTimeRatio: number } | null
+      core: {
+        index996: number
+        rating: string
+        overTimeRatio: number
+        uncertainty?: ReportData['core']['uncertainty']
+      } | null
       totalCommits: number
       contributors?: number
       firstCommitDate?: string

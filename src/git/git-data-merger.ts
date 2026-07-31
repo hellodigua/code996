@@ -192,7 +192,7 @@ export class GitDataMerger {
       }
 
       for (const item of data.dayHourCommits) {
-        const key = `${item.weekday}-${item.hour}`
+        const key = `${item.weekday}-${item.hour}-${item.minute ?? 0}`
         const current = map.get(key) || 0
         map.set(key, current + item.count)
       }
@@ -204,8 +204,8 @@ export class GitDataMerger {
 
     const result: DayHourCommit[] = []
     map.forEach((count, key) => {
-      const [weekday, hour] = key.split('-').map((v) => parseInt(v, 10))
-      result.push({ weekday, hour, count })
+      const [weekday, hour, minute] = key.split('-').map((v) => parseInt(v, 10))
+      result.push({ weekday, hour, minute, count })
     })
 
     return result
