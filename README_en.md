@@ -102,26 +102,28 @@ Running code996 requires Node.js 18+.
 
 ### Contribute an Anonymous Benchmark
 
-If you know the team's actual or typical standard work hours, you can generate an anonymous aggregate dataset to help validate code996's algorithms:
+Run this inside the Git repository you want to analyze:
 
 ```bash
-npx code996 benchmark . \
-  --reference-hours 9.5-18.5 \
-  --team-size 20 \
-  --schedule fixed \
-  --label-confidence high \
-  -y 2025
+npx code996 benchmark
 ```
 
-The command analyzes everything locally and uploads nothing. It creates a `code996-benchmark-*.json` file; open and review the file before sending it to the maintainer.
+The command asks no questions, analyzes everything locally, and uploads nothing. It creates an unlabeled `code996-benchmark-*.json` file; open and review the file before sending it to the maintainer. Unlabeled samples can expose obvious algorithm failures and unusual distributions, but cannot prove the error against the team's actual schedule.
 
-- `--reference-hours`: the team's actual or typical standard hours, such as `9.5-18.5`
-- `--team-size`: approximate team size; only a size bucket is stored in JSON
-- `--schedule`: `fixed`, `flexible`, `shift`, or `unknown`
-- `--label-confidence`: confidence in the reference hours: `high`, `medium`, or `low`
+Optionally provide context to create a labeled sample that is more useful for measuring error:
+
+```bash
+npx code996 benchmark \
+  --reference-hours 9.5-18.5 \
+  --team-size 20
+```
+
+- `--reference-hours`: the team's actual or typical standard hours, used to compare against the automatic result
+- `--team-size`: used only to study algorithm behavior by team-size segment; it does not affect the 996 index, and the Git contributor-count bucket is still collected automatically when omitted
+- `--schedule` and `--label-confidence`: optional schedule and reference-label context
 - `-y` / `--since --until`: use a fixed range so datasets can be reproduced and compared
 
-The JSON excludes repository names and paths, source code and filenames, author names and emails, commit hashes and messages, branches and remotes, and exact commit dates. It retains commit counts, half-hour and weekday aggregate distributions, the month range, count buckets, and the automatic/reference results. Aggregate timing patterns may still be sensitive, so manual review before sharing is required.
+The JSON excludes repository names and paths, source code and filenames, author names and emails, commit hashes and messages, branches and remotes, and exact commit dates. It retains commit counts, half-hour and weekday aggregate distributions, the month range, a contributor-count bucket, and the automatic result; reference results and error fields appear only when reference hours are supplied. Aggregate timing patterns may still be sensitive, so manual review before sharing is required.
 
 ## 🤖 Smart Analysis Mode
 

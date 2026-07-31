@@ -102,26 +102,28 @@ AI 会按照 code996 Skill 采集本地 Git 数据，并生成包含加班语义
 
 ### 贡献匿名 benchmark
 
-如果你知道团队真实或典型的标准工时，可以生成一份匿名聚合数据，帮助校验 code996 的算法：
+在要分析的 Git 仓库中运行：
 
 ```bash
-npx code996 benchmark . \
-  --reference-hours 9.5-18.5 \
-  --team-size 20 \
-  --schedule fixed \
-  --label-confidence high \
-  -y 2025
+npx code996 benchmark
 ```
 
-命令只在本地分析，不会上传任何内容。它会生成一个 `code996-benchmark-*.json` 文件；发送给维护者前，请先打开文件人工检查。
+命令不需要回答问题，只在本地分析，也不会上传任何内容。它会生成一个无标签的 `code996-benchmark-*.json` 文件；发送给维护者前，请先打开文件人工检查。无标签样本可用于发现算法的明显误判和异常分布，但不能证明它与团队真实作息之间的误差。
 
-- `--reference-hours`：团队真实或通常执行的标准工时，例如 `9.5-18.5`
-- `--team-size`：大致团队人数，JSON 中只保留人数区间
-- `--schedule`：`fixed`、`flexible`、`shift` 或 `unknown`
-- `--label-confidence`：对参考工时的把握程度，取 `high`、`medium` 或 `low`
-- `-y` / `--since --until`：建议固定分析范围，便于不同数据集之间复现和比较
+如果愿意补充信息，可以使用可选参数生成更适合计算误差的有标签样本：
 
-JSON 不包含仓库名称和路径、源码和文件名、作者姓名和邮箱、commit hash 和 message、分支和 remote、精确提交日期。它会保留提交数、按半小时和星期聚合的时间分布、月份范围、人数区间以及自动结果与参考结果。聚合时间模式仍可能是敏感信息，因此必须在分享前人工确认。
+```bash
+npx code996 benchmark \
+  --reference-hours 9.5-18.5 \
+  --team-size 20
+```
+
+- `--reference-hours`：团队真实或通常执行的标准工时，用于与自动结果比较
+- `--team-size`：只用于按团队规模分组研究算法表现，不参与 996 指数计算；未提供时仍会自动记录 Git 贡献者人数区间
+- `--schedule`、`--label-confidence`：补充排班类型和参考标签的可信度
+- `-y` / `--since --until`：固定分析范围，便于不同数据集之间复现和比较
+
+JSON 不包含仓库名称和路径、源码和文件名、作者姓名和邮箱、commit hash 和 message、分支和 remote、精确提交日期。它会保留提交数、按半小时和星期聚合的时间分布、月份范围、贡献者人数区间以及自动结果；仅在提供参考工时后包含参考结果和误差。聚合时间模式仍可能是敏感信息，因此必须在分享前人工确认。
 
 ## 🤖 智能分析模式
 

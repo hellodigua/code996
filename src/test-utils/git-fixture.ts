@@ -6,6 +6,7 @@ import { execFileSync } from 'child_process'
 export interface FixtureCommit {
   message: string
   isoDate: string
+  committerIsoDate?: string
   content?: string
   authorName?: string
   authorEmail?: string
@@ -39,7 +40,7 @@ export function createFixtureRepo(commits: FixtureCommit[]): FixtureRepo {
       runGit(repoPath, ['add', 'fixture.txt'])
       runGit(repoPath, ['commit', '-m', commit.message], {
         GIT_AUTHOR_DATE: commit.isoDate,
-        GIT_COMMITTER_DATE: commit.isoDate,
+        GIT_COMMITTER_DATE: commit.committerIsoDate ?? commit.isoDate,
         GIT_AUTHOR_NAME: commit.authorName ?? 'Fixture User',
         GIT_AUTHOR_EMAIL: commit.authorEmail ?? 'fixture@example.com',
         GIT_COMMITTER_NAME: commit.authorName ?? 'Fixture User',

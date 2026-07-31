@@ -13,9 +13,9 @@ export class TimezoneCollector extends BaseCollector {
   async collectTimezones(options: GitLogOptions): Promise<TimezoneData> {
     const { path } = options
 
-    // 采集时区偏移量：使用 %ai (author date ISO 8601) 格式
-    // 格式示例: "2025-11-20 10:15:21 +0800"
-    const args = ['log', '--format=%ai']
+    // 同时读取作者和 committer 时间，使作者排除规则与其他时间统计保持一致。
+    // 格式示例: "Author Name <email@example.com>|2025-11-20 10:15:21 +0800"
+    const args = ['log', '--format=%an <%ae>|%ci']
     this.applyCommonFilters(args, options)
 
     const output = await this.execGitCommand(args, path)
@@ -23,9 +23,17 @@ export class TimezoneCollector extends BaseCollector {
 
     // 统计时区分布
     const timezoneMap = new Map<string, number>()
+    let totalCommits = 0
 
     for (const line of lines) {
-      const timezone = this.extractTimezone(line)
+      const separatorIndex = line.lastIndexOf('|')
+      if (separatorIndex < 0) continue
+
+      const author = line.slice(0, separatorIndex)
+      if (this.shouldIgnoreAuthor(author, options.ignoreAuthor)) continue
+
+      totalCommits++
+      const timezone = this.extractTimezone(line.slice(separatorIndex + 1))
       if (timezone && this.isValidTimezone(timezone)) {
         timezoneMap.set(timezone, (timezoneMap.get(timezone) || 0) + 1)
       }
@@ -37,7 +45,7 @@ export class TimezoneCollector extends BaseCollector {
       .sort((a, b) => b.count - a.count)
 
     return {
-      totalCommits: lines.length,
+      totalCommits,
       timezones,
     }
   }
