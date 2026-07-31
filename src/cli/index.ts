@@ -9,6 +9,7 @@ import { getLocale, initializeLocale, t, UnsupportedLocaleError } from '../i18n'
 import { resolveOutputMode } from './output/output-mode'
 import { printAnalysisFooter } from './output/web-report-notice'
 import { handleWebReportOpen, resetCode996Config } from './output/web-report-open'
+import { BenchmarkOptions } from '../benchmark/benchmark-types'
 
 // Re-export types for convenience
 export { AnalyzeOptions }
@@ -36,6 +37,7 @@ export class CLIManager {
 
     // 注册根命令默认行为，直接执行分析逻辑
     this.setupDefaultAnalyzeAction()
+    this.addBenchmarkCommand()
     this.addConfigCommand()
     this.addHelpCommand()
 
@@ -112,6 +114,58 @@ export class CLIManager {
       })
 
     this.program.addCommand(configCommand)
+  }
+
+  /** 注册本地匿名 benchmark 数据生成命令。 */
+  private addBenchmarkCommand(): void {
+    const benchmarkCommand = new Command('benchmark')
+      .description(t('benchmark.command'))
+      .argument('[path]', t('benchmark.path'))
+      .requiredOption('--reference-hours <range>', t('benchmark.option.referenceHours'))
+      .requiredOption('--team-size <number>', t('benchmark.option.teamSize'))
+      .option('--schedule <type>', t('benchmark.option.schedule'), 'fixed')
+      .option('--label-confidence <level>', t('benchmark.option.labelConfidence'), 'high')
+      .option('-s, --since <date>', t('cli.option.since'))
+      .option('-u, --until <date>', t('cli.option.until'))
+      .option('-y, --year <year>', t('cli.option.year'))
+      .option('--all-time', t('cli.option.allTime'))
+      .option('--timezone <offset>', t('cli.option.timezone'))
+      .option('--cn', t('cli.option.cn'))
+      .option('--ignore-author <regex>', t('cli.option.ignoreAuthor'))
+      .option('--ignore-msg <regex>', t('cli.option.ignoreMsg'))
+      .option('--output <path>', t('benchmark.option.output'))
+      .option('--lang <locale>', t('cli.option.lang'))
+      .action(async (repoPath: string | undefined, _options: BenchmarkOptions, command: Command) => {
+        // 根命令和 benchmark 都提供时间范围等同名参数。Commander 会按参数位置
+        // 分配到父/子命令，因此必须统一读取 optsWithGlobals，避免静默丢失。
+        const options = command.optsWithGlobals() as BenchmarkOptions
+        if (options.lang) {
+          try {
+            initializeLocale(['--lang', options.lang])
+          } catch (error) {
+            this.handleLocaleError(error)
+          }
+        }
+
+        const candidatePath = path.resolve(repoPath ?? process.cwd())
+        try {
+          if (!fs.existsSync(candidatePath) || !fs.statSync(candidatePath).isDirectory()) {
+            throw new Error(t('benchmark.error.path'))
+          }
+          if (!(await this.isGitRepository(candidatePath))) {
+            throw new Error(t('benchmark.error.git'))
+          }
+
+          const gitRoot = this.resolveGitRoot(candidatePath)
+          const { BenchmarkExecutor } = await import('./commands/benchmark')
+          await BenchmarkExecutor.execute(gitRoot, options)
+        } catch (error) {
+          console.error(chalk.red(`❌ ${t('benchmark.failed')}`), (error as Error).message)
+          process.exitCode = 1
+        }
+      })
+
+    this.program.addCommand(benchmarkCommand)
   }
 
   /** 统一注册错误处理逻辑，提升用户体验 */
@@ -376,6 +430,7 @@ ${chalk.bold(t('cli.help.usage'))}
 ${chalk.bold(t('cli.help.commands'))}
   help              ${t('cli.help.command')}
   config reset      ${t('cli.config.reset')}
+  benchmark         ${t('benchmark.command')}
 
 ${chalk.bold(t('cli.help.smartMode'))}
   ${t('cli.help.smartDesc')}
@@ -432,6 +487,9 @@ ${chalk.bold(t('cli.help.examples'))}
   code996 --ignore-author "bot|jenkins|github-actions"  # ${exampleFilterAuthors}
   code996 --ignore-msg "^Merge" # ${exampleFilterMsg}
   code996 --ignore-msg "merge|lint|format"  # ${exampleFilterMsgs}
+
+  ${chalk.gray(t('benchmark.helpExample'))}
+  code996 benchmark . --reference-hours 9.5-18.5 --team-size 20 -y 2025
 
 ${chalk.bold(t('cli.help.regex'))}
   ${t('cli.help.regex.line1')}

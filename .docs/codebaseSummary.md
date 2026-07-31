@@ -12,6 +12,7 @@ src/
 │   ├── index.ts           # CLI主管理器 - 负责命令注册、参数解析和版本管理
 │   └── commands/          # 命令实现
 │       ├── analyze.ts     # 分析命令 - 核心执行逻辑、时间范围处理
+│       ├── benchmark.ts   # 匿名 benchmark - 本地生成、排他写入和结果预览
 │       ├── multi.ts       # 多仓库分析命令 - 扫描、选择、合并多个仓库数据、默认包含月度趋势分析
 │       ├── report/        # 报表输出模块
 │       └── output/        # ReportData 构建、输出模式、本地 HTML 生成
@@ -29,6 +30,9 @@ src/
 │       │   ├── multi-comparison.ts # 多仓库对比报表
 │       │   └── trend-printer.ts # 趋势分析报表
 │       └── help.ts        # 帮助命令 - 显示使用说明
+├── benchmark/             # 匿名算法验证数据集
+│   ├── benchmark-types.ts # JSON Schema、参考标签和命令参数类型
+│   └── benchmark-builder.ts # 双工时计算、聚合匿名化和隐私审计
 ├── core/                  # 核心算法层
 │   ├── calculator.ts      # 996 指数计算
 │   ├── end-hour-detector.ts # 下班时间窗口识别
@@ -87,6 +91,7 @@ scripts/
 - **偏好管理**：Unix 默认保存到 `~/.config/code996/config.json`（尊重 `XDG_CONFIG_HOME`），Windows 保存到 `%APPDATA%/code996/config.json`；`code996 config reset` 恢复询问状态
 - **报告保存**：本地 Web 默认写入 `Downloads/code996-report/YYYY-MM-DD_HH-mm-ss_项目名/`，按名称排序即可按生成时间排列，同秒冲突追加序号；Downloads 不可写时提示并降级系统临时目录
 - **多仓库支持**：`multi` 命令支持交互式仓库选择、批量数据采集、结果合并、作者过滤和默认的月度趋势分析
+- **匿名 Benchmark**：`benchmark` 命令接收参考工时、团队人数和标签可信度，在本地生成不含仓库与身份字段的聚合 JSON；不会上传且不会覆盖已有文件
 - **报表输出**：`ReportData` 作为统一契约，支持本地双语 Web、传统终端、JSON 和 Markdown
 - **Web 完整性**：页面覆盖 CLI 的诊断阈值、工时依据、项目分类、跨时区、加班频率、完整月度趋势和团队健康分析，不再只展示摘要指标
 - **Web 首屏**：沿用历史结果页的灰色顶栏、像素标题和方形指数卡；“详细报告”锚点连接首屏摘要与完整证据区，中英文切换不触发重新分析
@@ -153,6 +158,12 @@ scripts/
 multi命令  fs扫描    inquirer   串行git   按维度累加 分位数+拐点 多仓库对比
 ```
 
+### 匿名 Benchmark 流程
+
+```text
+参考标签 + Git 仓库 → 本地采集 → 自动/参考工时双计算 → 匿名聚合 → 隐私审计 → 本地 JSON → 人工检查后分享
+```
+
 ## 📊 数据流分析
 
 ### 输入数据
@@ -182,6 +193,11 @@ multi命令  fs扫描    inquirer   串行git   按维度累加 分位数+拐点
 5. **指数计算**：基于加班比例的数学模型生成 996 指数
 
 ### 输出数据
+
+- **匿名 benchmark JSON**：
+  - 只包含月份范围、人数区间、提交数、半小时/星期聚合、分类数值和自动/参考结果
+  - 排除仓库名与路径、源码与文件名、身份、commit hash/message、分支、remote 和精确提交日期
+  - 输出采用排他创建，程序不包含自动上传；聚合数据仍要求分享前人工检查
 
 - **核心指标**（`printer.ts`）:
   - 996指数: 0-300+ 的数值，表示加班程度

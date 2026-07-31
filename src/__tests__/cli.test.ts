@@ -184,6 +184,7 @@ describe('CLI i18n', () => {
     expect(logSpy).toHaveBeenCalledWith(expect.stringContaining('--open'))
     expect(logSpy).toHaveBeenCalledWith(expect.stringContaining('--no-open'))
     expect(logSpy).toHaveBeenCalledWith(expect.stringContaining('config reset'))
+    expect(logSpy).toHaveBeenCalledWith(expect.stringContaining('benchmark'))
     expect(logSpy).not.toHaveBeenCalledWith(expect.stringContaining('--web'))
   })
 

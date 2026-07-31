@@ -16,6 +16,7 @@
 - **[本地 Web 报告](features/web-report.md)** - Web 报告的数据契约、生成方式、安全边界和降级策略
 - **[官方站点](features/public-website.md)** - 官网源码、历史路由兼容与 GitHub Pages 部署边界
 - **[核心算法](features/core-algorithm.md)** - 分钟级边界、标准工时、低置信度场景和指数公式
+- **[匿名 Benchmark](features/anonymous-benchmark.md)** - 真实项目样本的本地生成、匿名 Schema、隐私边界与验证方式
 
 ### 规则与流程 (Rules & Process) 文档
 
