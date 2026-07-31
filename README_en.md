@@ -19,7 +19,7 @@ Instead of suffering for three months, better see the truth early! Don't wait un
 ## Features
 
 - **📊 996 Index**: Convert complex overtime situations into intuitive numbers, see project intensity at a glance
-- **🕰️ Smart Working Hours Detection**: Uses percentile and inflection point detection algorithms to accurately reconstruct team's real start/end work time windows
+- **🕰️ Smart Working Hours Detection**: Estimates standard hours from daily-first-commit percentiles and reports observed evening activity separately
 - **📈 Monthly Trend Tracking**: Identify whether the project is "getting more intense" or "stabilizing" through trends
 - **📅 Multi-dimensional Overtime Profile**: Comprehensive analysis, identifying not only weekday/weekend overtime peaks but also the overtime ratio of team members
 - **📦 Multi-repo Comparison**: One-click scan and analyze multiple repositories under a folder, auto-generate comparisons
@@ -99,6 +99,29 @@ Analyze this repo with code996 and open the local Web report
 ```
 
 Running code996 requires Node.js 18+.
+
+### Contribute an Anonymous Benchmark
+
+If you know the team's actual or typical standard work hours, you can generate an anonymous aggregate dataset to help validate code996's algorithms:
+
+```bash
+npx code996 benchmark . \
+  --reference-hours 9.5-18.5 \
+  --team-size 20 \
+  --schedule fixed \
+  --label-confidence high \
+  -y 2025
+```
+
+The command analyzes everything locally and uploads nothing. It creates a `code996-benchmark-*.json` file; open and review the file before sending it to the maintainer.
+
+- `--reference-hours`: the team's actual or typical standard hours, such as `9.5-18.5`
+- `--team-size`: approximate team size; only a size bucket is stored in JSON
+- `--schedule`: `fixed`, `flexible`, `shift`, or `unknown`
+- `--label-confidence`: confidence in the reference hours: `high`, `medium`, or `low`
+- `-y` / `--since --until`: use a fixed range so datasets can be reproduced and compared
+
+The JSON excludes repository names and paths, source code and filenames, author names and emails, commit hashes and messages, branches and remotes, and exact commit dates. It retains commit counts, half-hour and weekday aggregate distributions, the month range, count buckets, and the automatic/reference results. Aggregate timing patterns may still be sensitive, so manual review before sharing is required.
 
 ## 🤖 Smart Analysis Mode
 
@@ -253,15 +276,15 @@ Git Repo → git log collection → Daily first commit + Hourly distribution →
 
 1. **Time Distribution Analysis**:
    - Data collection: Collect commit times at minute-level, auto-aggregate into 48 half-hour points
-   - Algorithm processing: Auto-aggregate into 24 hours for work time identification and 996 index calculation
+   - Algorithm processing: Preserve half-hour boundaries for standard hours and the 996 index; only observed activity-end diagnostics use hourly aggregation
    - Display mode: Default hourly display (24 points), optional half-hour mode (48 points)
-2. **Work Time Identification**: Use 10%-20% percentile of recent samples to estimate start work time window, combined with evening commit inflection point to estimate end work time
+2. **Work Time Identification**: Use the 10%-20% percentile of recent daily-first-commit samples to estimate the start time, then use a fixed nine-hour standard window; report observed evening activity separately without expanding normal hours
 3. **996 Index Calculation**: Build index based on overtime ratio, output Chinese description
 4. **Project Type Identification**: Through work time regularity, weekend activity, evening activity patterns, auto-identify whether project is "corporate project" or "open source project"
 5. **Cross-timezone Collaboration Detection**: Identify cross-timezone projects through timezone dispersion and "sleep period" commit ratio (threshold: non-dominant timezone >1%), provide timezone filter suggestions
 6. **Holiday Makeup Workday Recognition**: When primary timezone is +0800 and accounts for >50%, auto-enable Chinese holiday judgment (workday/weekend considers legal holidays and makeup workdays), other timezones can manually enable via `--cn` parameter
 7. **Data Validation**: Verify statistical data matches total commit count, avoid deviation from missing data
-8. **Algorithm Advantages**: New version uses percentile and inflection point estimation, can more intelligently filter out late-night sporadic commits, precisely locate real work time windows
+8. **Uncertainty Reporting**: When automatic work-hour confidence is below 60%, report an index range across common schedules instead of presenting a low-sample estimate as certain
 
 ## Usage Tips
 
